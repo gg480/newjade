@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+db/*.db
+public/images/item_*
+qa-screenshots
+download
+upload
+screenshot-*
+*.log
+agent-ctx
+mini-services

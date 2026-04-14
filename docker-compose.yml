@@ -1,0 +1,30 @@
+# 玉器店进销存管理系统 - Docker Compose 配置
+# 使用说明详见 DEPLOY.md
+
+services:
+  jade-inventory:
+    image: jade-inventory:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jade-inventory
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+    environment:
+      # 数据库路径（容器内绝对路径）
+      - DATABASE_URL=file:/app/db/custom.db
+      # 可选：时区设置
+      - TZ=Asia/Shanghai
+    volumes:
+      # ====== 数据持久化（必须挂载）======
+      # 数据库文件 - 包含所有业务数据（货品/销售/客户等）
+      - ./data/db:/app/db
+      # 货品图片 - 上传的货品照片
+      - ./data/images:/app/public/images
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

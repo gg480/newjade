@@ -1,0 +1,351 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// 1. sys_config — 系统配置（key/value/description）
+// ──────────────────────────────────────────────
+model SysConfig {
+  id          Int     @id @default(autoincrement())
+  key         String  @unique
+  value       String
+  description String?
+}
+
+// ──────────────────────────────────────────────
+// 2. dict_material — 材质字典
+// ──────────────────────────────────────────────
+model DictMaterial {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  category     String?   @map("category") // 材质大类: 玉/贵金属/水晶/文玩/其他
+  subType      String?   @map("sub_type")
+  origin       String?
+  costPerGram  Float?    @map("cost_per_gram")
+  sortOrder    Int       @default(0) @map("sort_order")
+  isActive     Boolean   @default(true) @map("is_active")
+
+  batches      Batch[]
+  items        Item[]
+  metalPrices  MetalPrice[]
+
+  @@map("dict_material")
+}
+
+// ──────────────────────────────────────────────
+// 3. dict_type — 器型字典
+// ──────────────────────────────────────────────
+model DictType {
+  id         Int     @id @default(autoincrement())
+  name       String  @unique
+  specFields String? @map("spec_fields") // JSON string
+  sortOrder  Int     @default(0) @map("sort_order")
+  isActive   Boolean @default(true) @map("is_active")
+
+  items      Item[]
+  batches    Batch[]
+
+  @@map("dict_type")
+}
+
+// ──────────────────────────────────────────────
+// 4. dict_tag — 标签字典
+// ──────────────────────────────────────────────
+model DictTag {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  groupName String? @map("group_name")
+  isActive  Boolean @default(true) @map("is_active")
+
+  items     Item[]   @relation("ItemTags")
+  itemTags  ItemTag[]
+
+  @@map("dict_tag")
+}
+
+// ──────────────────────────────────────────────
+// 5. suppliers — 供应商
+// ──────────────────────────────────────────────
+model Supplier {
+  id       Int     @id @default(autoincrement())
+  name     String
+  contact  String?
+  phone    String?
+  notes    String?
+  isActive Boolean @default(true) @map("is_active")
+
+  batches  Batch[]
+  items    Item[]
+
+  @@map("suppliers")
+}
+
+// ──────────────────────────────────────────────
+// 6. customers — 客户
+// ──────────────────────────────────────────────
+model Customer {
+  customerCode String   @unique @map("customer_code")
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String?
+  wechat       String?
+  address      String?
+  notes        String?
+  tags         String?  // JSON string: ["翡翠收藏家","VIP","婚戒客户"]
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  saleRecords  SaleRecord[]
+  bundleSales  BundleSale[]
+
+  @@map("customers")
+}
+
+// ──────────────────────────────────────────────
+// 7. batches — 批次表（通货专用）
+// ──────────────────────────────────────────────
+model Batch {
+  id              Int      @id @default(autoincrement())
+  batchCode       String   @unique @map("batch_code")
+  materialId      Int      @map("material_id")
+  typeId          Int?     @map("type_id")
+  quantity        Int
+  totalCost       Float    @map("total_cost")
+  costAllocMethod String   @map("cost_alloc_method") // equal / by_weight / by_price
+  supplierId      Int?     @map("supplier_id")
+  purchaseDate    String?  @map("purchase_date") // YYYY-MM-DD format string
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  material        DictMaterial @relation(fields: [materialId], references: [id])
+  type            DictType?    @relation(fields: [typeId], references: [id])
+  supplier        Supplier?    @relation(fields: [supplierId], references: [id])
+  items           Item[]
+
+  @@map("batches")
+}
+
+// ──────────────────────────────────────────────
+// 8. items — 货品主表
+// ──────────────────────────────────────────────
+model Item {
+  id            Int      @id @default(autoincrement())
+  skuCode       String   @unique @map("sku_code")
+  name          String?
+  batchCode     String?  @map("batch_code")
+  batchId       Int?     @map("batch_id")
+  materialId    Int      @map("material_id")
+  typeId        Int?     @map("type_id")
+  costPrice     Float?   @map("cost_price")
+  allocatedCost Float?   @map("allocated_cost")
+  sellingPrice  Float    @map("selling_price")
+  floorPrice    Float?   @map("floor_price")
+  origin        String?
+  counter       Int?
+  certNo        String?  @map("cert_no")
+  notes         String?
+  supplierId    Int?     @map("supplier_id")
+  status        String   @default("in_stock") // in_stock / sold / returned
+  purchaseDate  String?  @map("purchase_date") // YYYY-MM-DD format string
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  isDeleted     Boolean  @default(false) @map("is_deleted")
+
+  material      DictMaterial @relation(fields: [materialId], references: [id])
+  type          DictType?    @relation(fields: [typeId], references: [id])
+  batch         Batch?       @relation(fields: [batchId], references: [id])
+  supplier      Supplier?    @relation(fields: [supplierId], references: [id])
+  spec          ItemSpec?
+  images        ItemImage[]
+  tags          DictTag[]    @relation("ItemTags")
+  itemTags      ItemTag[]
+  saleRecords   SaleRecord[]
+  saleReturns   SaleReturn[]
+
+  @@index([status])
+  @@index([materialId])
+  @@index([batchId])
+  @@map("items")
+}
+
+// ──────────────────────────────────────────────
+// 9. item_tag — 多对多关联表
+// ──────────────────────────────────────────────
+model ItemTag {
+  itemId Int @map("item_id")
+  tagId  Int @map("tag_id")
+
+  item Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag  DictTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId])
+  @@map("item_tag")
+}
+
+// ──────────────────────────────────────────────
+// 10. item_spec — 货品规格
+// ──────────────────────────────────────────────
+model ItemSpec {
+  id            Int     @id @default(autoincrement())
+  itemId        Int     @unique @map("item_id")
+  weight        Float?
+  metalWeight   Float?  @map("metal_weight")
+  size          String?
+  braceletSize  String? @map("bracelet_size")
+  beadCount     Int?    @map("bead_count")
+  beadDiameter  String? @map("bead_diameter")
+  ringSize      String? @map("ring_size")
+
+  item          Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("item_spec")
+}
+
+// ──────────────────────────────────────────────
+// 11. item_images — 货品图片
+// ──────────────────────────────────────────────
+model ItemImage {
+  id            Int      @id @default(autoincrement())
+  itemId        Int      @map("item_id")
+  filename      String
+  thumbnailPath String?  @map("thumbnail_path")
+  isCover       Boolean  @default(false) @map("is_cover")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("item_images")
+}
+
+// ──────────────────────────────────────────────
+// 12. sale_records — 销售记录
+// ──────────────────────────────────────────────
+model SaleRecord {
+  id          Int      @id @default(autoincrement())
+  saleNo      String   @unique @map("sale_no")
+  itemId      Int      @map("item_id")
+  actualPrice Float    @map("actual_price")
+  channel     String   // store / wechat
+  saleDate    String   @map("sale_date") // YYYY-MM-DD format string
+  customerId  Int?     @map("customer_id")
+  bundleId    Int?     @map("bundle_id")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  item        Item        @relation(fields: [itemId], references: [id])
+  customer    Customer?   @relation(fields: [customerId], references: [id])
+  bundle      BundleSale? @relation(fields: [bundleId], references: [id])
+  saleReturns SaleReturn[]
+
+  @@index([saleDate])
+  @@index([channel])
+  @@map("sale_records")
+}
+
+// ──────────────────────────────────────────────
+// 13. bundle_sales — 套装销售
+// ──────────────────────────────────────────────
+model BundleSale {
+  id          Int      @id @default(autoincrement())
+  bundleNo    String   @unique @map("bundle_no")
+  totalPrice  Float    @map("total_price")
+  allocMethod String   @map("alloc_method") // by_ratio / chain_at_cost
+  saleDate    String   @map("sale_date") // YYYY-MM-DD format string
+  channel     String
+  customerId  Int?     @map("customer_id")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  saleRecords SaleRecord[]
+
+  @@map("bundle_sales")
+}
+
+// ──────────────────────────────────────────────
+// 14. metal_prices — 贵金属市价
+// ──────────────────────────────────────────────
+model MetalPrice {
+  id            Int      @id @default(autoincrement())
+  materialId    Int      @map("material_id")
+  pricePerGram  Float    @map("price_per_gram")
+  effectiveDate String   @map("effective_date") // YYYY-MM-DD format string
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  material      DictMaterial @relation(fields: [materialId], references: [id])
+
+  @@map("metal_prices")
+}
+
+// ──────────────────────────────────────────────
+// 15. users — 管理员用户
+// ──────────────────────────────────────────────
+model User {
+  id              Int      @id @default(autoincrement())
+  username        String   @unique
+  passwordHash    String   @map("password_hash")
+  mustChangePwd   Boolean  @default(true) @map("must_change_pwd")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// 16. sale_returns — 销售退货记录
+// ──────────────────────────────────────────────
+model SaleReturn {
+  id            Int      @id @default(autoincrement())
+  saleId        Int      @map("sale_id")
+  itemId        Int      @map("item_id")
+  refundAmount  Float    @map("refund_amount")
+  returnReason  String   @map("return_reason")
+  returnDate    String   @map("return_date") // YYYY-MM-DD format string
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  sale          SaleRecord @relation(fields: [saleId], references: [id])
+  item          Item        @relation(fields: [itemId], references: [id])
+
+  @@map("sale_returns")
+}
+
+// ──────────────────────────────────────────────
+// 17. operation_log — 操作日志
+// ──────────────────────────────────────────────
+model OperationLog {
+  id          Int      @id @default(autoincrement())
+  action      String                  // create_item, sell_item, return_sale, edit_item, delete_item, allocate_batch
+  targetType  String                  // item, sale, batch, customer, supplier
+  targetId    Int?                    // target entity id
+  detail      String?                 // JSON string of key changes
+  operator    String   @default("admin")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+  @@map("operation_log")
+}
+
+// ──────────────────────────────────────────────
+// 18. session — 登录会话（持久化到数据库）
+// ──────────────────────────────────────────────
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @default("admin")
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("session")
+}
