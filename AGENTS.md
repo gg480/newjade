@@ -12,9 +12,9 @@ A full-featured jade/jewelry inventory management system built with Next.js 16 +
 pnpm install          # Install dependencies
 npx prisma generate   # Generate Prisma client (required after install/pull)
 npx prisma db push    # Push schema to SQLite (first time or after schema change)
-pnpm run dev          # Start dev server on port 5000
-pnpm run build        # Production build
-pnpm run start        # Start production server
+pnpm run dev          # Start dev server on port 5000 (HMR enabled)
+pnpm run build        # Production build (creates .next/ directory)
+pnpm run start        # Start production server on port 5000
 pnpm run lint         # ESLint check
 npx tsx prisma/seed.ts # Seed demo data
 ```
@@ -91,3 +91,4 @@ prisma/
 - HMR "Router action dispatched before initialization" error in dev mode (cosmetic, not functional)
 - barcode-scanner requires HTTPS for camera access (falls back to manual input)
 - After pulling fresh code or updating Prisma schema, clear `.next` cache (`rm -rf .next`) and re-run `npx prisma generate` before starting dev server
+- Production build must rebuild after changing next.config.ts (standalone mode removed, use standard `pnpm build && pnpm start`)

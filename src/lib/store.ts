@@ -14,7 +14,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  activeTab: 'dashboard',
+  activeTab: 'sales',
   setActiveTab: (tab) => set({ activeTab: tab }),
   selectedItems: new Set(),
   toggleItem: (id) =>

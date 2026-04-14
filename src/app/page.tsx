@@ -9,9 +9,27 @@ import BatchesTab from '@/components/inventory/batches-tab';
 import CustomersTab from '@/components/inventory/customers-tab';
 import LogsTab from '@/components/inventory/logs-tab';
 
-const DashboardTab = dynamic(() => import('@/components/inventory/dashboard-tab'), { loading: () => <LoadingSkeleton /> });
-const InventoryTab = dynamic(() => import('@/components/inventory/inventory-tab'), { loading: () => <LoadingSkeleton /> });
-const SettingsTab = dynamic(() => import('@/components/inventory/settings-tab'), { loading: () => <LoadingSkeleton /> });
+const DashboardTab = dynamic(
+  () => import('@/components/inventory/dashboard-tab').catch(() => {
+    console.error('Dashboard tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">Dashboard failed to load</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
+const InventoryTab = dynamic(
+  () => import('@/components/inventory/inventory-tab').catch(() => {
+    console.error('Inventory tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">Inventory failed to load</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
+const SettingsTab = dynamic(
+  () => import('@/components/inventory/settings-tab').catch(() => {
+    console.error('Settings tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">Settings failed to load</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
 import { MobileNav, DesktopNav, ShortcutsHelpDialog } from '@/components/inventory/navigation';
 import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff } from 'lucide-react';
 import { Toaster } from 'sonner';
