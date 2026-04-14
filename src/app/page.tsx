@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppStore, TabId } from '@/lib/store';
 import { fadeInStyle, cardSlideUpStyle, ErrorBoundary, LoadingSkeleton } from '@/components/inventory/shared';
 import SalesTab from '@/components/inventory/sales-tab';
@@ -8,9 +9,9 @@ import BatchesTab from '@/components/inventory/batches-tab';
 import CustomersTab from '@/components/inventory/customers-tab';
 import LogsTab from '@/components/inventory/logs-tab';
 
-const DashboardTab = lazy(() => import('@/components/inventory/dashboard-tab'));
-const InventoryTab = lazy(() => import('@/components/inventory/inventory-tab'));
-const SettingsTab = lazy(() => import('@/components/inventory/settings-tab'));
+const DashboardTab = dynamic(() => import('@/components/inventory/dashboard-tab'), { loading: () => <LoadingSkeleton /> });
+const InventoryTab = dynamic(() => import('@/components/inventory/inventory-tab'), { loading: () => <LoadingSkeleton /> });
+const SettingsTab = dynamic(() => import('@/components/inventory/settings-tab'), { loading: () => <LoadingSkeleton /> });
 import { MobileNav, DesktopNav, ShortcutsHelpDialog } from '@/components/inventory/navigation';
 import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff } from 'lucide-react';
 import { Toaster } from 'sonner';
@@ -152,7 +153,6 @@ function MobileQuickStats({ className }: { className?: string }) {
 // ========== Main Page ==========
 export default function JadeInventoryPage() {
   const { activeTab, setActiveTab } = useAppStore();
-  const [animKey, setAnimKey] = useState(0);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof window !== 'undefined' ? navigator.onLine : true);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -205,7 +205,6 @@ export default function JadeInventoryPage() {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    setAnimKey(k => k + 1);
   };
 
   // Keyboard shortcuts
@@ -243,7 +242,6 @@ export default function JadeInventoryPage() {
           setActiveTab('inventory');
           // Dispatch event for inventory tab to listen
           window.dispatchEvent(new CustomEvent('shortcut-new-item'));
-          setAnimKey(k => k + 1);
         }
         return;
       }
@@ -271,7 +269,6 @@ export default function JadeInventoryPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setActiveTab('inventory');
-        setAnimKey(k => k + 1);
         // Focus search input after a brief delay for tab to render
         const focusSearch = () => {
           const selectors = [
@@ -348,11 +345,9 @@ export default function JadeInventoryPage() {
         </div>
       )}
       <main className={`flex-1 px-4 py-4 md:px-6 md:py-6 pb-20 md:pb-6 max-w-7xl mx-auto w-full ${!isOnline ? 'pt-8' : ''}`}>
-        <div key={animKey} className="tab-fade-in">
+        <div className="tab-fade-in">
           <ErrorBoundary>
-            <Suspense fallback={<LoadingSkeleton />}>
-              {renderTab()}
-            </Suspense>
+            {renderTab()}
           </ErrorBoundary>
         </div>
       </main>

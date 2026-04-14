@@ -112,11 +112,18 @@ function DashboardTab() {
   const [showTargetDialog, setShowTargetDialog] = useState(false);
   const [targetInput, setTargetInput] = useState('');
 
+  // AbortController for cancelling pending requests on unmount
+  const abortRef = useRef<AbortController | null>(null);
+
   // Load batch entry progress on mount
   useEffect(() => {
+    const ac = new AbortController();
     batchesApi.getBatches({ size: 100 }).then((data: any) => {
-      setBatchEntryProgress((data.items || []).filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)));
+      if (!ac.signal.aborted) {
+        setBatchEntryProgress((data.items || []).filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)));
+      }
     }).catch(() => {});
+    return () => ac.abort();
   }, []);
 
   const getDateRange = useCallback(() => {
@@ -157,6 +164,14 @@ function DashboardTab() {
   }, []);
 
   const fetchData = useCallback(async () => {
+    // Cancel any previous pending requests
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const signal = controller.signal;
+
     setLoading(true);
     try {
       const { startDate, endDate } = getDateRange();
@@ -173,6 +188,7 @@ function DashboardTab() {
           aging_days: minDays,
           limit: 5,
         });
+        if (signal.aborted) return;
         if (aggregateData) {
           setSummary(aggregateData.summary || null);
           setBatchProfit(aggregateData.batchProfit || []);
@@ -182,6 +198,7 @@ function DashboardTab() {
           usedAggregate = true;
         }
       } catch {
+        if (signal.aborted) return;
         console.warn('Aggregate API failed, falling back to individual calls');
       }
 
@@ -194,6 +211,7 @@ function DashboardTab() {
           dashboardApi.getTopSellers({ limit: 5 }),
           dashboardApi.getMomComparison(),
         ]);
+        if (signal.aborted) return;
         const kval = <T,>(idx: number, fallback: T) =>
           keyResults[idx].status === 'fulfilled' ? keyResults[idx].value as T : fallback;
         setSummary(kval(0, null));
@@ -223,6 +241,7 @@ function DashboardTab() {
         dashboardApi.getSalesByChannel(params),
         dashboardApi.getTrend({ months: 1 }),
       ]);
+      if (signal.aborted) return;
       const val = <T,>(idx: number, fallback: T) =>
         remainingResults[idx].status === 'fulfilled' ? remainingResults[idx].value as T : fallback;
 
@@ -294,6 +313,15 @@ function DashboardTab() {
   }, [minDays, getDateRange, warningDaysLoaded]);
 
   useEffect(() => { if (warningDaysLoaded) fetchData(); }, [fetchData, warningDaysLoaded]);
+
+  // Abort pending requests on unmount
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+    };
+  }, []);
 
   // Fetch recent sales (separate, lighter call)
   const fetchRecentSales = useCallback(async () => {
