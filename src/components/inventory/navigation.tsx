@@ -40,9 +40,10 @@ function MobileNav({ activeTab, onTabChange, className }: { activeTab: TabId; on
         }
       } catch { /* silently fail */ }
     };
-    load();
+    // Delay initial load to avoid competing with dashboard requests
+    const timer = setTimeout(load, 3000);
     const interval = setInterval(load, 60000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => { cancelled = true; clearTimeout(timer); clearInterval(interval); };
   }, []);
 
   const tabs: { id: TabId; label: string; icon: React.ElementType; title: string }[] = [

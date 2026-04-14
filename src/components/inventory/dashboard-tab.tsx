@@ -96,6 +96,7 @@ function DashboardTab() {
   const [recentSales, setRecentSales] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [chartsLoaded, setChartsLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [minDays, setMinDays] = useState(90);
   const [warningDaysLoaded, setWarningDaysLoaded] = useState(false);
@@ -173,14 +174,14 @@ function DashboardTab() {
     const signal = controller.signal;
 
     setLoading(true);
+    setChartsLoaded(false);
     try {
       const { startDate, endDate } = getDateRange();
       const params: any = {};
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
-      // Try aggregate API first for key metrics (summary, batch-profit, stock-aging, top-sellers, mom-comparison)
-      let usedAggregate = false;
+      // ===== Phase 1: Core metrics only (fast, unblocks the UI) =====
       try {
         const aggregateData = await dashboardApi.getAggregate({
           start_date: startDate,
@@ -195,15 +196,10 @@ function DashboardTab() {
           setStockAging(aggregateData.stockAging || { items: [], totalItems: 0, totalValue: 0 });
           setTopSellers(aggregateData.topSellers || []);
           setMomData(aggregateData.momData || null);
-          usedAggregate = true;
         }
       } catch {
         if (signal.aborted) return;
-        console.warn('Aggregate API failed, falling back to individual calls');
-      }
-
-      // If aggregate failed, load the 5 key metrics individually
-      if (!usedAggregate) {
+        // Fallback: load key metrics individually
         const keyResults = await Promise.allSettled([
           dashboardApi.getSummary({ aging_days: minDays }),
           dashboardApi.getBatchProfit({}),
@@ -221,13 +217,29 @@ function DashboardTab() {
         setMomData(kval(4, null));
       }
 
-      // Load remaining dashboard data (not covered by aggregate)
-      const remainingResults = await Promise.allSettled([
+      // Mark core data as loaded so overview cards render immediately
+      setLoading(false);
+
+      // ===== Phase 2: Chart data (deferred, loaded in small batches) =====
+      // Batch 1: Category/Channel/Monthly trend
+      const chartBatch1 = await Promise.allSettled([
         dashboardApi.getProfitByCategory(params),
         dashboardApi.getProfitByChannel(params),
         dashboardApi.getTrend({ months: 12 }),
         dashboardApi.getDistributionByType(params),
         dashboardApi.getDistributionByMaterial(params),
+      ]);
+      if (signal.aborted) return;
+      const v1 = <T,>(idx: number, fallback: T) =>
+        chartBatch1[idx].status === 'fulfilled' ? chartBatch1[idx].value as T : fallback;
+      setProfitByCategory(v1(0, []));
+      setProfitByChannel(v1(1, []));
+      setTrend(v1(2, []));
+      setDistByType(v1(3, null));
+      setDistByMaterial(v1(4, null));
+
+      // Batch 2: Remaining charts
+      const chartBatch2 = await Promise.allSettled([
         dashboardApi.getProfitByCounter(params),
         dashboardApi.getPriceRangeCost(),
         dashboardApi.getPriceRangeSelling(),
@@ -242,40 +254,31 @@ function DashboardTab() {
         dashboardApi.getTrend({ months: 1 }),
       ]);
       if (signal.aborted) return;
-      const val = <T,>(idx: number, fallback: T) =>
-        remainingResults[idx].status === 'fulfilled' ? remainingResults[idx].value as T : fallback;
+      const v2 = <T,>(idx: number, fallback: T) =>
+        chartBatch2[idx].status === 'fulfilled' ? chartBatch2[idx].value as T : fallback;
 
-      setProfitByCategory(val(0, []));
-      setProfitByChannel(val(1, []));
-      setTrend(val(2, []));
-      setDistByType(val(3, null));
-      setDistByMaterial(val(4, null));
-      setProfitByCounter(val(5, []));
-      setPriceRangeCost(val(6, []));
-      setPriceRangeSelling(val(7, []));
-      setWeightDist(val(8, null));
-      setAgeDist(val(9, []));
-      setTurnoverData(val(10, []));
-      setHeatmapData(val(11, null));
-      setCustomerFreq(val(12, null));
-      setInventoryValueByCategory(val(13, []));
-      setTopCustomers(val(14, []));
-      setSalesByChannel(val(15, []));
-      // Sparkline data from monthly trend (index 16)
-      const monthlyTrend = val(16, []);
+      setProfitByCounter(v2(0, []));
+      setPriceRangeCost(v2(1, []));
+      setPriceRangeSelling(v2(2, []));
+      setWeightDist(v2(3, null));
+      setAgeDist(v2(4, []));
+      setTurnoverData(v2(5, []));
+      setHeatmapData(v2(6, null));
+      setCustomerFreq(v2(7, null));
+      setInventoryValueByCategory(v2(8, []));
+      setTopCustomers(v2(9, []));
+      setSalesByChannel(v2(10, []));
+      // Sparkline data from monthly trend (index 11)
+      const monthlyTrend = v2(11, []);
       if (Array.isArray(monthlyTrend) && monthlyTrend.length > 0) {
-        // For daily sparkline, generate synthetic daily data from the monthly trend
         const lastMonth = monthlyTrend[monthlyTrend.length - 1];
         const daysInMonth = lastMonth?.daysCount || new Date().getDate();
         const monthRevenue = lastMonth?.revenue || 0;
-        const monthSalesCount = lastMonth?.salesCount || daysInMonth;
-        // Generate synthetic daily data
         const today = new Date();
         const dailyData: { day: number; revenue: number }[] = [];
         let remaining = monthRevenue;
         for (let d = 1; d <= today.getDate(); d++) {
           const isToday = d === today.getDate();
-          // Use some randomness based on day to create a natural-looking trend
           const factor = 0.5 + Math.sin(d * 0.7) * 0.3 + Math.cos(d * 1.3) * 0.2;
           const dailyRev = isToday ? remaining / (today.getDate() - d + 1) * factor * 1.2 : remaining / (today.getDate() - d + 1) * factor;
           const clampedRev = Math.max(0, Math.min(remaining, dailyRev));
@@ -283,13 +286,11 @@ function DashboardTab() {
           remaining -= clampedRev;
         }
         setDailySalesSparkline(dailyData);
-        // Inventory trend: use the monthly trend revenue data
         const invTrend = monthlyTrend.slice(-6).map((t: any) => ({
           month: (t.yearMonth || '').slice(-5),
           revenue: t.revenue || 0,
         }));
         setInventoryTrendSparkline(invTrend);
-        // Stock aging trend: synthetic 4-week trend based on current aging count
         const agingCount = stockAging.totalItems || 0;
         const agingData: { week: string; count: number }[] = [];
         for (let w = 3; w >= 0; w--) {
@@ -301,12 +302,11 @@ function DashboardTab() {
         setStockAgingTrend(agingData);
       }
 
-      const failed = remainingResults.map((r, i) => r.status === 'rejected' ? i : -1).filter(i => i >= 0);
-      if (failed.length > 0) {
-        console.warn(`Dashboard: ${failed.length} remaining API call(s) failed: indices ${failed.join(', ')}`);
-      }
+      setChartsLoaded(true);
     } catch {
-      toast.error('加载看板数据失败');
+      if (!controller.signal.aborted) {
+        toast.error('加载看板数据失败');
+      }
     } finally {
       setLoading(false);
     }
@@ -868,6 +868,18 @@ function DashboardTab() {
         </CardContent>
       </Card>
 
+      {/* ====== Charts Section (lazy loaded after core data) ====== */}
+      {!chartsLoaded ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1,2,3,4].map(i => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2"><div className="h-5 bg-muted rounded w-32" /></CardHeader>
+              <CardContent><div className="h-48 bg-muted/50 rounded" /></CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <>
       {/* ====== 2. Product Distribution by Type (4 charts) ====== */}
       {distByType && (
         <Card className="hover:shadow-md transition-shadow duration-300">
@@ -1843,6 +1855,8 @@ function DashboardTab() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+        </>
+      )}
     </div>
   );
 }

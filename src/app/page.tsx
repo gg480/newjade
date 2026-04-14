@@ -37,15 +37,16 @@ function QuickStatsBar() {
       const today = new Date().toISOString().slice(0, 10);
       const [itemsData, salesData, batchesData] = await Promise.allSettled([
         itemsApi.getItems({ page: 1, size: 1, status: 'in_stock' }),
-        salesApi.getSales({ page: 1, size: 1000, start_date: today, end_date: today }),
+        salesApi.getSales({ page: 1, size: 1, start_date: today, end_date: today }),
         batchesApi.getBatches({ page: 1, size: 100 }),
       ]);
       if (itemsData.status === 'fulfilled') {
         setInventoryValue(itemsData.value.pagination?.total || 0);
       }
       if (salesData.status === 'fulfilled') {
+        setTodaySales(salesData.value.pagination?.total || 0);
+        // Use aggregate revenue from pagination if available, otherwise sum items
         const sales = salesData.value.items || [];
-        setTodaySales(sales.length);
         setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
       }
       if (batchesData.status === 'fulfilled') {
@@ -58,7 +59,8 @@ function QuickStatsBar() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(loadStats, 0);
+    // Delay initial load to avoid competing with dashboard for connection pool
+    const timer = setTimeout(loadStats, 3000);
     const interval = setInterval(loadStats, 30000);
     return () => { clearTimeout(timer); clearInterval(interval); };
   }, []);
@@ -104,14 +106,14 @@ function MobileQuickStats({ className }: { className?: string }) {
       const today = new Date().toISOString().slice(0, 10);
       const [itemsData, salesData] = await Promise.allSettled([
         itemsApi.getItems({ page: 1, size: 1, status: 'in_stock' }),
-        salesApi.getSales({ page: 1, size: 1000, start_date: today, end_date: today }),
+        salesApi.getSales({ page: 1, size: 1, start_date: today, end_date: today }),
       ]);
       if (itemsData.status === 'fulfilled') {
         setInventoryValue(itemsData.value.pagination?.total || 0);
       }
       if (salesData.status === 'fulfilled') {
+        setTodaySales(salesData.value.pagination?.total || 0);
         const sales = salesData.value.items || [];
-        setTodaySales(sales.length);
         setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
       }
     } catch {
@@ -120,7 +122,8 @@ function MobileQuickStats({ className }: { className?: string }) {
   };
 
   useEffect(() => {
-    const timer = setTimeout(loadStats, 0);
+    // Delay initial load to avoid competing with dashboard for connection pool
+    const timer = setTimeout(loadStats, 3000);
     const interval = setInterval(loadStats, 30000);
     return () => { clearTimeout(timer); clearInterval(interval); };
   }, []);
