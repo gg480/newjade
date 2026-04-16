@@ -2,9 +2,9 @@
 requires = ["nodejs-24"]
 
 [dev]
-build = ["pnpm", "install"]
+build = ["bash", "-c", "pnpm install && npx prisma generate"]
 run = ["pnpm", "run", "start"]
 
 [deploy]
-build = ["pnpm", "run", "build"]
+build = ["bash", "-c", "pnpm install && npx prisma generate && pnpm run build"]
 run = ["pnpm", "run", "start"]
