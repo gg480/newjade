@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Ensure DATABASE_URL is set for all steps
+export DATABASE_URL="${DATABASE_URL:-file:./db/custom.db}"
+
 echo "=== Step 1: Install dependencies ==="
 pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
