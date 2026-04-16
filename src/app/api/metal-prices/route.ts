@@ -28,14 +28,16 @@ export async function POST(req: Request) {
   const today = new Date().toISOString().slice(0, 10);
 
   try {
+    const parsedMaterialId = parseInt(materialId);
+    const parsedPricePerGram = parseFloat(pricePerGram);
     const record = await db.metalPrice.create({
-      data: { materialId, pricePerGram, effectiveDate: today },
+      data: { materialId: parsedMaterialId, pricePerGram: parsedPricePerGram, effectiveDate: today },
     });
 
     // Also update the material's cost_per_gram
     await db.dictMaterial.update({
-      where: { id: materialId },
-      data: { costPerGram: pricePerGram },
+      where: { id: parsedMaterialId },
+      data: { costPerGram: parsedPricePerGram },
     });
 
     return NextResponse.json({ code: 0, data: record, message: 'ok' });

@@ -64,16 +64,43 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     // Update spec if provided
     if (spec) {
+      const specData: any = { ...spec };
+      // Float fields
+      if (specData.weight != null && specData.weight !== '') specData.weight = parseFloat(specData.weight);
+      else delete specData.weight;
+      if (specData.metalWeight != null && specData.metalWeight !== '') specData.metalWeight = parseFloat(specData.metalWeight);
+      else delete specData.metalWeight;
+      // Int fields
+      if (specData.beadCount != null && specData.beadCount !== '') specData.beadCount = parseInt(specData.beadCount);
+      else delete specData.beadCount;
+      // String fields (must convert to string for Prisma)
+      for (const key of ['braceletSize', 'ringSize', 'beadDiameter', 'size']) {
+        if (specData[key] != null && specData[key] !== '') {
+          specData[key] = String(specData[key]);
+        } else {
+          delete specData[key];
+        }
+      }
       await db.itemSpec.upsert({
         where: { itemId: parseInt(id) },
-        update: spec,
-        create: { itemId: parseInt(id), ...spec },
+        update: specData,
+        create: { itemId: parseInt(id), ...specData },
       });
     }
 
     const item = await db.item.update({
       where: { id: parseInt(id) },
-      data,
+      data: {
+        ...data,
+        counter: data.counter != null ? parseInt(data.counter) : undefined,
+        costPrice: data.costPrice != null ? parseFloat(data.costPrice) : undefined,
+        sellingPrice: data.sellingPrice != null ? parseFloat(data.sellingPrice) : undefined,
+        floorPrice: data.floorPrice != null ? parseFloat(data.floorPrice) : undefined,
+        materialId: data.materialId != null ? parseInt(data.materialId) : undefined,
+        typeId: data.typeId != null ? parseInt(data.typeId) : undefined,
+        supplierId: data.supplierId != null ? parseInt(data.supplierId) : undefined,
+        batchId: data.batchId != null ? parseInt(data.batchId) : undefined,
+      },
       include: { material: true, type: true, spec: true, tags: true },
     });
 

@@ -34,13 +34,16 @@ async function generateBundleNo(): Promise<string> {
 export async function POST(req: Request) {
   const body = await req.json();
   const { itemIds, totalPrice, allocMethod, channel, saleDate, customerId, note, chainItems } = body;
+  const parsedTotalPrice = parseFloat(totalPrice);
+  const parsedCustomerId = customerId ? parseInt(customerId) : null;
+  const parsedItemIds = itemIds.map((id: any) => parseInt(id));
 
   if (!itemIds || itemIds.length < 2) {
     return NextResponse.json({ code: 400, data: null, message: '套装至少2件货品' }, { status: 400 });
   }
 
   // Validate all items
-  const items = await db.item.findMany({ where: { id: { in: itemIds } } });
+  const items = await db.item.findMany({ where: { id: { in: parsedItemIds } } });
   const notInStock = items.filter(i => i.status !== 'in_stock' || i.isDeleted);
   if (notInStock.length > 0) {
     return NextResponse.json({ code: 400, data: null, message: `以下货品不在库: ${notInStock.map(i => i.skuCode).join(', ')}` }, { status: 400 });
@@ -54,16 +57,16 @@ export async function POST(req: Request) {
     let allocated = 0;
     items.forEach((item, i) => {
       if (i === items.length - 1) {
-        allocations.push({ itemId: item.id, price: Math.round((totalPrice - allocated) * 100) / 100 });
+        allocations.push({ itemId: item.id, price: Math.round((parsedTotalPrice - allocated) * 100) / 100 });
       } else {
-        const price = Math.round((item.sellingPrice / totalSelling) * totalPrice * 100) / 100;
+        const price = Math.round((item.sellingPrice / totalSelling) * parsedTotalPrice * 100) / 100;
         allocated += price;
         allocations.push({ itemId: item.id, price });
       }
     });
   } else if (allocMethod === 'chain_at_cost') {
     // Chain items at selling_price, remainder to main item
-    const isChain = chainItems || itemIds.map(() => false);
+    const isChain = chainItems || parsedItemIds.map(() => false);
     let chainTotal = 0;
     items.forEach((item, i) => {
       if (isChain[i]) {
@@ -72,7 +75,7 @@ export async function POST(req: Request) {
       }
     });
     const mainItemIndices = items.map((_, i) => i).filter(i => !isChain[i]);
-    const mainTotal = totalPrice - chainTotal;
+    const mainTotal = parsedTotalPrice - chainTotal;
     if (mainItemIndices.length > 0) {
       const mainSelling = mainItemIndices.reduce((sum, i) => sum + items[i].sellingPrice, 0);
       let allocated = 0;
@@ -95,11 +98,11 @@ export async function POST(req: Request) {
   const bundle = await db.bundleSale.create({
     data: {
       bundleNo,
-      totalPrice,
+      totalPrice: parsedTotalPrice,
       allocMethod,
       saleDate,
       channel,
-      customerId,
+      customerId: parsedCustomerId,
       note,
     },
   });
@@ -113,7 +116,7 @@ export async function POST(req: Request) {
         actualPrice: alloc.price,
         channel,
         saleDate,
-        customerId,
+        customerId: parsedCustomerId,
         bundleId: bundle.id,
       },
     });

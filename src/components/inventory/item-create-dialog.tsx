@@ -305,8 +305,6 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
 
   // 校验必填字段
   function validateRequiredFields(form: typeof highValueForm | typeof batchForm): string | null {
-    // 柜台号必填
-    if (!form.counter) return '请输入柜台号';
     // 器型必填规格字段
     for (const field of specFieldKeys) {
       if (specFieldsObj[field]?.required && !(form as any)[field]) {

@@ -62,9 +62,12 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { itemId, actualPrice, channel, saleDate, customerId, note } = body;
+    const parsedItemId = parseInt(itemId);
+    const parsedActualPrice = parseFloat(actualPrice);
+    const parsedCustomerId = customerId ? parseInt(customerId) : null;
 
     // Validate item
-    const item = await db.item.findUnique({ where: { id: itemId } });
+    const item = await db.item.findUnique({ where: { id: parsedItemId } });
     if (!item || item.isDeleted) {
       return NextResponse.json({ code: 400, data: null, message: '货品不存在' }, { status: 400 });
     }
@@ -77,10 +80,10 @@ export async function POST(req: Request) {
     // Use transaction for atomicity: create sale + update item status
     const record = await db.$transaction(async (tx) => {
       const sale = await tx.saleRecord.create({
-        data: { saleNo, itemId, actualPrice, channel, saleDate, customerId, note },
+        data: { saleNo, itemId: parsedItemId, actualPrice: parsedActualPrice, channel, saleDate, customerId: parsedCustomerId, note },
       });
 
-      await tx.item.update({ where: { id: itemId }, data: { status: 'sold' } });
+      await tx.item.update({ where: { id: parsedItemId }, data: { status: 'sold' } });
 
       return sale;
     });
@@ -89,7 +92,7 @@ export async function POST(req: Request) {
     await logAction('sell_item', 'sale', record.id, {
       saleNo,
       itemSku: item.skuCode,
-      actualPrice,
+      actualPrice: parsedActualPrice,
       channel,
       saleDate,
     });

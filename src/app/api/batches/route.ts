@@ -71,7 +71,17 @@ export async function POST(req: Request) {
   const { batchCode, materialId, typeId, quantity, totalCost, costAllocMethod, supplierId, purchaseDate, notes } = body;
   try {
     const batch = await db.batch.create({
-      data: { batchCode, materialId, typeId, quantity, totalCost, costAllocMethod, supplierId, purchaseDate, notes },
+      data: {
+        batchCode,
+        materialId: parseInt(materialId),
+        typeId: parseInt(typeId),
+        quantity: parseInt(quantity),
+        totalCost: parseFloat(totalCost),
+        costAllocMethod,
+        supplierId: supplierId ? parseInt(supplierId) : null,
+        purchaseDate,
+        notes,
+      },
     });
     return NextResponse.json({ code: 0, data: batch, message: 'ok' });
   } catch (e: any) {

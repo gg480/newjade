@@ -5,14 +5,16 @@ import { logAction } from '@/lib/log';
 export async function POST(req: Request) {
   const body = await req.json();
   const { saleId, refundAmount, returnReason, returnDate } = body;
+  const parsedSaleId = parseInt(saleId);
+  const parsedRefundAmount = refundAmount != null ? parseFloat(refundAmount) : undefined;
 
-  if (!saleId) {
+  if (!parsedSaleId) {
     return NextResponse.json({ code: 400, data: null, message: '缺少 saleId' }, { status: 400 });
   }
 
   // Validate sale exists
   const sale = await db.saleRecord.findUnique({
-    where: { id: saleId },
+    where: { id: parsedSaleId },
     include: { item: true },
   });
   if (!sale) {
@@ -28,12 +30,12 @@ export async function POST(req: Request) {
   }
 
   const today = returnDate || new Date().toISOString().slice(0, 10);
-  const refund = refundAmount ?? sale.actualPrice;
+  const refund = parsedRefundAmount ?? sale.actualPrice;
 
   // Create return record
   const returnRecord = await db.saleReturn.create({
     data: {
-      saleId,
+      saleId: parsedSaleId,
       itemId: sale.itemId,
       refundAmount: refund,
       returnReason: returnReason || '客户退货',
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
   });
 
   // Log action
-  await logAction('return_sale', 'sale', saleId, {
+  await logAction('return_sale', 'sale', parsedSaleId, {
     saleNo: sale.saleNo,
     itemSku: sale.item.skuCode,
     refundAmount: refund,

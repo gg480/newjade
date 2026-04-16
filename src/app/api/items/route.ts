@@ -153,35 +153,45 @@ export async function POST(req: Request) {
     // Convert spec fields to proper types
     const specData: any = spec ? { ...spec } : null;
     if (specData) {
+      // Float fields
       if (specData.weight != null && specData.weight !== '') specData.weight = parseFloat(specData.weight);
       else delete specData.weight;
       if (specData.metalWeight != null && specData.metalWeight !== '') specData.metalWeight = parseFloat(specData.metalWeight);
       else delete specData.metalWeight;
+      // Int fields
       if (specData.beadCount != null && specData.beadCount !== '') specData.beadCount = parseInt(specData.beadCount);
       else delete specData.beadCount;
+      // String fields (must convert to string for Prisma)
+      for (const key of ['braceletSize', 'ringSize', 'beadDiameter', 'size']) {
+        if (specData[key] != null && specData[key] !== '') {
+          specData[key] = String(specData[key]);
+        } else {
+          delete specData[key];
+        }
+      }
     }
 
     const item = await db.item.create({
       data: {
         skuCode: finalSkuCode,
         name,
-        batchCode: batchId ? (await db.batch.findUnique({ where: { id: batchId } }))?.batchCode : null,
-        batchId: batchId || null,
-        materialId: finalMaterialId,
-        typeId: typeId || null,
-        costPrice: costPrice ?? null,
+        batchCode: batchId ? (await db.batch.findUnique({ where: { id: parseInt(batchId) } }))?.batchCode : null,
+        batchId: batchId ? parseInt(batchId) : null,
+        materialId: finalMaterialId ? parseInt(finalMaterialId) : null,
+        typeId: typeId ? parseInt(typeId) : null,
+        costPrice: costPrice != null ? parseFloat(costPrice) : null,
         allocatedCost,
-        sellingPrice,
-        floorPrice: floorPrice ?? null,
+        sellingPrice: sellingPrice != null ? parseFloat(sellingPrice) : null,
+        floorPrice: floorPrice != null ? parseFloat(floorPrice) : null,
         origin: origin || null,
-        counter: counter ? parseInt(counter) : null,
+        counter: counter != null ? parseInt(counter) : null,
         certNo: certNo || null,
         notes: notes || null,
-        supplierId: supplierId || null,
+        supplierId: supplierId ? parseInt(supplierId) : null,
         purchaseDate: purchaseDate || null,
         status: 'in_stock',
         ...(tagIds?.length ? {
-          tags: { connect: tagIds.map((id: number) => ({ id })) },
+          tags: { connect: tagIds.map((id: any) => ({ id: parseInt(id) })) },
         } : {}),
         ...(specData && Object.keys(specData).length > 0 ? {
           spec: { create: specData },

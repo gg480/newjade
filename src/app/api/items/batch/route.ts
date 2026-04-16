@@ -7,9 +7,14 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { materialId, typeId, supplierId, skuPrefix, quantity, batchCode, batchId, costPrice, sellingPrice, counter, weight, size, purchaseDate, tagIds } = body;
 
+  // Build spec data with proper types
+  const specCreate: any = {};
+  if (weight != null && weight !== '') specCreate.weight = parseFloat(weight);
+  if (size != null && size !== '') specCreate.size = String(size);
+
   try {
     // Resolve batch FK: prefer batchId (FK), fallback to batchCode lookup
-    let resolvedBatchId: number | null = batchId || null;
+    let resolvedBatchId: number | null = batchId ? parseInt(batchId) : null;
     let resolvedBatchCode: string | null = batchCode || null;
 
     if (!resolvedBatchId && resolvedBatchCode) {
@@ -21,12 +26,19 @@ export async function POST(req: Request) {
       if (batch) resolvedBatchCode = batch.batchCode;
     }
 
-    const material = await db.dictMaterial.findUnique({ where: { id: materialId } });
+    const material = await db.dictMaterial.findUnique({ where: { id: parseInt(materialId) } });
     const prefix = skuPrefix || (material ? material.name.slice(0, 2) : 'XX');
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const parsedQuantity = parseInt(quantity);
+    const parsedMaterialId = parseInt(materialId);
+    const parsedTypeId = typeId ? parseInt(typeId) : null;
+    const parsedCostPrice = costPrice != null ? parseFloat(costPrice) : null;
+    const parsedSellingPrice = sellingPrice != null ? parseFloat(sellingPrice) : null;
+    const parsedCounter = counter != null ? parseInt(counter) : null;
+    const parsedSupplierId = supplierId ? parseInt(supplierId) : null;
 
     const created = [];
-    for (let i = 0; i < quantity; i++) {
+    for (let i = 0; i < parsedQuantity; i++) {
       const seq = String(i + 1).padStart(3, '0');
       const skuCode = `${prefix}-${dateStr}-${seq}`;
 
@@ -35,17 +47,17 @@ export async function POST(req: Request) {
           skuCode,
           batchCode: resolvedBatchCode,
           batchId: resolvedBatchId,
-          materialId,
-          typeId,
-          costPrice: costPrice || null,
-          sellingPrice,
+          materialId: parsedMaterialId,
+          typeId: parsedTypeId,
+          costPrice: parsedCostPrice,
+          sellingPrice: parsedSellingPrice,
           origin: material?.origin,
-          counter: counter ? parseInt(counter) : null,
-          supplierId,
+          counter: parsedCounter,
+          supplierId: parsedSupplierId,
           purchaseDate,
           status: 'in_stock',
-          ...(tagIds?.length ? { tags: { connect: tagIds.map((id: number) => ({ id })) } } : {}),
-          ...(weight || size ? { spec: { create: { weight, size } } } : {}),
+          ...(tagIds?.length ? { tags: { connect: tagIds.map((id: any) => ({ id: parseInt(id) })) } } : {}),
+          ...(Object.keys(specCreate).length > 0 ? { spec: { create: specCreate } } : {}),
         },
       });
       created.push(item);
