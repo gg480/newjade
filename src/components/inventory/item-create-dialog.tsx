@@ -37,7 +37,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
 
   const [highValueForm, setHighValueForm] = useState({
     materialId: '', typeId: '', costPrice: 0, sellingPrice: 0, name: '',
-    origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: '',
+    origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: new Date().toISOString().slice(0, 10),
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
     tagIds: [] as number[],
   });
@@ -305,6 +305,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
 
   // 校验必填字段
   function validateRequiredFields(form: typeof highValueForm | typeof batchForm): string | null {
+    if (!form.typeId) return '请选择器型';
+    if (!(form as any).costPrice) return '请输入成本价';
     // 器型必填规格字段
     for (const field of specFieldKeys) {
       if (specFieldsObj[field]?.required && !(form as any)[field]) {
@@ -429,14 +431,14 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                   </Select>
                 </div>
               </div>
-              <div className="space-y-1"><Label className="text-xs">器型</Label>
+              <div className="space-y-1"><Label className="text-xs">器型 <span className="text-red-500">*</span></Label>
                 <Select value={highValueForm.typeId} onValueChange={v => setHighValueForm(f => ({ ...f, typeId: v }))}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
                   <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">成本价</Label><Input type="number" value={highValueForm.costPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
+                <div className="space-y-1"><Label className="text-xs">成本价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.costPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
                 <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.sellingPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
               </div>
               {/* Pricing Calculator */}
@@ -550,7 +552,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
               <div className="space-y-1"><Label className="text-xs">名称</Label><Input value={batchForm.name} onChange={e => setBatchForm(f => ({ ...f, name: e.target.value }))} className="h-9" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><Label className="text-xs">证书号</Label><Input value={batchForm.certNo} onChange={e => setBatchForm(f => ({ ...f, certNo: e.target.value }))} className="h-9" /></div>
-                <div className="space-y-1"><Label className="text-xs">器型</Label>
+                <div className="space-y-1"><Label className="text-xs">器型 <span className="text-red-500">*</span></Label>
                   <Select value={batchForm.typeId} onValueChange={v => setBatchForm(f => ({ ...f, typeId: v }))}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
                     <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
