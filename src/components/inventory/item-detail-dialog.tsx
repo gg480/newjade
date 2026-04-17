@@ -229,7 +229,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
               </div>
 
               {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">SKU:</span> <span className="font-mono">{item.skuCode}</span></div>
                 <div><span className="text-muted-foreground">名称:</span> {item.name || '-'}</div>
                 <div><span className="text-muted-foreground">材质:</span> {item.materialName || '-'}</div>
@@ -243,7 +243,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
               {/* Batch Info */}
               {item.batchCode && (
                 <>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div><span className="text-muted-foreground">批次:</span> <span className="font-mono">{item.batchCode}</span></div>
                   </div>
                   <Separator />
@@ -251,7 +251,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
               )}
 
               {/* Costs & Prices */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">成本价:</span> <span className="font-medium">{formatPrice(item.costPrice)}</span></div>
                 <div><span className="text-muted-foreground">分摊成本:</span> <span className="font-medium">{formatPrice(item.allocatedCost)}</span></div>
                 <div><span className="text-muted-foreground">底价:</span> <span className="font-medium">{formatPrice(item.floorPrice)}</span></div>
@@ -261,7 +261,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
               <Separator />
 
               {/* Other Details */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">产地:</span> {item.origin || '-'}</div>
                 <div><span className="text-muted-foreground">柜台:</span> {item.counter ?? '-'}</div>
                 <div><span className="text-muted-foreground">证书号:</span> {item.certNo || '-'}</div>
@@ -276,7 +276,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                   <Separator />
                   <div>
                     <p className="text-sm font-medium mb-2">规格参数</p>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       {Object.entries(item.spec).map(([key, val]: [string, any]) => (
                         <div key={key}><span className="text-muted-foreground">{specFieldLabels[key] || key}:</span> {String(val)}</div>
                       ))}

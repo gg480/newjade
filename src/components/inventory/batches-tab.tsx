@@ -180,7 +180,7 @@ function BatchesTab() {
   return (
     <div className="space-y-6">
       {/* Batch Statistics Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         <Card className="relative overflow-hidden border-l-4 border-l-sky-500 hover:shadow-md transition-all duration-200">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ function BatchesTab() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
         <Card className="relative overflow-hidden border-l-4 border-l-sky-500 hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="absolute -right-1 -bottom-1 opacity-10"><Layers className="h-16 w-16 text-sky-500" /></div>

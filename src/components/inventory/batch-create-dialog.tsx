@@ -224,7 +224,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">数量 *</Label>
                 <Input type="number" value={quickQuantity} onChange={e => setQuickQuantity(parseInt(e.target.value) || 1)} className="h-9" min={1} />
@@ -261,7 +261,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
           <div className="space-y-4 py-2 animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
             <div className="space-y-1"><Label className="text-xs">批次编号</Label><Input value={form.batchCode} readOnly className="h-9 bg-muted/50 text-muted-foreground cursor-not-allowed" /><p className="text-[10px] text-muted-foreground">系统自动生成</p></div>
             {/* Material Category Cascade */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">材质大类</Label>
                 <Select value={materialCategory} onValueChange={v => {
                   setMaterialCategory(v === '_all' ? '' : v);
@@ -287,11 +287,11 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
                 <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">数量 *</Label><Input type="number" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 1 }))} className="h-9" min={1} /></div>
               <div className="space-y-1"><Label className="text-xs">总成本 *</Label><Input type="number" value={form.totalCost || ''} onChange={e => setForm(f => ({ ...f, totalCost: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">分摊方式</Label>
                 <Select value={form.costAllocMethod} onValueChange={v => setForm(f => ({ ...f, costAllocMethod: v }))}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>

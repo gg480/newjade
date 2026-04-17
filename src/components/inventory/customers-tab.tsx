@@ -240,7 +240,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onTagsUpdated 
                 <h4 className="text-sm font-medium flex items-center gap-1.5">
                   <BarChart3 className="h-4 w-4 text-emerald-600" />消费统计
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">总消费</p>
                     <p className="text-lg font-bold text-emerald-600">{formatPrice(purchaseStats.totalSpending)}</p>
@@ -550,7 +550,7 @@ function CustomersTab() {
     <div className="space-y-6">
       {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           <Card className="relative overflow-hidden border-l-4 border-l-emerald-500 hover:shadow-md hover:border-emerald-400 transition-all duration-200">
             <CardContent className="p-4">
               <div className="absolute -right-1 -bottom-1 opacity-10"><Users className="h-16 w-16 text-emerald-500" /></div>
@@ -797,7 +797,7 @@ function CustomersTab() {
                         <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-20" /></div>
                       ) : customerDetail ? (
                         <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                             <div>
                               <p className="text-muted-foreground text-xs">总消费</p>
                               <p className="font-bold text-emerald-600">
@@ -855,7 +855,7 @@ function CustomersTab() {
                             return (
                               <div className="mt-2 pt-2 border-t border-border space-y-2">
                                 <p className="text-xs font-medium text-muted-foreground">购买摘要</p>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   <div className="flex items-center gap-1.5 text-xs p-1.5 bg-muted/50 rounded">
                                     <Calendar className="h-3 w-3 text-sky-500 shrink-0" />
                                     <span className="text-muted-foreground">首次购买</span>

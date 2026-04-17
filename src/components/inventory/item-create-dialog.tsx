@@ -188,8 +188,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     }
 
     return (
-      <div className="grid grid-cols-2 gap-3">
-        {specFieldKeys.map((field: string) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">        {specFieldKeys.map((field: string) => {
           const isRequired = specFieldsObj[field]?.required ?? false;
           const label = SPEC_FIELD_LABEL_MAP[field] || field;
 
@@ -399,7 +398,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           {mode === 'high_value' ? (
             <>
               {/* 材质级联选择 (3级: 大类 → 子类 → 材质) */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1"><Label className="text-xs">材质大类</Label>
                   <Select value={materialCategory || '_all'} onValueChange={v => {
                     setMaterialCategory(v === '_all' ? '' : v);
@@ -438,8 +437,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                   <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">成本价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.costPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">                <div className="space-y-1"><Label className="text-xs">成本价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.costPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
                 <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.sellingPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
               </div>
               {/* Pricing Calculator */}
@@ -491,12 +489,10 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                 </div>
               )}
               <div className="space-y-1"><Label className="text-xs">名称</Label><Input value={highValueForm.name} onChange={e => setHighValueForm(f => ({ ...f, name: e.target.value }))} className="h-9" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">产地</Label><Input value={highValueForm.origin} onChange={e => setHighValueForm(f => ({ ...f, origin: e.target.value }))} className="h-9" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">                <div className="space-y-1"><Label className="text-xs">产地</Label><Input value={highValueForm.origin} onChange={e => setHighValueForm(f => ({ ...f, origin: e.target.value }))} className="h-9" /></div>
                 <div className="space-y-1"><Label className="text-xs">柜台号 <span className="text-red-500">*</span></Label><Input placeholder="例: A-01" value={highValueForm.counter} onChange={e => setHighValueForm(f => ({ ...f, counter: e.target.value }))} className="h-9" /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">证书号</Label><Input value={highValueForm.certNo} onChange={e => setHighValueForm(f => ({ ...f, certNo: e.target.value }))} className="h-9" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">                <div className="space-y-1"><Label className="text-xs">证书号</Label><Input value={highValueForm.certNo} onChange={e => setHighValueForm(f => ({ ...f, certNo: e.target.value }))} className="h-9" /></div>
                 <div className="space-y-1"><Label className="text-xs">供应商</Label>
                   <Select value={highValueForm.supplierId} onValueChange={v => setHighValueForm(f => ({ ...f, supplierId: v }))}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="选择供应商" /></SelectTrigger>
@@ -554,13 +550,11 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                   return null;
                 })()}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={batchForm.sellingPrice || ''} onChange={e => setBatchForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">                <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={batchForm.sellingPrice || ''} onChange={e => setBatchForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
                 <div className="space-y-1"><Label className="text-xs">柜台号 <span className="text-red-500">*</span></Label><Input placeholder="例: A-01" value={batchForm.counter} onChange={e => setBatchForm(f => ({ ...f, counter: e.target.value }))} className="h-9" /></div>
               </div>
               <div className="space-y-1"><Label className="text-xs">名称</Label><Input value={batchForm.name} onChange={e => setBatchForm(f => ({ ...f, name: e.target.value }))} className="h-9" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">证书号</Label><Input value={batchForm.certNo} onChange={e => setBatchForm(f => ({ ...f, certNo: e.target.value }))} className="h-9" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">                <div className="space-y-1"><Label className="text-xs">证书号</Label><Input value={batchForm.certNo} onChange={e => setBatchForm(f => ({ ...f, certNo: e.target.value }))} className="h-9" /></div>
                 <div className="space-y-1"><Label className="text-xs">器型 <span className="text-red-500">*</span></Label>
                   <Select value={batchForm.typeId} onValueChange={v => setBatchForm(f => ({ ...f, typeId: v }))}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
@@ -569,7 +563,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                 </div>
               </div>
               {/* 批次模式材质级联 (3级: 大类 → 子类 → 材质) */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1"><Label className="text-xs">材质大类</Label>
                   <Select value={batchMaterialCategory || '_all'} onValueChange={v => setBatchMaterialCategory(v === '_all' ? '' : v)}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="全部大类" /></SelectTrigger>

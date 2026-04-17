@@ -526,7 +526,7 @@ function SettingsTab() {
           <CardTitle className="text-base flex items-center gap-2"><Grid className="h-4 w-4 text-emerald-500" />数据概览</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
             {/* 货品总数 */}
             <div className="p-3 rounded-lg border border-border border-l-4 border-l-emerald-500 bg-muted/20">
               <div className="flex items-center gap-2 mb-2">
@@ -595,7 +595,7 @@ function SettingsTab() {
       </Card>
 
       <Tabs value={subTab} onValueChange={setSubTab}>
-        <TabsList className="grid grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
           <TabsTrigger value="dicts">字典管理</TabsTrigger>
           <TabsTrigger value="metal">贵金属市价</TabsTrigger>
           <TabsTrigger value="suppliers">供应商</TabsTrigger>
@@ -961,7 +961,7 @@ function SettingsTab() {
           <Card className="border-l-4 border-l-emerald-400 hover:shadow-sm transition-shadow duration-200">
             <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Grid className="h-4 w-4 text-emerald-500" />数据统计</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <div className="p-3 bg-muted/50 rounded-lg text-center">
                   <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                     <Package className="h-3.5 w-3.5" />
@@ -1536,7 +1536,7 @@ function SettingsTab() {
           <DialogHeader><DialogTitle>新增供应商</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1"><Label>名称 *</Label><Input value={supplierForm.name} onChange={e => setSupplierForm(f => ({ ...f, name: e.target.value }))} placeholder="供应商名称" /></div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>联系人</Label><Input value={supplierForm.contact} onChange={e => setSupplierForm(f => ({ ...f, contact: e.target.value }))} placeholder="联系人姓名" /></div>
               <div className="space-y-1"><Label><span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />电话</span></Label><Input value={supplierForm.phone} onChange={e => setSupplierForm(f => ({ ...f, phone: e.target.value }))} placeholder="手机号码" /></div>
             </div>
@@ -1555,7 +1555,7 @@ function SettingsTab() {
           <DialogHeader><DialogTitle>编辑供应商</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1"><Label>名称 *</Label><Input value={supplierForm.name} onChange={e => setSupplierForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>联系人</Label><Input value={supplierForm.contact} onChange={e => setSupplierForm(f => ({ ...f, contact: e.target.value }))} /></div>
               <div className="space-y-1"><Label><span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />电话</span></Label><Input value={supplierForm.phone} onChange={e => setSupplierForm(f => ({ ...f, phone: e.target.value }))} /></div>
             </div>

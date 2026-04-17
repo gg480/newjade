@@ -855,7 +855,7 @@ function InventoryTab() {
               <span className="text-xs text-muted-foreground ml-1">显示全部状态</span>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3">
             <div className="space-y-1 relative">
               <Label className="text-xs">关键词</Label>
               <div className="relative flex gap-1.5">
@@ -1447,7 +1447,7 @@ function InventoryTab() {
               </ScrollArea>
             </div>
             {/* Common fields */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>客户</Label>
                 <CustomerSearchSelect

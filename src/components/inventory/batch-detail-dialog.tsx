@@ -144,7 +144,7 @@ function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | 
           ) : batch ? (
             <div className="space-y-4 py-2">
               {/* Summary Stats Row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 <div className="bg-muted/30 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Package className="h-4 w-4 text-emerald-600" />
@@ -221,7 +221,7 @@ function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | 
                     <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">快速添加货品</p>
                     <button onClick={() => setQuickAdd(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     <div className="space-y-1"><Label className="text-xs">名称 <span className="text-red-500">*</span></Label><Input placeholder="货品名称" value={quickForm.name} onChange={e => setQuickForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-sm" /></div>
                     <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" placeholder="售价" value={quickForm.sellingPrice || ''} onChange={e => setQuickForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-8 text-sm" /></div>
                     <div className="space-y-1"><Label className="text-xs">柜台号</Label><Input placeholder="例: A-01" value={quickForm.counter} onChange={e => setQuickForm(f => ({ ...f, counter: e.target.value }))} className="h-8 text-sm" /></div>
@@ -245,7 +245,7 @@ function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | 
                       <TrendingUp className="h-4 w-4" />
                       利润分析
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       <div>
                         <p className="text-xs text-muted-foreground">销售收入</p>
                         <p className="font-bold text-sm tabular-nums">{formatPrice(revenue)}</p>
@@ -279,7 +279,7 @@ function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | 
               })()}
 
               {/* Batch Info Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3">
                   <p className="text-xs text-muted-foreground">材质</p>
                   <p className="font-bold text-sm">{batch.materialName || '-'}</p>

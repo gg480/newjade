@@ -320,7 +320,7 @@ function SalesTab() {
     <div className="space-y-6">
       {/* Today Stats Row */}
       {todayStats && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Card className="border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">今日销售数</p>
@@ -432,7 +432,7 @@ function SalesTab() {
               </Button>
             ))}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             <div className="space-y-1"><Label className="text-xs">关键词</Label><Input placeholder="SKU/单号/客户" value={filters.keyword} onChange={e => setFilters(f => ({ ...f, keyword: e.target.value }))} className="h-9" /></div>
             <div className="space-y-1"><Label className="text-xs">渠道</Label>
               <Select value={filters.channel || 'all'} onValueChange={v => setFilters(f => ({ ...f, channel: v === 'all' ? '' : v }))}>
@@ -621,7 +621,7 @@ function SalesTab() {
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div className="pt-2 mt-2 border-t text-xs space-y-1.5 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div><span className="text-muted-foreground">材质:</span> {sale.materialName || '-'}</div>
                         <div><span className="text-muted-foreground">器型:</span> {sale.typeName || '-'}</div>
                         <div><span className="text-muted-foreground">成本:</span> {formatPrice(sale.costPrice)}</div>
@@ -808,7 +808,7 @@ function SalesTab() {
             </div>
 
             {/* Sale Meta Info */}
-            <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div className="p-2 bg-muted/30 rounded-lg text-center">
                 <p className="text-muted-foreground">销售日期</p>
                 <p className="font-medium mt-0.5">{returnDialog.sale?.saleDate || '-'}</p>
@@ -1016,7 +1016,7 @@ function SalesTab() {
               <Separator />
 
               {/* Sale Info Grid */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground mb-0.5">销售日期</p>
                   <p className="font-medium">{detailSale.saleDate || '-'}</p>

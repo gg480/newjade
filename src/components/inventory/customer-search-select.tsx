@@ -73,7 +73,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="start">
+      <PopoverContent className="w-[min(320px,calc(100vw-2rem))] p-0" align="start">
         <Command shouldFilter={false}>
           <div className="flex items-center border-b px-3">
             <User className="mr-2 h-4 w-4 shrink-0 opacity-50" />
