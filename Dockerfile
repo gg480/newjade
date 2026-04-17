@@ -27,6 +27,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV DATABASE_URL=file:./db/custom.db
+ENV DATA_DIR=/app/data
 ENV PORT=5000
 ENV HOSTNAME="0.0.0.0"
 
@@ -42,10 +43,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/src/lib/db.ts ./src/lib/db.ts
 
-# Ensure db directory exists with write permissions
-RUN mkdir -p /app/db && chown -R nextjs:nodejs /app/db
+# Create data directories with write permissions
+RUN mkdir -p /app/data/images /app/db && \
+    chown -R nextjs:nodejs /app/data /app/db
+
+# Data volumes: database + uploaded images
+VOLUME ["/app/data", "/app/db"]
 
 USER nextjs
 

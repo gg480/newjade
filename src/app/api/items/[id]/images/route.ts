@@ -1,7 +1,12 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, readFile, unlink } from 'fs/promises';
 import path from 'path';
+
+// Image storage root: dev → public/images (served by Next.js static), prod → /app/data/images (Docker volume)
+const IMAGES_ROOT = process.env.NODE_ENV === 'production'
+  ? path.join(process.env.DATA_DIR || '/app/data', 'images')
+  : path.join(process.cwd(), 'public', 'images');
 
 // Upload image for an item
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,30 +31,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ code: 400, data: null, message: '仅支持 JPG/PNG/GIF/WEBP 格式' }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ code: 400, data: null, message: '图片大小不能超过5MB' }, { status: 400 });
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ code: 400, data: null, message: '图片大小不能超过10MB' }, { status: 400 });
     }
 
     // Save file
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = file.name.split('.').pop() || 'jpg';
     const filename = `item_${itemId}_${Date.now()}.${ext}`;
-    const imagesDir = path.join(process.cwd(), 'public', 'images');
 
     // Ensure directory exists
-    await mkdir(imagesDir, { recursive: true });
+    await mkdir(IMAGES_ROOT, { recursive: true });
 
-    const filepath = path.join(imagesDir, filename);
+    const filepath = path.join(IMAGES_ROOT, filename);
     await writeFile(filepath, buffer);
 
     // Check if this is the first image (make it cover)
     const existingImages = await db.itemImage.count({ where: { itemId } });
 
+    // In DB, store the API path so it works in both dev and prod
+    const dbPath = process.env.NODE_ENV === 'production'
+      ? `/api/images/${filename}`
+      : `/images/${filename}`;
+
     const imageRecord = await db.itemImage.create({
       data: {
         itemId,
-        filename: `/images/${filename}`,
+        filename: dbPath,
         isCover: existingImages === 0,
       },
     });
@@ -76,6 +85,15 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!image || image.itemId !== itemId) {
       return NextResponse.json({ code: 404, data: null, message: '图片不存在' }, { status: 404 });
     }
+
+    // Delete physical file
+    try {
+      const physicalFilename = image.filename.split('/').pop();
+      if (physicalFilename) {
+        const filepath = path.join(IMAGES_ROOT, physicalFilename);
+        await unlink(filepath);
+      }
+    } catch { /* ignore file not found */ }
 
     await db.itemImage.delete({ where: { id: parseInt(imageId) } });
 
