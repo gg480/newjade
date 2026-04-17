@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { itemsApi, salesApi, dictsApi, batchesApi, exportApi, customersApi } from '@/lib/api';
+import { itemsApi, salesApi, dictsApi, batchesApi, exportApi } from '@/lib/api';
+import { CustomerSearchSelect } from './customer-search-select';
 import { itemsApiEnhanced } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -1374,13 +1375,11 @@ function InventoryTab() {
           <div className="space-y-4 py-2">
             <div className="space-y-1"><Label>成交价 <span className="text-red-500">*</span></Label><Input type="number" min="0" step="0.01" value={saleForm.actualPrice || ''} onChange={e => setSaleForm(f => ({ ...f, actualPrice: e.target.value ? parseFloat(e.target.value) : 0 }))} placeholder="必填" /></div>
             <div className="space-y-1"><Label>客户</Label>
-              <Select value={saleForm.customerId || '_none'} onValueChange={v => setSaleForm(f => ({ ...f, customerId: v === '_none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="无（散客）" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">无（散客）</SelectItem>
-                  {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ''}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <CustomerSearchSelect
+                value={saleForm.customerId}
+                onChange={id => setSaleForm(f => ({ ...f, customerId: id }))}
+                placeholder="搜索客户（姓名/手机号/微信）"
+              />
             </div>
             <div className="space-y-1"><Label>销售渠道 <span className="text-red-500">*</span></Label>
               <Select value={saleForm.channel} onValueChange={v => setSaleForm(f => ({ ...f, channel: v }))}>
@@ -1451,13 +1450,11 @@ function InventoryTab() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>客户</Label>
-                <Select value={batchSellForm.customerId || '_none'} onValueChange={v => setBatchSellForm(f => ({ ...f, customerId: v === '_none' ? '' : v }))} disabled={batchLoading}>
-                  <SelectTrigger><SelectValue placeholder="无（散客）" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">无（散客）</SelectItem>
-                    {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ''}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <CustomerSearchSelect
+                  value={batchSellForm.customerId}
+                  onChange={id => setBatchSellForm(f => ({ ...f, customerId: id }))}
+                  placeholder="搜索客户（姓名/手机号/微信）"
+                />
               </div>
               <div className="space-y-1">
                 <Label>销售渠道</Label>
