@@ -387,6 +387,14 @@ function InventoryTab() {
 
   async function handleSale() {
     if (!saleDialog.item) return;
+    if (!saleForm.actualPrice || isNaN(saleForm.actualPrice) || saleForm.actualPrice <= 0) {
+      toast.error('请输入有效的成交价');
+      return;
+    }
+    if (!saleForm.saleDate) {
+      toast.error('请选择销售日期');
+      return;
+    }
     try {
       const salePayload: any = { itemId: saleDialog.item.id, actualPrice: saleForm.actualPrice, channel: saleForm.channel, saleDate: saleForm.saleDate, note: saleForm.note };
       if (saleForm.customerId) salePayload.customerId = Number(saleForm.customerId);
@@ -1360,7 +1368,7 @@ function InventoryTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>销售出库</DialogTitle><DialogDescription>货品: {saleDialog.item?.skuCode} - {saleDialog.item?.name || saleDialog.item?.skuCode}</DialogDescription></DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1"><Label>成交价</Label><Input type="number" value={saleForm.actualPrice} onChange={e => setSaleForm(f => ({ ...f, actualPrice: parseFloat(e.target.value) || 0 }))} /></div>
+            <div className="space-y-1"><Label>成交价 <span className="text-red-500">*</span></Label><Input type="number" min="0" step="0.01" value={saleForm.actualPrice || ''} onChange={e => setSaleForm(f => ({ ...f, actualPrice: e.target.value ? parseFloat(e.target.value) : 0 }))} placeholder="必填" /></div>
             <div className="space-y-1"><Label>客户</Label>
               <Select value={saleForm.customerId || '_none'} onValueChange={v => setSaleForm(f => ({ ...f, customerId: v === '_none' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="无（散客）" /></SelectTrigger>
@@ -1370,13 +1378,13 @@ function InventoryTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>销售渠道</Label>
+            <div className="space-y-1"><Label>销售渠道 <span className="text-red-500">*</span></Label>
               <Select value={saleForm.channel} onValueChange={v => setSaleForm(f => ({ ...f, channel: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="store">门店</SelectItem><SelectItem value="wechat">微信</SelectItem></SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>销售日期</Label><Input type="date" value={saleForm.saleDate} onChange={e => setSaleForm(f => ({ ...f, saleDate: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>销售日期 <span className="text-red-500">*</span></Label><Input type="date" value={saleForm.saleDate} onChange={e => setSaleForm(f => ({ ...f, saleDate: e.target.value }))} /></div>
             <div className="space-y-1"><Label>备注</Label><Textarea value={saleForm.note} onChange={e => setSaleForm(f => ({ ...f, note: e.target.value }))} placeholder="可选" /></div>
           </div>
           <DialogFooter>

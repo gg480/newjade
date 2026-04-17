@@ -30,6 +30,14 @@ export async function POST(req: Request) {
   try {
     const parsedMaterialId = parseInt(materialId);
     const parsedPricePerGram = parseFloat(pricePerGram);
+
+    if (!materialId || isNaN(parsedMaterialId)) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
+    }
+    if (pricePerGram === '' || pricePerGram == null || isNaN(parsedPricePerGram) || parsedPricePerGram <= 0) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入有效的克价' }, { status: 400 });
+    }
+
     const record = await db.metalPrice.create({
       data: { materialId: parsedMaterialId, pricePerGram: parsedPricePerGram, effectiveDate: today },
     });

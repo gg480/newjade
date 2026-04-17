@@ -8,8 +8,11 @@ export async function POST(req: Request) {
   const parsedSaleId = parseInt(saleId);
   const parsedRefundAmount = refundAmount != null ? parseFloat(refundAmount) : undefined;
 
-  if (!parsedSaleId) {
+  if (!saleId || isNaN(parsedSaleId)) {
     return NextResponse.json({ code: 400, data: null, message: '缺少 saleId' }, { status: 400 });
+  }
+  if (parsedRefundAmount !== undefined && isNaN(parsedRefundAmount)) {
+    return NextResponse.json({ code: 400, data: null, message: '退款金额无效' }, { status: 400 });
   }
 
   // Validate sale exists

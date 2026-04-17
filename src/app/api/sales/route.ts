@@ -66,6 +66,20 @@ export async function POST(req: Request) {
     const parsedActualPrice = parseFloat(actualPrice);
     const parsedCustomerId = customerId ? parseInt(customerId) : null;
 
+    // Validate required fields
+    if (!itemId || isNaN(parsedItemId)) {
+      return NextResponse.json({ code: 400, data: null, message: '缺少货品ID' }, { status: 400 });
+    }
+    if (actualPrice === '' || actualPrice === undefined || actualPrice === null || isNaN(parsedActualPrice)) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入有效的成交价' }, { status: 400 });
+    }
+    if (!channel) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择销售渠道' }, { status: 400 });
+    }
+    if (!saleDate) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择销售日期' }, { status: 400 });
+    }
+
     // Validate item
     const item = await db.item.findUnique({ where: { id: parsedItemId } });
     if (!item || item.isDeleted) {

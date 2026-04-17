@@ -144,6 +144,17 @@ export async function POST(req: Request) {
       if (batchData) finalMaterialId = batchData.materialId;
     }
 
+    // Validate required fields
+    if (!finalMaterialId) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
+    }
+    if (!typeId) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择器型' }, { status: 400 });
+    }
+    if (costPrice == null || costPrice === '' || isNaN(parseFloat(costPrice))) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入有效的成本价' }, { status: 400 });
+    }
+
     // Auto-generate SKU if not provided
     const finalSkuCode = skuCode || await generateSkuCode(finalMaterialId);
 

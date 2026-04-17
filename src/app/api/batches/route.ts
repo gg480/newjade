@@ -69,16 +69,38 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json();
   const { batchCode, materialId, typeId, quantity, totalCost, costAllocMethod, supplierId, purchaseDate, notes } = body;
+  const parsedMaterialId = parseInt(materialId);
+  const parsedTypeId = parseInt(typeId);
+  const parsedQuantity = parseInt(quantity);
+  const parsedTotalCost = parseFloat(totalCost);
+  const parsedSupplierId = supplierId ? parseInt(supplierId) : null;
+
+  if (!batchCode) {
+    return NextResponse.json({ code: 400, data: null, message: '请输入批次编号' }, { status: 400 });
+  }
+  if (isNaN(parsedMaterialId)) {
+    return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
+  }
+  if (isNaN(parsedTypeId)) {
+    return NextResponse.json({ code: 400, data: null, message: '请选择器型' }, { status: 400 });
+  }
+  if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+    return NextResponse.json({ code: 400, data: null, message: '请输入有效的数量' }, { status: 400 });
+  }
+  if (isNaN(parsedTotalCost) || parsedTotalCost <= 0) {
+    return NextResponse.json({ code: 400, data: null, message: '请输入有效的总成本' }, { status: 400 });
+  }
+
   try {
     const batch = await db.batch.create({
       data: {
         batchCode,
-        materialId: parseInt(materialId),
-        typeId: parseInt(typeId),
-        quantity: parseInt(quantity),
-        totalCost: parseFloat(totalCost),
+        materialId: parsedMaterialId,
+        typeId: parsedTypeId,
+        quantity: parsedQuantity,
+        totalCost: parsedTotalCost,
         costAllocMethod,
-        supplierId: supplierId ? parseInt(supplierId) : null,
+        supplierId: parsedSupplierId,
         purchaseDate,
         notes,
       },

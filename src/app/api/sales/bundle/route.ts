@@ -41,6 +41,18 @@ export async function POST(req: Request) {
   if (!itemIds || itemIds.length < 2) {
     return NextResponse.json({ code: 400, data: null, message: '套装至少2件货品' }, { status: 400 });
   }
+  if (isNaN(parsedTotalPrice) || parsedTotalPrice <= 0) {
+    return NextResponse.json({ code: 400, data: null, message: '请输入有效的套装总价' }, { status: 400 });
+  }
+  if (parsedItemIds.some((id: number) => isNaN(id))) {
+    return NextResponse.json({ code: 400, data: null, message: '货品ID无效' }, { status: 400 });
+  }
+  if (!channel) {
+    return NextResponse.json({ code: 400, data: null, message: '请选择销售渠道' }, { status: 400 });
+  }
+  if (!saleDate) {
+    return NextResponse.json({ code: 400, data: null, message: '请选择销售日期' }, { status: 400 });
+  }
 
   // Validate all items
   const items = await db.item.findMany({ where: { id: { in: parsedItemIds } } });

@@ -128,6 +128,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json();
   const { name, phone, wechat, address, notes, tags } = body;
+  if (!name || !name.trim()) {
+    return NextResponse.json({ code: 400, data: null, message: '请输入客户姓名' }, { status: 400 });
+  }
   try {
     const customerCode = await generateCustomerCode();
     const tagsStr = Array.isArray(tags) && tags.length > 0 ? JSON.stringify(tags) : null;

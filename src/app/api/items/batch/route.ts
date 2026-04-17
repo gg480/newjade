@@ -37,6 +37,19 @@ export async function POST(req: Request) {
     const parsedCounter = counter != null ? parseInt(counter) : null;
     const parsedSupplierId = supplierId ? parseInt(supplierId) : null;
 
+    if (!materialId || isNaN(parsedMaterialId)) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
+    }
+    if (!typeId || isNaN(parsedTypeId!)) {
+      return NextResponse.json({ code: 400, data: null, message: '请选择器型' }, { status: 400 });
+    }
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入有效的数量' }, { status: 400 });
+    }
+    if (parsedCostPrice === null || isNaN(parsedCostPrice)) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入有效的成本价' }, { status: 400 });
+    }
+
     const created = [];
     for (let i = 0; i < parsedQuantity; i++) {
       const seq = String(i + 1).padStart(3, '0');

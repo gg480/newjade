@@ -8,6 +8,13 @@ export async function POST(req: Request) {
   const parsedMaterialId = parseInt(materialId);
   const parsedNewPrice = parseFloat(newPricePerGram);
 
+  if (!materialId || isNaN(parsedMaterialId)) {
+    return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
+  }
+  if (newPricePerGram === '' || newPricePerGram == null || isNaN(parsedNewPrice) || parsedNewPrice <= 0) {
+    return NextResponse.json({ code: 400, data: null, message: '请输入有效的新克价' }, { status: 400 });
+  }
+
   // Get current price
   const material = await db.dictMaterial.findUnique({ where: { id: parsedMaterialId } });
   if (!material) {
