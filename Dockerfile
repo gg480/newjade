@@ -1,60 +1,54 @@
-# ===== Jade Inventory - Next.js Docker Image =====
-# Multi-stage build for minimal image size
-
-# ---- Stage 1: Install dependencies ----
-FROM node:20-alpine AS deps
+# ---- Stage 1: Dependencies ----
+FROM node:24-alpine AS deps
+RUN corepack enable
 WORKDIR /app
 
-COPY package.json bun.lock ./
-RUN npm install -g bun && bun install --frozen-lockfile
+COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma/
+
+RUN pnpm install --frozen-lockfile && \
+    npx prisma generate
 
 # ---- Stage 2: Build ----
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
+RUN corepack enable
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set build-time DATABASE_URL (placeholder, will be overridden at runtime)
-ENV DATABASE_URL="file:./db/custom.db"
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Generate Prisma client
-RUN npx prisma generate
-
-# Build Next.js (standalone output)
-RUN npm run build
+RUN npx prisma generate && \
+    pnpm build
 
 # ---- Stage 3: Production ----
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
+RUN corepack enable
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+ENV DATABASE_URL=file:./db/custom.db
+ENV PORT=5000
 ENV HOSTNAME="0.0.0.0"
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy standalone build output
+# Copy all necessary files
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-# Copy Prisma schema and migrations for runtime db push
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/src/lib/db.ts ./src/lib/db.ts
 
-# Create data directories and set ownership
-RUN mkdir -p /app/db /app/public/images && \
-    chown -R nextjs:nodejs /app/db /app/public/images /app/prisma
+# Ensure db directory exists with write permissions
+RUN mkdir -p /app/db && chown -R nextjs:nodejs /app/db
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 5000
 
-# Startup: run prisma db push then start server
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node server.js"]
+CMD ["pnpm", "run", "start"]
