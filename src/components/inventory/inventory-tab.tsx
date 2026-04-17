@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { itemsApi, salesApi, dictsApi, batchesApi, exportApi } from '@/lib/api';
+import { itemsApi, salesApi, dictsApi, batchesApi, exportApi, customersApi } from '@/lib/api';
 import { CustomerSearchSelect } from './customer-search-select';
 import { itemsApiEnhanced } from '@/lib/api';
 import { toast } from 'sonner';
