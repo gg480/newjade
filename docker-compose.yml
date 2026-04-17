@@ -4,19 +4,19 @@ services:
   jade-inventory:
     image: ${DOCKERHUB_USERNAME:-your-username}/jade-inventory:latest
     container_name: jade-inventory
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
-      - jade-db:/app/db
-      - jade-images:/app/data/images
+      # Single volume for all persistent data (db + images + logs)
+      - jade-data:/app/data
     environment:
-      - DATABASE_URL=file:./db/custom.db
       - DATA_DIR=/app/data
       - NODE_ENV=production
     restart: unless-stopped
 
 volumes:
-  jade-db:
-    driver: local
-  jade-images:
+  jade-data:
     driver: local

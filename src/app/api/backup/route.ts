@@ -3,10 +3,21 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
 
+// Resolve db directory: use DATA_DIR env or cwd/db
+function getDbDir(): string {
+  const dataDir = process.env.DATA_DIR;
+  if (dataDir) return path.join(dataDir, 'db');
+  return path.join(process.cwd(), 'db');
+}
+
+function getDbPath(): string {
+  return path.join(getDbDir(), 'custom.db');
+}
+
 // GET /api/backup — Download SQLite database backup
 export async function GET() {
   try {
-    const dbPath = path.join(process.cwd(), 'db', 'custom.db');
+    const dbPath = getDbPath();
 
     if (!existsSync(dbPath)) {
       return NextResponse.json({ code: 404, data: null, message: '数据库文件不存在' }, { status: 404 });
@@ -19,7 +30,7 @@ export async function GET() {
     return new NextResponse(buffer, {
       status: 200,
       headers: {
-        'Content-Type': 'application/octet-stream',
+        'Content-Type': 'image/octet-stream',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': buffer.length.toString(),
       },
@@ -49,8 +60,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ code: 400, data: null, message: '文件大小不能超过100MB' }, { status: 400 });
     }
 
-    const dbPath = path.join(process.cwd(), 'db', 'custom.db');
-    const backupDir = path.join(process.cwd(), 'db');
+    const dbPath = getDbPath();
+    const backupDir = getDbDir();
 
     // Ensure db directory exists
     await mkdir(backupDir, { recursive: true });

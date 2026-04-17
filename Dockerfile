@@ -26,7 +26,6 @@ RUN corepack enable
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV DATABASE_URL=file:./db/custom.db
 ENV DATA_DIR=/app/data
 ENV PORT=5000
 ENV HOSTNAME="0.0.0.0"
@@ -45,14 +44,18 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.ts ./
 
 # Create data directories with write permissions
-RUN mkdir -p /app/data/images /app/db && \
-    chown -R nextjs:nodejs /app/data /app/db
+# /app/data/db     → SQLite database
+# /app/data/images → Uploaded product images
+# /app/data/logs   → Application logs (if needed)
+RUN mkdir -p /app/data/db /app/data/images /app/data/logs && \
+    chown -R nextjs:nodejs /app/data
 
-# Data volumes: database + uploaded images
-VOLUME ["/app/data", "/app/db"]
+# Single volume for all persistent data
+VOLUME ["/app/data"]
 
 USER nextjs
 
 EXPOSE 5000
 
-CMD ["pnpm", "run", "start"]
+# Initialize database on first run, then start server
+CMD ["sh", "-c", "npx prisma db push --skip-generate 2>/dev/null; pnpm run start"]
