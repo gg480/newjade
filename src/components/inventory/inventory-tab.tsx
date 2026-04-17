@@ -2071,7 +2071,7 @@ function InventoryTab() {
                 {itemTags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {itemTags.map((tag: string) => (
-                      <span key={tag} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getItemTagColor(tag)}`}>{tag}</span>
+                      <span key={tag} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTagColor(tag)}`}>{tag}</span>
                     ))}
                   </div>
                 )}
