@@ -78,6 +78,9 @@ export async function POST(req: Request) {
   if (!batchCode) {
     return NextResponse.json({ code: 400, data: null, message: '请输入批次编号' }, { status: 400 });
   }
+  if (/[^\x00-\x7F]/.test(batchCode)) {
+    return NextResponse.json({ code: 400, data: null, message: '批次编号不允许包含中文字符' }, { status: 400 });
+  }
   if (isNaN(parsedMaterialId)) {
     return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
   }

@@ -26,13 +26,13 @@ export async function POST(req: Request) {
       if (batch) resolvedBatchCode = batch.batchCode;
     }
 
-    const material = await db.dictMaterial.findUnique({ where: { id: parseInt(materialId) } });
-    const prefix = skuPrefix || (material ? material.name.slice(0, 2) : 'XX');
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const mCode = String(parsedMaterialId).padStart(2, '0');
+    const tCode = parsedTypeId ? String(parsedTypeId).padStart(2, '0') : '00';
+    const dateStr = String(new Date().getMonth() + 1).padStart(2, '0') + String(new Date().getDate()).padStart(2, '0');
     const parsedQuantity = parseInt(quantity);
     const parsedMaterialId = parseInt(materialId);
     const parsedTypeId = typeId ? parseInt(typeId) : null;
-    const parsedCostPrice = costPrice != null ? parseFloat(costPrice) : null;
+    const parsedCostPrice = costPrice != null && costPrice !== '' ? parseFloat(costPrice) : null;
     const parsedSellingPrice = sellingPrice != null ? parseFloat(sellingPrice) : null;
     const parsedCounter = counter != null ? parseInt(counter) : null;
     const parsedSupplierId = supplierId ? parseInt(supplierId) : null;
@@ -46,14 +46,25 @@ export async function POST(req: Request) {
     if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
       return NextResponse.json({ code: 400, data: null, message: '请输入有效的数量' }, { status: 400 });
     }
-    if (parsedCostPrice === null || isNaN(parsedCostPrice)) {
-      return NextResponse.json({ code: 400, data: null, message: '请输入有效的成本价' }, { status: 400 });
+
+    // 计算成本价：有批次则分摊，否则要求传入
+    let finalCostPrice = parsedCostPrice;
+    let allocatedCost: number | null = null;
+    if (resolvedBatchId) {
+      const batch = await db.batch.findUnique({ where: { id: resolvedBatchId } });
+      if (batch && batch.totalCost && batch.quantity > 0) {
+        allocatedCost = parseFloat((batch.totalCost / batch.quantity).toFixed(2));
+        if (finalCostPrice === null) finalCostPrice = allocatedCost;
+      }
+    }
+    if (finalCostPrice === null || isNaN(finalCostPrice)) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入有效的成本价（或选择批次自动分摊）' }, { status: 400 });
     }
 
     const created = [];
     for (let i = 0; i < parsedQuantity; i++) {
       const seq = String(i + 1).padStart(3, '0');
-      const skuCode = `${prefix}-${dateStr}-${seq}`;
+      const skuCode = `${mCode}${tCode}-${dateStr}-${seq}`;
 
       const item = await db.item.create({
         data: {
@@ -62,9 +73,10 @@ export async function POST(req: Request) {
           batchId: resolvedBatchId,
           materialId: parsedMaterialId,
           typeId: parsedTypeId,
-          costPrice: parsedCostPrice,
+          costPrice: finalCostPrice,
+          allocatedCost,
           sellingPrice: parsedSellingPrice,
-          origin: material?.origin,
+          origin: null,
           counter: parsedCounter,
           supplierId: parsedSupplierId,
           purchaseDate,

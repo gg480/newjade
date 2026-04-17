@@ -150,7 +150,7 @@ async function test4_createItem() {
   assert(status === 200, '入库请求 HTTP 200');
   assert(json?.code === 0, '入库 API code=0');
   assert(json?.data?.id > 0, '返回新货品 ID');
-  assert(json?.data?.skuCode?.includes('翡翠'), 'SKU编码含材质前缀');
+  assert(json?.data?.skuCode?.match(/^[0-9A-Z]+-[0-9]+-[0-9]+$/), 'SKU编码格式正确 (纯ASCII，如0601-0417-001)');
   assert(json?.data?.status === 'in_stock', '状态为在库');
   
   // 关键验证：braceletSize 从数字 56 被正确转为字符串 "56"

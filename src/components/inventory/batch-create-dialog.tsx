@@ -16,11 +16,11 @@ import { Zap, FileText } from 'lucide-react';
 
 // ========== Category abbreviation map ==========
 const CATEGORY_ABBR: Record<string, string> = {
-  '玉': 'Y',
-  '贵金属': 'G',
-  '水晶': 'S',
-  '文玩': 'W',
-  '其他': 'Q',
+  '玉': 'J',
+  '贵金属': 'M',
+  '水晶': 'C',
+  '文玩': 'A',
+  '其他': 'O',
 };
 
 // ========== Batch Create Dialog ==========
@@ -66,20 +66,35 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
     }
   }, [open]);
 
+  // Auto-generated batch code for normal mode (ASCII only)
+  const autoBatchCode = useMemo(() => {
+    const abbr = materialCategory ? (CATEGORY_ABBR[materialCategory] || 'X') : 'X';
+    const today = new Date();
+    const dateStr = String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+    const seq = String(Math.floor(Math.random() * 900) + 100);
+    return `B${abbr}${dateStr}${seq}`;
+  }, [materialCategory]);
+
+  // Sync form.batchCode with auto-generated code
+  useEffect(() => {
+    setForm(f => ({ ...f, batchCode: autoBatchCode }));
+  }, [autoBatchCode]);
+
   // 根据大类筛选材质
   const filteredMaterials = materials.filter((m: any) => {
     if (!materialCategory) return true;
     return m.category === materialCategory;
   });
 
-  // Auto-generated batch code for quick mode
+  // Auto-generated batch code for quick mode (ASCII only, barcode-compatible)
+  // Format: B{类别码}{MMDD}{3位序号} e.g. BJ0417001
   const quickBatchCode = useMemo(() => {
     if (!quickCategory) return '';
     const abbr = CATEGORY_ABBR[quickCategory] || 'X';
     const today = new Date();
-    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    const dateStr = String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
     const seq = String(Math.floor(Math.random() * 900) + 100);
-    return `${abbr}-${dateStr}-${seq}`;
+    return `B${abbr}${dateStr}${seq}`;
   }, [quickCategory]);
 
   // Estimated per-unit cost for quick mode
@@ -88,7 +103,6 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   async function handleSave() {
     setSaving(true);
     try {
-      if (!form.batchCode) { toast.error('请输入批次编号'); setSaving(false); return; }
       if (!form.materialId) { toast.error('请选择材质'); setSaving(false); return; }
       if (!form.quantity || form.quantity < 1) { toast.error('请输入有效数量'); setSaving(false); return; }
       await batchesApi.createBatch({
@@ -245,7 +259,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
         ) : (
           /* ===== Normal Mode ===== */
           <div className="space-y-4 py-2 animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
-            <div className="space-y-1"><Label className="text-xs">批次编号 *</Label><Input value={form.batchCode} onChange={e => setForm(f => ({ ...f, batchCode: e.target.value }))} className="h-9" placeholder="如: HT-20260101-001" /></div>
+            <div className="space-y-1"><Label className="text-xs">批次编号</Label><Input value={form.batchCode} readOnly className="h-9 bg-muted/50 text-muted-foreground cursor-not-allowed" /><p className="text-[10px] text-muted-foreground">系统自动生成</p></div>
             {/* Material Category Cascade */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label className="text-xs">材质大类</Label>

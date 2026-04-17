@@ -304,9 +304,10 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   }
 
   // 校验必填字段
-  function validateRequiredFields(form: typeof highValueForm | typeof batchForm): string | null {
+  function validateRequiredFields(form: typeof highValueForm | typeof batchForm, isHighValue: boolean): string | null {
     if (!form.typeId) return '请选择器型';
-    if (!(form as any).costPrice) return '请输入成本价';
+    // 高货模式才校验成本价，通货模式成本由批次分摊
+    if (isHighValue && !(form as any).costPrice) return '请输入成本价';
     // 器型必填规格字段
     for (const field of specFieldKeys) {
       if (specFieldsObj[field]?.required && !(form as any)[field]) {
@@ -323,7 +324,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
       if (mode === 'high_value') {
         if (!highValueForm.materialId) { toast.error('请选择材质'); setSaving(false); return; }
         if (!highValueForm.sellingPrice) { toast.error('请输入售价'); setSaving(false); return; }
-        const validationError = validateRequiredFields(highValueForm);
+        const validationError = validateRequiredFields(highValueForm, true);
         if (validationError) { toast.error(validationError); setSaving(false); return; }
         const spec: Record<string, any> = {};
         specFieldKeys.forEach(f => { if ((highValueForm as any)[f]) spec[f] = (highValueForm as any)[f]; });
@@ -346,7 +347,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
       } else {
         if (!batchForm.batchId) { toast.error('请选择批次'); setSaving(false); return; }
         if (!batchForm.sellingPrice) { toast.error('请输入售价'); setSaving(false); return; }
-        const validationError = validateRequiredFields(batchForm);
+        const validationError = validateRequiredFields(batchForm, false);
         if (validationError) { toast.error(validationError); setSaving(false); return; }
         const spec: Record<string, any> = {};
         specFieldKeys.forEach(f => { if ((batchForm as any)[f]) spec[f] = (batchForm as any)[f]; });
@@ -544,6 +545,14 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                   <SelectTrigger className="h-9"><SelectValue placeholder="选择批次" /></SelectTrigger>
                   <SelectContent>{batches.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode} - {b.materialName}</SelectItem>)}</SelectContent>
                 </Select>
+                {batchForm.batchId && (() => {
+                  const b = batches.find((x: any) => String(x.id) === String(batchForm.batchId));
+                  if (b && b.totalCost && b.quantity) {
+                    const allocated = (b.totalCost / b.quantity).toFixed(2);
+                    return <p className="text-xs text-muted-foreground mt-1">预计分摊成本: ¥{allocated}/件 (总¥{b.totalCost} ÷ {b.quantity}件)</p>;
+                  }
+                  return null;
+                })()}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={batchForm.sellingPrice || ''} onChange={e => setBatchForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>

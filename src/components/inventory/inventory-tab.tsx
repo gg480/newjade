@@ -1060,7 +1060,7 @@ function InventoryTab() {
                 <TableBody>
                   {sortedItems.map((item, idx) => (
                     <TableRow key={item.id} className={`group hover:bg-muted/50 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-emerald-400 ${idx % 2 === 1 ? 'even:bg-muted/20' : ''} ${selectedIds.has(item.id) ? 'bg-emerald-50 dark:bg-emerald-950/20 hover:border-l-emerald-500' : item.status === 'sold' ? 'hover:border-l-gray-400' : item.status === 'returned' ? 'hover:border-l-red-400' : ''} cursor-pointer`} onClick={() => setSelectedItemId(item.id)}>
-                      <TableCell className="w-10 px-3">
+                      <TableCell className="w-10 px-3" onClick={e => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedIds.has(item.id)}
                           onCheckedChange={() => toggleSelect(item.id)}
@@ -1209,10 +1209,12 @@ function InventoryTab() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selectedIds.has(item.id)}
-                        onCheckedChange={() => toggleSelect(item.id)}
-                      />
+                      <div onClick={e => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(item.id)}
+                          onCheckedChange={() => toggleSelect(item.id)}
+                        />
+                      </div>
                       <span
                         className="font-mono text-xs text-muted-foreground hover:text-emerald-600 transition-colors truncate cursor-pointer"
                         onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.skuCode || '').then(() => toast.success('SKU已复制到剪贴板')).catch(() => toast.error('复制失败')); }}

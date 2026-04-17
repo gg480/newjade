@@ -107,13 +107,14 @@ export async function GET(req: Request) {
   });
 }
 
-// Auto-generate SKU code
-async function generateSkuCode(materialId: number): Promise<string> {
-  const material = await db.dictMaterial.findUnique({ where: { id: materialId } });
-  const prefix = material ? material.name.slice(0, 2) : 'XX';
+// Auto-generate SKU code (ASCII only, barcode-compatible)
+// Format: {materialId 2digit}{typeId 2digit}-{MMDD}-{seq 3digit}  e.g. 0601-0417-001
+async function generateSkuCode(materialId: number, typeId?: number): Promise<string> {
+  const mCode = String(materialId).padStart(2, '0');
+  const tCode = typeId ? String(typeId).padStart(2, '0') : '00';
   const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-  const prefixFull = `${prefix}-${dateStr}-`;
+  const dateStr = String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+  const prefixFull = `${mCode}${tCode}-${dateStr}-`;
 
   // Find the latest SKU with this prefix
   const lastItem = await db.item.findFirst({
@@ -151,15 +152,33 @@ export async function POST(req: Request) {
     if (!typeId) {
       return NextResponse.json({ code: 400, data: null, message: '请选择器型' }, { status: 400 });
     }
-    if (costPrice == null || costPrice === '' || isNaN(parseFloat(costPrice))) {
+    // 高货模式(无batchId)才校验成本价必填；通货模式成本由批次分摊
+    if (!batchId && (costPrice == null || costPrice === '' || isNaN(parseFloat(costPrice)))) {
       return NextResponse.json({ code: 400, data: null, message: '请输入有效的成本价' }, { status: 400 });
     }
 
-    // Auto-generate SKU if not provided
-    const finalSkuCode = skuCode || await generateSkuCode(finalMaterialId);
+    // Auto-generate SKU if not provided; validate no Chinese if provided
+    if (skuCode && /[^\x00-\x7F]/.test(skuCode)) {
+      return NextResponse.json({ code: 400, data: null, message: 'SKU编码不允许包含中文字符' }, { status: 400 });
+    }
+    const finalSkuCode = skuCode || await generateSkuCode(finalMaterialId, typeId);
 
-    // For batch items, allocatedCost will be set after allocation; for high-value items, allocatedCost = costPrice
-    const allocatedCost = !batchId && costPrice ? costPrice : null;
+    // For batch items, auto-calculate allocatedCost from batch; for high-value items, allocatedCost = costPrice
+    let allocatedCost: number | null = null;
+    let finalCostPrice: number | null = costPrice != null && costPrice !== '' ? parseFloat(costPrice) : null;
+    if (batchId) {
+      // 通货模式：从批次分摊成本
+      if (!batchData) {
+        batchData = await db.batch.findUnique({ where: { id: batchId }, include: { material: true } });
+      }
+      if (batchData && batchData.totalCost && batchData.quantity > 0) {
+        allocatedCost = parseFloat((batchData.totalCost / batchData.quantity).toFixed(2));
+        if (finalCostPrice === null) finalCostPrice = allocatedCost;
+      }
+    } else {
+      // 高货模式
+      allocatedCost = finalCostPrice;
+    }
 
     // Convert spec fields to proper types
     const specData: any = spec ? { ...spec } : null;
@@ -190,7 +209,7 @@ export async function POST(req: Request) {
         batchId: batchId ? parseInt(batchId) : null,
         materialId: finalMaterialId ? parseInt(finalMaterialId) : null,
         typeId: typeId ? parseInt(typeId) : null,
-        costPrice: costPrice != null ? parseFloat(costPrice) : null,
+        costPrice: finalCostPrice,
         allocatedCost,
         sellingPrice: sellingPrice != null ? parseFloat(sellingPrice) : null,
         floorPrice: floorPrice != null ? parseFloat(floorPrice) : null,
