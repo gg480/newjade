@@ -1110,11 +1110,12 @@ function InventoryTab() {
                       ) : <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell>
                         {(() => {
-                          const tgs: string[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
-                          if (tgs.length === 0) return <span className="text-muted-foreground">—</span>;
-                          return <div className="flex flex-wrap gap-1 max-w-[160px]">{tgs.slice(0, 3).map((t: string) => (
-                            <Badge key={t} variant="outline" className={`text-[10px] h-5 px-1.5 ${getTagColor(t)}`}>{t}</Badge>
-                          ))}{tgs.length > 3 && <span className="text-[10px] text-muted-foreground">+{tgs.length - 3}</span>}</div>;
+                          const tgs: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+                          const tagLabels: string[] = tgs.map((t: any) => typeof t === 'string' ? t : t.name || '');
+                          if (tagLabels.length === 0) return <span className="text-muted-foreground">—</span>;
+                          return <div className="flex flex-wrap gap-1 max-w-[160px]">{tagLabels.slice(0, 3).map((t: string, i: number) => (
+                            <Badge key={i} variant="outline" className={`text-[10px] h-5 px-1.5 ${getTagColor(t)}`}>{t}</Badge>
+                          ))}{tagLabels.length > 3 && <span className="text-[10px] text-muted-foreground">+{tagLabels.length - 3}</span>}</div>;
                         })()}
                       </TableCell>
                       <TableCell className="text-right">{item.allocatedCost ? formatPrice(item.allocatedCost) : item.estimatedCost ? <span className="text-muted-foreground" title="预估成本">{formatPrice(item.estimatedCost)}~</span> : formatPrice(item.costPrice)}</TableCell>
@@ -1238,14 +1239,15 @@ function InventoryTab() {
                 </div>
                 {/* Tags */}
                 {(() => {
-                  const tgs: string[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
-                  if (tgs.length === 0) return null;
+                  const tgs: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+                  const tagLabels: string[] = tgs.map((t: any) => typeof t === 'string' ? t : t.name || '');
+                  if (tagLabels.length === 0) return null;
                   return (
                     <div className="flex flex-wrap gap-1">
-                      {tgs.slice(0, 4).map((t: string) => (
-                        <Badge key={t} variant="outline" className={`text-[10px] h-4 px-1.5 ${getTagColor(t)}`}>{t}</Badge>
+                      {tagLabels.slice(0, 4).map((t: string, i: number) => (
+                        <Badge key={i} variant="outline" className={`text-[10px] h-4 px-1.5 ${getTagColor(t)}`}>{t}</Badge>
                       ))}
-                      {tgs.length > 4 && <span className="text-[10px] text-muted-foreground">+{tgs.length - 4}</span>}
+                      {tagLabels.length > 4 && <span className="text-[10px] text-muted-foreground">+{tagLabels.length - 4}</span>}
                     </div>
                   );
                 })()}
@@ -1821,7 +1823,8 @@ function InventoryTab() {
         if (!item) return null;
         const cost = item.allocatedCost || item.estimatedCost || item.costPrice || 0;
         const margin = item.sellingPrice > 0 ? ((item.sellingPrice - cost) / item.sellingPrice * 100) : 0;
-        const itemTags: string[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+        const itemTagsRaw: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+        const itemTags: string[] = itemTagsRaw.map((t: any) => typeof t === 'string' ? t : t.name || '');
         const specFields = item.specFields ? (typeof item.specFields === 'string' ? (() => { try { return JSON.parse(item.specFields); } catch { return {}; } })() : item.specFields) : {};
         return (
           <>
