@@ -25,8 +25,7 @@ FROM node:22-alpine AS runner
 
 # Install su-exec for privilege dropping + prisma CLI + tsx for seed
 RUN apk add --no-cache su-exec && \
-    corepack enable && corepack prepare pnpm@latest --activate && \
-    pnpm add -g prisma tsx
+    npm install -g prisma tsx
 
 WORKDIR /app
 
