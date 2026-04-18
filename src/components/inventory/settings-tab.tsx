@@ -1180,7 +1180,7 @@ function SettingsTab() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">快速导入约2000件存量货品。必填列: SKU、名称。选填列: 器型、材质、状态、成本、售价、柜台号、采购日期。SKU重复时自动跳过。</p>
+              <p className="text-sm text-muted-foreground">快速导入存量货品。必填列: 名称。选填列: SKU(留空自动生成)、材质(按名称匹配，不存在则自动创建)、器型(按名称匹配，不存在则自动创建)、成本价、零售价、柜台、采购日期、产地、证书号、备注。SKU重复时自动跳过。</p>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleDownloadCsvTemplate}>
                   <FileDown className="h-3.5 w-3.5 mr-1" />模板下载
