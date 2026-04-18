@@ -42,10 +42,8 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 # Copy public folder
 COPY --from=builder /app/public ./public
-# Copy Prisma schema + engine + seed for runtime db init
+# Copy Prisma schema + seed for runtime db init
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copy entrypoint script
 COPY --from=builder /app/scripts/entrypoint.sh /app/scripts/entrypoint.sh
 
