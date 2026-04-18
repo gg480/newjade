@@ -1,6 +1,6 @@
 # ---- Stage 1: Dependencies ----
-FROM node:24-alpine AS deps
-RUN corepack enable
+FROM node:22-alpine AS deps
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
@@ -10,8 +10,8 @@ RUN pnpm install --frozen-lockfile && \
     npx prisma generate
 
 # ---- Stage 2: Build ----
-FROM node:24-alpine AS builder
-RUN corepack enable
+FROM node:22-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -21,8 +21,8 @@ RUN npx prisma generate && \
     pnpm build
 
 # ---- Stage 3: Production ----
-FROM node:24-alpine AS runner
-RUN corepack enable
+FROM node:22-alpine AS runner
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -44,9 +44,6 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.ts ./
 
 # Create data directories with write permissions
-# /app/data/db     → SQLite database
-# /app/data/images → Uploaded product images
-# /app/data/logs   → Application logs (if needed)
 RUN mkdir -p /app/data/db /app/data/images /app/data/logs && \
     chown -R nextjs:nodejs /app/data
 
