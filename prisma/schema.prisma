@@ -169,6 +169,7 @@ model Item {
 
   material      DictMaterial @relation(fields: [materialId], references: [id])
   type          DictType?    @relation(fields: [typeId], references: [id])
+  craft         DictCraft?   @relation(fields: [craftId], references: [id])
   batch         Batch?       @relation(fields: [batchId], references: [id])
   supplier      Supplier?    @relation(fields: [supplierId], references: [id])
   spec          ItemSpec?
@@ -177,6 +178,8 @@ model Item {
   itemTags      ItemTag[]
   saleRecords   SaleRecord[]
   saleReturns   SaleReturn[]
+  sellingPoints ItemSellingPoint[]
+  audiences     ItemAudience[]
 
   @@index([status])
   @@index([materialId])
@@ -186,7 +189,73 @@ model Item {
 }
 
 // ──────────────────────────────────────────────
-// 9. item_tag — 多对多关联表
+// 9. dict_craft — 工艺字典
+// ──────────────────────────────────────────────
+model DictCraft {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  items       Item[]
+
+  @@map("dict_craft")
+}
+
+// ──────────────────────────────────────────────
+// 10. dict_selling_point — 卖点字典
+// ──────────────────────────────────────────────
+model DictSellingPoint {
+  id              Int                @id @default(autoincrement())
+  name            String             @unique
+  sortOrder       Int                @default(0) @map("sort_order")
+  isActive        Boolean            @default(true) @map("is_active")
+  items           ItemSellingPoint[]
+
+  @@map("dict_selling_point")
+}
+
+// ──────────────────────────────────────────────
+// 11. item_selling_point — 货品卖点多对多关联
+// ──────────────────────────────────────────────
+model ItemSellingPoint {
+  itemId         Int                @map("item_id")
+  sellingPointId Int                @map("selling_point_id")
+  item           Item               @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  sellingPoint   DictSellingPoint   @relation(fields: [sellingPointId], references: [id])
+
+  @@id([itemId, sellingPointId])
+  @@map("item_selling_point")
+}
+
+// ──────────────────────────────────────────────
+// 12. dict_audience — 人群字典
+// ──────────────────────────────────────────────
+model DictAudience {
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
+  sortOrder Int              @default(0) @map("sort_order")
+  isActive  Boolean          @default(true) @map("is_active")
+  items     ItemAudience[]
+
+  @@map("dict_audience")
+}
+
+// ──────────────────────────────────────────────
+// 13. item_audience — 货品人群多对多关联
+// ──────────────────────────────────────────────
+model ItemAudience {
+  itemId     Int          @map("item_id")
+  audienceId Int          @map("audience_id")
+  item       Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  audience   DictAudience @relation(fields: [audienceId], references: [id])
+
+  @@id([itemId, audienceId])
+  @@map("item_audience")
+}
+
+// ──────────────────────────────────────────────
+// 14. item_tag — 多对多关联表
 // ──────────────────────────────────────────────
 model ItemTag {
   itemId Int @map("item_id")
