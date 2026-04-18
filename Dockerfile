@@ -34,7 +34,7 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy all necessary files
+# Copy application files
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next ./.next
@@ -47,12 +47,16 @@ COPY --from=builder /app/next.config.ts ./
 RUN mkdir -p /app/data/db /app/data/images /app/data/logs && \
     chown -R nextjs:nodejs /app/data
 
-# Single volume for all persistent data
+# Copy and set up entrypoint script
+COPY --from=builder /app/scripts/entrypoint.sh /app/scripts/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint.sh && \
+    chown nextjs:nodejs /app/scripts/entrypoint.sh
+
+# Single volume for all persistent data (db + images + logs)
 VOLUME ["/app/data"]
 
 USER nextjs
 
 EXPOSE 5000
 
-# Initialize database schema + base config only (NO demo/test data), then start server
-CMD ["sh", "-c", "npx prisma db push --skip-generate 2>/dev/null && npx tsx prisma/seed-base.ts 2>/dev/null; pnpm run start"]
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]

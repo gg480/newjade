@@ -2,21 +2,23 @@ version: "3.8"
 
 services:
   jade-inventory:
-    image: ${DOCKERHUB_USERNAME:-your-username}/jade-inventory:latest
+    image: lrunningmjgoat/jade-inventory:latest
     container_name: jade-inventory
-    build:
-      context: .
-      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
-      # Single volume for all persistent data (db + images + logs)
-      - jade-data:/app/data
+      # Map all persistent data to a local directory on your NAS
+      # - db/       → SQLite database
+      # - images/   → User uploaded images
+      # - logs/     → Application logs
+      # Change ./jade-data to any path on your NAS, e.g. /volume1/docker/jade-data
+      - ./jade-data:/app/data
     environment:
       - DATA_DIR=/app/data
       - NODE_ENV=production
     restart: unless-stopped
 
-volumes:
-  jade-data:
-    driver: local
+# Alternative: use a named volume instead of local directory
+# volumes:
+#   jade-data:
+#     driver: local
