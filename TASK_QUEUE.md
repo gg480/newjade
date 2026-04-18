@@ -299,7 +299,7 @@ status: 已完成
 
 ### T02-a 新建 DictCraft 工艺字典表
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T01-a 全系列完成
 涉及文件:
   - prisma/schema.prisma
@@ -344,13 +344,13 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T02-a完成(2026-04-19)。DictCraft model及Item.craft relation已在schema中存在（由前序任务预置）。seed-base.ts已含8种默认工艺（手工雕刻/机雕/半手工/素面/镂空雕/浮雕/圆雕/未知）。GET/POST /api/dicts/crafts及PATCH/DELETE /api/dicts/crafts/[id]路由已存在并功能正常。已执行DATABASE_URL="file:./prisma/db/custom.db" npx prisma db push成功。
 
 ---
 
 ### T02-b item-create-dialog 工艺下拉联动
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T02-a
 涉及文件:
   - src/components/inventory/item-create-dialog.tsx
@@ -373,13 +373,13 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T02-b完成(2026-04-19)。api.ts已有dictsApi.getCrafts/createCraft/updateCraft/deleteCraft方法。item-create-dialog.tsx「内容属性」Tab已有工艺Select下拉（从/api/dicts/crafts动态加载isActive=true的选项）。提交时craftId已包含在API请求body中。
 
 ---
 
 ### T02-c settings-tab 新增工艺字典管理页
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T02-a
 涉及文件:
   - src/components/inventory/settings-tab.tsx
@@ -401,7 +401,7 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T02-c完成(2026-04-19)。settings-tab.tsx字典管理区域新增工艺Card（Wrench图标，橙色边框），展示名称/描述/排序/状态列，支持编辑/停用/启用操作。新增创建工艺Dialog和编辑工艺Dialog，包含名称/描述/排序/状态字段。与材质/器型管理交互模式一致。
 
 ---
 
@@ -859,8 +859,8 @@ M2（拍摄任务/照片索引/NAS扫描）和 M10（认知底座）的任务在
 
 ```
 最后更新: 2026-04-19
-已完成: 8 / 19 个任务
+已完成: 11 / 19 个任务
 当前正在执行: 无
-下一个待执行: T02-a
+下一个待执行: T02-d
 预计 M1 完成: ____
 ```
