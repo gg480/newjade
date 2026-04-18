@@ -527,7 +527,7 @@ status: 已完成
 
 ### T03-a schema 新增状态字段和 constants
 ```
-status: 待执行
+status: 已完成
 依赖: T01-a 完成
 涉及文件:
   - prisma/schema.prisma
@@ -572,13 +572,13 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T03-a完成(2026-03-05)。Item model新增priorityTier(默认未定)/shootingStatus(默认未拍)/contentStatus(默认未生产)及4个时间戳字段firstShotAt/lastShotAt/firstPublishAt/lastPublishAt。新增3个索引。constants.ts新增PRIORITY_TIERS/SHOOTING_STATUSES/CONTENT_STATUSES常量及类型。已执行DATABASE_URL="file:./prisma/db/custom.db" npx prisma db push成功。
 
 ---
 
 ### T03-b 新增状态专用 PATCH 路由
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T03-a
 涉及文件:
   - src/app/api/items/[id]/status/route.ts（新建）
