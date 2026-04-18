@@ -51,6 +51,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { tagIds, spec, ...data } = body;
 
   try {
+    // Validate new content fields
+    const VALID_PRICE_RANGES = ['走量', '中档', '精品'];
+    if (data.priceRange && !VALID_PRICE_RANGES.includes(data.priceRange)) {
+      return NextResponse.json({ code: 400, data: null, message: '价格带只接受: 走量/中档/精品' }, { status: 400 });
+    }
+    if (data.storyPoints && data.storyPoints.length > 5000) {
+      return NextResponse.json({ code: 400, data: null, message: '故事点不能超过5000字符' }, { status: 400 });
+    }
+    if (data.operationNote && data.operationNote.length > 5000) {
+      return NextResponse.json({ code: 400, data: null, message: '经营笔记不能超过5000字符' }, { status: 400 });
+    }
+
     // Get original item for logging
     const original = await db.item.findUnique({ where: { id: parseInt(id) } });
 
@@ -100,6 +112,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         typeId: data.typeId != null ? parseInt(data.typeId) : undefined,
         supplierId: data.supplierId != null ? parseInt(data.supplierId) : undefined,
         batchId: data.batchId != null ? parseInt(data.batchId) : undefined,
+        craftId: data.craftId != null ? parseInt(data.craftId) : undefined,
       },
       include: { material: true, type: true, spec: true, tags: true },
     });
@@ -107,7 +120,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // Log edit_item with changed fields
     if (original) {
       const changes: Record<string, { from: unknown; to: unknown }> = {};
-      const trackedFields = ['skuCode', 'name', 'materialId', 'typeId', 'costPrice', 'allocatedCost', 'sellingPrice', 'floorPrice', 'status', 'counter', 'origin', 'certNo', 'notes', 'supplierId', 'purchaseDate'];
+      const trackedFields = ['skuCode', 'name', 'materialId', 'typeId', 'costPrice', 'allocatedCost', 'sellingPrice', 'floorPrice', 'status', 'counter', 'origin', 'certNo', 'craftId', 'era', 'mainColor', 'subColor', 'priceRange', 'storyPoints', 'operationNote', 'notes', 'supplierId', 'purchaseDate'];
       for (const field of trackedFields) {
         const oldVal = (original as any)[field];
         const newVal = (item as any)[field];

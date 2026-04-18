@@ -164,7 +164,7 @@ status: 已完成
 
 ### T01-c 更新 Item 编辑 API 接受新字段
 ```
-status: 待执行
+status: 已完成
 依赖: T01-b
 涉及文件:
   - src/app/api/items/[id]/route.ts
@@ -182,7 +182,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T01-c完成(2026-04-19)。PUT /api/items/[id] 同样校验priceRange/storyPoints/operationNote，craftId转parseInt。GET默认返回新字段（Prisma默认全量返回）。trackedFields新增7个新字段用于操作日志。
 
 ---
 
