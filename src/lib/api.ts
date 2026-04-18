@@ -133,6 +133,9 @@ export const itemsApi = {
     request<any>(`/items/${itemId}/images?image_id=${imageId}`, { method: 'DELETE' }),
   setCoverImage: (itemId: number, imageId: number) =>
     request<any>(`/items/${itemId}/images`, { method: 'PUT', body: JSON.stringify({ imageId }) }),
+  updateStatus: (id: number, data: { priorityTier?: string; shootingStatus?: string; contentStatus?: string }) =>
+    request<any>(`/items/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getStatusSummary: () => request<any>('/items/stats/status-summary'),
 };
 
 // ========== Sales ==========

@@ -14,6 +14,9 @@ export async function GET(req: Request) {
   const counter = searchParams.get('counter');
   const keyword = searchParams.get('keyword');
   const searchField = searchParams.get('search_field');
+  const priorityTier = searchParams.get('priorityTier');
+  const shootingStatus = searchParams.get('shootingStatus');
+  const contentStatus = searchParams.get('contentStatus');
   const sortBy = searchParams.get('sort_by') || 'created_at';
   const sortOrder = searchParams.get('sort_order') || 'desc';
 
@@ -23,6 +26,9 @@ export async function GET(req: Request) {
   if (status) where.status = status;
   if (batchId) where.batchId = parseInt(batchId);
   if (counter) where.counter = parseInt(counter);
+  if (priorityTier) where.priorityTier = priorityTier;
+  if (shootingStatus) where.shootingStatus = shootingStatus;
+  if (contentStatus) where.contentStatus = contentStatus;
   if (keyword) {
     if (searchField === 'sku') {
       where.skuCode = { contains: keyword };
