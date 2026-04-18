@@ -68,9 +68,9 @@ if [ -f "${DB_PATH}" ]; then
   
   # Apply schema changes (add new tables/columns) without dropping data
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} npx prisma db push --skip-generate 2>/dev/null || true
+    ${RUN_AS} prisma db push --skip-generate 2>/dev/null || true
   else
-    npx prisma db push --skip-generate 2>/dev/null || true
+    prisma db push --skip-generate 2>/dev/null || true
   fi
   echo "[INFO] Schema sync completed"
 else
@@ -78,25 +78,25 @@ else
   
   # Create schema
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} npx prisma db push --skip-generate 2>/dev/null || true
+    ${RUN_AS} prisma db push --skip-generate 2>/dev/null || true
   else
-    npx prisma db push --skip-generate 2>/dev/null || true
+    prisma db push --skip-generate 2>/dev/null || true
   fi
   echo "[INFO] Database schema created"
   
   # Seed base config (materials, types, tags, system settings, metal prices)
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} npx tsx prisma/seed-base.ts 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
+    ${RUN_AS} tsx prisma/seed-base.ts 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
   else
-    npx tsx prisma/seed-base.ts 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
+    tsx prisma/seed-base.ts 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
   fi
   echo "[INFO] Base configuration data seeded"
 fi
 
-# 4. Start application
+# 4. Start application (standalone mode)
 echo "[INFO] Starting Jade Inventory server on port ${PORT:-5000}..."
 if [ -n "${RUN_AS}" ]; then
-  exec ${RUN_AS} pnpm run start
+  exec ${RUN_AS} node server.js
 else
-  exec pnpm run start
+  exec node server.js
 fi
