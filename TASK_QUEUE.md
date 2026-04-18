@@ -686,7 +686,7 @@ status: 已完成
 
 ### T03-e 状态统计 API
 ```
-status: 待执行
+status: 已完成
 依赖: T03-a
 涉及文件:
   - src/app/api/items/stats/status-summary/route.ts（新建）
@@ -716,7 +716,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T03-e完成(2026-03-05)。新建GET /api/items/stats/status-summary路由，使用Prisma groupBy按priorityTier/shootingStatus/contentStatus分组计数。返回格式{code:0,data:{byPriority,byShooting,byContent,total}}。确保所有枚举值都有对应key(初始0)，未预期值归入默认值。
 
 ---
 
