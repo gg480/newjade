@@ -655,7 +655,7 @@ status: 已完成
 
 ### T03-d 新建商品时自动预填档位
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T03-b
 涉及文件:
   - src/components/inventory/item-create-dialog.tsx
@@ -680,13 +680,13 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T03-d完成(2026-03-05)。item-create-dialog.tsx高货模式成本价输入时自动预填档位(costPrice≥5000→A, 500-4999→B, <500→C, 未填→未定)，用户可手动覆盖不被后续成本价变化覆盖。内容属性Tab新增档位Select下拉(A/B/C/未定)。highValueForm和batchForm均新增priorityTier字段。POST /api/items新增priorityTier入参和校验(PRIORITY_TIERS)。
 
 ---
 
 ### T03-e 状态统计 API
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T03-a
 涉及文件:
   - src/app/api/items/stats/status-summary/route.ts（新建）
