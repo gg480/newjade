@@ -18,7 +18,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Gem, Layers, Calculator, Pencil } from 'lucide-react';
 
 // ========== Content Attributes Tab ==========
-function ContentAttributesTab({ form, setForm }: { form: any; setForm: (f: any) => void }) {
+function ContentAttributesTab({ form, setForm, crafts, sellingPoints, audiences }: { form: any; setForm: (f: any) => void; crafts: any[]; sellingPoints: any[]; audiences: any[] }) {
+  // Toggle helper for multi-select arrays
+  function toggleArrayValue(field: string, id: number) {
+    const arr: number[] = form[field] || [];
+    const next = arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id];
+    setForm({ ...form, [field]: next });
+  }
+
   return (
     <div className="space-y-3">
       {/* 第一组：主色/副色 */}
@@ -63,7 +70,7 @@ function ContentAttributesTab({ form, setForm }: { form: any; setForm: (f: any) 
           />
         </div>
       </div>
-      {/* 第三组：证书编号/价格带 */}
+      {/* 第三组：证书编号/工艺 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">证书编号</Label>
@@ -75,21 +82,70 @@ function ContentAttributesTab({ form, setForm }: { form: any; setForm: (f: any) 
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">价格带</Label>
-          <Select value={form.priceRange || '_none'} onValueChange={v => setForm({ ...form, priceRange: v === '_none' ? '' : v })}>
+          <Label className="text-xs">工艺</Label>
+          <Select value={form.craftId || '_none'} onValueChange={v => setForm({ ...form, craftId: v === '_none' ? '' : v })}>
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="选择价格带" />
+              <SelectValue placeholder="选择工艺" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_none">不选择</SelectItem>
-              <SelectItem value="走量">走量</SelectItem>
-              <SelectItem value="中档">中档</SelectItem>
-              <SelectItem value="精品">精品</SelectItem>
+              {crafts.map((c: any) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
       </div>
-      {/* 第四组：故事点 */}
+      {/* 第四组：价格带 */}
+      <div className="space-y-1">
+        <Label className="text-xs">价格带</Label>
+        <Select value={form.priceRange || '_none'} onValueChange={v => setForm({ ...form, priceRange: v === '_none' ? '' : v })}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="选择价格带" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none">不选择</SelectItem>
+            <SelectItem value="走量">走量</SelectItem>
+            <SelectItem value="中档">中档</SelectItem>
+            <SelectItem value="精品">精品</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {/* 第五组：卖点（多选） */}
+      {sellingPoints.length > 0 && (
+        <div className="space-y-1">
+          <Label className="text-xs">卖点</Label>
+          <div className="flex flex-wrap gap-2">
+            {sellingPoints.map((sp: any) => (
+              <label key={sp.id} className="flex items-center gap-1 cursor-pointer">
+                <Checkbox
+                  checked={(form.sellingPointIds || []).includes(sp.id)}
+                  onCheckedChange={() => toggleArrayValue('sellingPointIds', sp.id)}
+                />
+                <span className="text-xs">{sp.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* 第六组：目标人群（多选） */}
+      {audiences.length > 0 && (
+        <div className="space-y-1">
+          <Label className="text-xs">目标人群</Label>
+          <div className="flex flex-wrap gap-2">
+            {audiences.map((a: any) => (
+              <label key={a.id} className="flex items-center gap-1 cursor-pointer">
+                <Checkbox
+                  checked={(form.audienceIds || []).includes(a.id)}
+                  onCheckedChange={() => toggleArrayValue('audienceIds', a.id)}
+                />
+                <span className="text-xs">{a.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* 第七组：故事点 */}
       <div className="space-y-1">
         <Label className="text-xs">故事点</Label>
         <Textarea
@@ -99,7 +155,7 @@ function ContentAttributesTab({ form, setForm }: { form: any; setForm: (f: any) 
           placeholder="此件为...材质细腻，工艺为...，适合..."
         />
       </div>
-      {/* 第五组：经营笔记 */}
+      {/* 第八组：经营笔记 */}
       <div className="space-y-1">
         <Label className="text-xs">经营笔记 <span className="text-muted-foreground font-normal">(私用，不会生成到文案中)</span></Label>
         <Textarea
@@ -119,6 +175,9 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   const [materials, setMaterials] = useState<any[]>([]);
   const [types, setTypes] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
+  const [crafts, setCrafts] = useState<any[]>([]);
+  const [sellingPoints, setSellingPoints] = useState<any[]>([]);
+  const [audiences, setAudiences] = useState<any[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -138,6 +197,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: new Date().toISOString().slice(0, 10),
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
     mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '',
+    craftId: '', sellingPointIds: [] as number[], audienceIds: [] as number[],
     tagIds: [] as number[],
   });
 
@@ -145,6 +205,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '',
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
     mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '',
+    craftId: '', sellingPointIds: [] as number[], audienceIds: [] as number[],
     tagIds: [] as number[],
   });
 
@@ -153,6 +214,9 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
       dictsApi.getMaterials().then(setMaterials).catch(() => {});
       dictsApi.getTypes().then(setTypes).catch(() => {});
       dictsApi.getTags().then(setTags).catch(() => {});
+      dictsApi.getCrafts().then(setCrafts).catch(() => {});
+      dictsApi.getSellingPoints().then(setSellingPoints).catch(() => {});
+      dictsApi.getAudiences().then(setAudiences).catch(() => {});
       suppliersApi.getSuppliers().then((s: any) => setSuppliers(s?.items || s || [])).catch(() => {});
       batchesApi.getBatches({ size: 100 }).then((d: any) => setBatches(d?.items || [])).catch(() => {});
 
@@ -445,6 +509,9 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           priceRange: highValueForm.priceRange || undefined,
           storyPoints: highValueForm.storyPoints || undefined,
           operationNote: highValueForm.operationNote || undefined,
+          craftId: highValueForm.craftId ? Number(highValueForm.craftId) : undefined,
+          sellingPointIds: highValueForm.sellingPointIds.length > 0 ? highValueForm.sellingPointIds : undefined,
+          audienceIds: highValueForm.audienceIds.length > 0 ? highValueForm.audienceIds : undefined,
           spec: Object.keys(spec).length > 0 ? spec : undefined,
           tagIds: highValueForm.tagIds.length > 0 ? highValueForm.tagIds : undefined,
         });
@@ -469,13 +536,16 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           priceRange: batchForm.priceRange || undefined,
           storyPoints: batchForm.storyPoints || undefined,
           operationNote: batchForm.operationNote || undefined,
+          craftId: batchForm.craftId ? Number(batchForm.craftId) : undefined,
+          sellingPointIds: batchForm.sellingPointIds.length > 0 ? batchForm.sellingPointIds : undefined,
+          audienceIds: batchForm.audienceIds.length > 0 ? batchForm.audienceIds : undefined,
           spec: Object.keys(spec).length > 0 ? spec : undefined,
           tagIds: batchForm.tagIds.length > 0 ? batchForm.tagIds : undefined,
         });
         toast.success('通货入库成功！');
       }
-      setHighValueForm({ materialId: '', typeId: '', costPrice: 0, sellingPrice: 0, name: '', origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', tagIds: [] });
-      setBatchForm({ batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', tagIds: [] });
+      setHighValueForm({ materialId: '', typeId: '', costPrice: 0, sellingPrice: 0, name: '', origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', craftId: '', sellingPointIds: [], audienceIds: [], tagIds: [] });
+      setBatchForm({ batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', craftId: '', sellingPointIds: [], audienceIds: [], tagIds: [] });
       setMaterialCategory('');
       setMaterialSubType('');
       setBatchMaterialCategory('');
@@ -752,6 +822,9 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
               <ContentAttributesTab
                 form={mode === 'high_value' ? highValueForm : batchForm}
                 setForm={mode === 'high_value' ? (f: any) => setHighValueForm(f) : (f: any) => setBatchForm(f)}
+                crafts={crafts}
+                sellingPoints={sellingPoints}
+                audiences={audiences}
               />
             </TabsContent>
           </Tabs>
