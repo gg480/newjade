@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
+import { PRICE_RANGES } from '@/lib/constants';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,8 +53,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   try {
     // Validate new content fields
-    const VALID_PRICE_RANGES = ['走量', '中档', '精品'];
-    if (data.priceRange && !VALID_PRICE_RANGES.includes(data.priceRange)) {
+    if (data.priceRange && !(PRICE_RANGES as readonly string[]).includes(data.priceRange)) {
       return NextResponse.json({ code: 400, data: null, message: '价格带只接受: 走量/中档/精品' }, { status: 400 });
     }
     if (data.storyPoints && data.storyPoints.length > 5000) {

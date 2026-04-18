@@ -265,7 +265,7 @@ status: 已完成
 
 ### T01-f 新增 constants.ts 枚举常量
 ```
-status: 待执行
+status: 已完成
 依赖: T01-b
 涉及文件:
   - src/lib/constants.ts（不存在则新建）
@@ -289,7 +289,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T01-f完成(2026-04-19)。新建src/lib/constants.ts，定义PRICE_RANGES=['走量','中档','精品'] as const及PriceRange类型。T01-b和T01-c中硬编码的VALID_PRICE_RANGES改为引用PRICE_RANGES常量，使用(PRICE_RANGES as readonly string[]).includes()。
 
 ---
 
@@ -859,8 +859,8 @@ M2（拍摄任务/照片索引/NAS扫描）和 M10（认知底座）的任务在
 
 ```
 最后更新: 2026-04-19
-已完成: 3 / 19 个任务
-当前正在执行: T01-b
-下一个待执行: T01-b
+已完成: 8 / 19 个任务
+当前正在执行: 无
+下一个待执行: T02-a
 预计 M1 完成: ____
 ```

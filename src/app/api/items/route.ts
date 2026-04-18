@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
+import { PRICE_RANGES } from '@/lib/constants';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -181,8 +182,7 @@ export async function POST(req: Request) {
     }
 
     // Validate new content fields
-    const VALID_PRICE_RANGES = ['走量', '中档', '精品'];
-    if (priceRange && !VALID_PRICE_RANGES.includes(priceRange)) {
+    if (priceRange && !(PRICE_RANGES as readonly string[]).includes(priceRange)) {
       return NextResponse.json({ code: 400, data: null, message: '价格带只接受: 走量/中档/精品' }, { status: 400 });
     }
     if (storyPoints && storyPoints.length > 5000) {
