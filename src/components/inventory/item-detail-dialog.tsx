@@ -270,6 +270,36 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                 <div><span className="text-muted-foreground">创建时间:</span> {item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '-'}</div>
               </div>
 
+              {/* Content Attributes */}
+              {(() => {
+                const contentFields: { label: string; value: string | null; preWrap?: boolean; privateNote?: boolean }[] = [
+                  { label: '主色', value: item.mainColor },
+                  { label: '副色', value: item.subColor },
+                  { label: '年代款式', value: item.era },
+                  { label: '价格带', value: item.priceRange },
+                  { label: '故事点', value: item.storyPoints, preWrap: true },
+                  { label: '经营笔记（私用）', value: item.operationNote, preWrap: true, privateNote: true },
+                ];
+                const nonEmpty = contentFields.filter(f => f.value);
+                if (nonEmpty.length === 0) return null;
+                return (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-sm font-medium mb-2">内容属性</p>
+                      <div className="space-y-2">
+                        {nonEmpty.map(f => (
+                          <div key={f.label}>
+                            <span className={`text-sm text-muted-foreground ${f.privateNote ? 'italic' : ''}`}>{f.label}：</span>
+                            <span className={`text-sm ${f.preWrap ? 'whitespace-pre-wrap' : ''}`}>{f.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+
               {/* Spec Details */}
               {item.spec && (
                 <>

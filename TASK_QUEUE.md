@@ -235,7 +235,7 @@ status: 已完成
 
 ### T01-e 更新 item-detail-dialog 展示新字段
 ```
-status: 待执行
+status: 已完成
 依赖: T01-d
 涉及文件:
   - src/components/inventory/item-detail-dialog.tsx
@@ -259,7 +259,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T01-e完成(2026-04-19)。新增"内容属性"section显示主色/副色/年代款式/价格带/故事点/经营笔记。所有新字段为空时整个section不显示。有值才显示。storyPoints和operationNote使用whitespace-pre-wrap保留换行。经营笔记标签标注"私用"。
 
 ---
 
