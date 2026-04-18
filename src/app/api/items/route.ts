@@ -134,7 +134,7 @@ async function generateSkuCode(materialId: number, typeId?: number): Promise<str
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, notes, supplierId, purchaseDate, tagIds, spec } = body;
+  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, craftId, era, mainColor, subColor, priceRange, storyPoints, operationNote, extraData, notes, supplierId, purchaseDate, tagIds, spec } = body;
 
   try {
     // For batch items, get materialId from batch if not provided
@@ -180,6 +180,18 @@ export async function POST(req: Request) {
       allocatedCost = finalCostPrice;
     }
 
+    // Validate new content fields
+    const VALID_PRICE_RANGES = ['走量', '中档', '精品'];
+    if (priceRange && !VALID_PRICE_RANGES.includes(priceRange)) {
+      return NextResponse.json({ code: 400, data: null, message: '价格带只接受: 走量/中档/精品' }, { status: 400 });
+    }
+    if (storyPoints && storyPoints.length > 5000) {
+      return NextResponse.json({ code: 400, data: null, message: '故事点不能超过5000字符' }, { status: 400 });
+    }
+    if (operationNote && operationNote.length > 5000) {
+      return NextResponse.json({ code: 400, data: null, message: '经营笔记不能超过5000字符' }, { status: 400 });
+    }
+
     // Convert spec fields to proper types
     const specData: any = spec ? { ...spec } : null;
     if (specData) {
@@ -216,6 +228,14 @@ export async function POST(req: Request) {
         origin: origin || null,
         counter: counter != null ? parseInt(counter) : null,
         certNo: certNo || null,
+        craftId: craftId ? parseInt(craftId) : null,
+        era: era || null,
+        mainColor: mainColor || null,
+        subColor: subColor || null,
+        priceRange: priceRange || null,
+        storyPoints: storyPoints || null,
+        operationNote: operationNote || null,
+        extraData: extraData || null,
         notes: notes || null,
         supplierId: supplierId ? parseInt(supplierId) : null,
         purchaseDate: purchaseDate || null,

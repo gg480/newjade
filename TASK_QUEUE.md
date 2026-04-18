@@ -130,7 +130,7 @@ status: 已完成
 
 ### T01-b 更新 Item 创建 API 接受新字段
 ```
-status: 待执行
+status: 已完成
 依赖: T01-a
 涉及文件:
   - src/app/api/items/route.ts
@@ -158,7 +158,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T01-b完成(2026-04-19)。POST /api/items新增提取craftId/era/mainColor/subColor/priceRange/storyPoints/operationNote/extraData字段。校验：priceRange仅接受走量/中档/精品，storyPoints/operationNote上限5000字符。传到prisma.item.create。
 
 ---
 
