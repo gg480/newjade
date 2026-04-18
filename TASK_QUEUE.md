@@ -616,7 +616,7 @@ status: 已完成
 
 ### T03-c 列表页新增状态筛选和状态列
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T03-b
 涉及文件:
   - src/app/api/items/route.ts
@@ -636,7 +636,7 @@ status: 阻塞-依赖未完成
      - 档位：彩色 Badge（A=红/B=橙/C=灰/未定=蓝灰）
      - 拍摄状态：Badge
      - 内容状态：Badge
-     建议在现有"列显示"控制里加这三列的开关（如果有该功能的话）
+     建议在现有“列显示”控制里加这三列的开关（如果有该功能的话）
 
 验收:
   - 筛选 priorityTier=A 只显示 A 档商品
@@ -649,7 +649,7 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T03-c完成(2026-03-05)。GET /api/items新增priorityTier/shootingStatus/contentStatus查询参数，AND关系过滤。inventory-tab.tsx「更多筛选」区域新增3个Select（档位/拍摄状态/内容状态），重置按钮和ActiveFilterTags均已更新。表格新增3列Badge：档位(A红/B橙/C灰/未定蓝灰)、拍摄状态(蓝色)、内容状态(紫色)。
 
 ---
 
