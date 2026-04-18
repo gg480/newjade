@@ -158,7 +158,7 @@ function SettingsTab() {
   // CSV quick import states
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvImporting, setCsvImporting] = useState(false);
-  const [csvResult, setCsvResult] = useState<{ success: number; skipped: number; errors: string[] } | null>(null);
+  const [csvResult, setCsvResult] = useState<{ success: number; skipped: number; duplicated: number; errors: string[]; autoCreated?: { materials: string[]; types: string[] }; inferred?: { row: number; field: string; value: string }[] } | null>(null);
   const [csvDragOver, setCsvDragOver] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
   const [autoCreate, setAutoCreate] = useState(true);
@@ -182,10 +182,13 @@ function SettingsTab() {
   const [cleanupLoading, setCleanupLoading] = useState<string | null>(null);
   const [cleanupConfirm, setCleanupConfirm] = useState<{ type: 'deleted' | 'logs'; open: boolean }>({ type: 'deleted', open: false });
 
-  // System config (localStorage)
+  // System config (synced to server SysConfig for store_name, others in localStorage)
   const STORAGE_KEY = 'jade_system_config';
   const defaultSettings = { storeName: '翡翠珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
   const [systemConfig, setSystemConfig] = useState(defaultSettings);
+
+  // Editable server configs (local edit state, saved on blur)
+  const [editConfigs, setEditConfigs] = useState<Record<string, string>>({});
 
   // Load settings & data stats from localStorage on mount
   useEffect(() => {
@@ -209,6 +212,18 @@ function SettingsTab() {
       }
     } catch { /* ignore */ }
   }, []);
+
+  // Sync store name from server config to local state on initial load
+  useEffect(() => {
+    const storeNameConfig = configs.find(c => c.key === 'store_name');
+    if (storeNameConfig?.value) {
+      setSystemConfig(prev => ({ ...prev, storeName: storeNameConfig.value }));
+    }
+    // Initialize editConfigs from server configs
+    const editMap: Record<string, string> = {};
+    configs.forEach(c => { editMap[c.key] = c.value; });
+    setEditConfigs(editMap);
+  }, [configs]);
 
   // Fetch data statistics
   useEffect(() => {
@@ -279,7 +294,7 @@ function SettingsTab() {
   }
 
   async function updateConfig(key: string, value: string) {
-    try { await configApi.updateConfig(key, value); setConfigs(c => c.map(x => x.key === key ? { ...x, value } : x)); toast.success('配置已更新'); } catch (e: any) { toast.error(e.message); }
+    try { await configApi.updateConfig(key, value); setConfigs(c => c.map(x => x.key === key ? { ...x, value } : x)); setEditConfigs(prev => ({ ...prev, [key]: value })); toast.success('配置已更新'); } catch (e: any) { toast.error(e.message); }
   }
 
   // Supplier handlers
@@ -477,10 +492,11 @@ function SettingsTab() {
 
   // CSV quick import handler
   function handleDownloadCsvTemplate() {
-    const header = 'SKU,名称,器型,材质,状态,成本,售价,柜台号,采购日期';
-    const example1 = 'JD-001,翡翠手镯,手镯,和田玉,在库,5000,12000,3,2026-01-15';
-    const example2 = 'JD-002,翡翠吊坠,吊坠,缅甸翡翠,在库,3000,8000,5,2026-02-01';
-    const csv = '\uFEFF' + header + '\n' + example1 + '\n' + example2 + '\n';
+    const header = '名称,数量,材质,器型,成本价,零售价,柜台,采购日期,产地,证书号,匹配码,备注';
+    const example1 = '翡翠手镯,1,翡翠,手镯,5000,8000,1,2024-01-15,缅甸,,A001,好货';
+    const example2 = '和田玉吊坠,1,和田玉,吊坠,3000,5500,2,2024-02-20,新疆,CERT001,A002,';
+    const example3 = '南红手串,3,南红,手链,800,2500,1,2024-03-10,云南,,A003,热门款';
+    const csv = '\uFEFF' + header + '\n' + example1 + '\n' + example2 + '\n' + example3 + '\n';
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -497,10 +513,13 @@ function SettingsTab() {
     try {
       const result = await importApi.importCsvItems(csvFile);
       setCsvResult(result);
+      const parts = [`成功${result.success}件`];
+      if ((result as any).duplicated > 0) parts.push(`重复跳过${(result as any).duplicated}件`);
+      if (result.skipped > 0) parts.push(`跳过${result.skipped}行`);
       if (result.errors.length === 0) {
-        toast.success(`CSV导入完成: 成功${result.success}条${result.skipped > 0 ? `，跳过${result.skipped}条` : ''}`);
+        toast.success(`CSV导入完成: ${parts.join('，')}`);
       } else {
-        toast.warning(`CSV导入完成: 成功${result.success}条，跳过${result.skipped}条，${result.errors.length}条错误`);
+        toast.warning(`CSV导入完成: ${parts.join('，')}，${result.errors.length}行错误`);
       }
     } catch (e: any) {
       toast.error(e.message || 'CSV导入失败');
@@ -850,14 +869,20 @@ function SettingsTab() {
             <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Settings className="h-4 w-4 text-gray-500" />系统配置</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* System Config (localStorage) */}
+                {/* System Config (localStorage + server sync for store_name) */}
                 <div className="p-3 bg-violet-50 dark:bg-violet-950/30 rounded-lg border border-violet-200 dark:border-violet-800 space-y-3">
-                  <p className="font-medium text-sm flex items-center gap-2"><Settings className="h-4 w-4 text-violet-600" />本地系统配置</p>
-                  <p className="text-xs text-muted-foreground">这些配置保存在本地浏览器，不会同步到服务器</p>
+                  <p className="font-medium text-sm flex items-center gap-2"><Settings className="h-4 w-4 text-violet-600" />系统配置</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">店铺名称</Label>
-                      <Input value={systemConfig.storeName} onChange={e => setSystemConfig(c => ({ ...c, storeName: e.target.value }))} className="h-8 text-sm" placeholder="翡翠珠宝" />
+                      <Input value={systemConfig.storeName} onChange={e => setSystemConfig(c => ({ ...c, storeName: e.target.value }))} onBlur={() => {
+                        // Sync store name to server config
+                        const serverVal = configs.find(c => c.key === 'store_name')?.value;
+                        if (systemConfig.storeName !== serverVal) {
+                          updateConfig('store_name', systemConfig.storeName);
+                        }
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(systemConfig));
+                      }} className="h-8 text-sm" placeholder="翡翠珠宝" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">默认货币符号</Label>
@@ -882,6 +907,11 @@ function SettingsTab() {
                   <div className="flex items-center gap-2 pt-1">
                     <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-xs" onClick={() => {
                       localStorage.setItem(STORAGE_KEY, JSON.stringify(systemConfig));
+                      // Sync store name to server
+                      const serverVal = configs.find(c => c.key === 'store_name')?.value;
+                      if (systemConfig.storeName !== serverVal) {
+                        updateConfig('store_name', systemConfig.storeName);
+                      }
                       toast.success('设置已保存');
                     }}>
                       <CheckCircle className="h-3 w-3 mr-1" />保存设置
@@ -896,61 +926,38 @@ function SettingsTab() {
                     </Button>
                   </div>
                 </div>
-                {/* Warning days config */}
-                <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                {/* Server-side configs — fully editable */}
+                {configs.map(c => {
+                  const editValue = editConfigs[c.key] ?? c.value;
+                  const isNumeric = ['operating_cost_rate', 'markup_rate', 'warning_days', 'aging_threshold_days'].includes(c.key);
+                  const isPassword = c.key === 'admin_password';
+                  return (
+                  <div key={c.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div>
-                      <p className="font-medium">压货预警天数</p>
-                      <p className="text-xs text-muted-foreground">超过此天数未售出的货品将列入压货预警（看板页面使用）</p>
+                      <p className="font-medium">{c.description || c.key}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{c.key}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type={isPassword ? 'password' : isNumeric ? 'number' : 'text'}
+                        value={editValue}
+                        onChange={e => setEditConfigs(prev => ({ ...prev, [c.key]: e.target.value }))}
+                        onBlur={() => {
+                          if (editValue !== c.value) {
+                            updateConfig(c.key, editValue);
+                          }
+                        }}
+                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                        className={isNumeric ? 'w-24 h-8 text-sm text-right' : 'w-40 h-8 text-sm'}
+                        step={isNumeric ? 'any' : undefined}
+                      />
+                      {c.key === 'warning_days' && <span className="text-sm text-muted-foreground">天</span>}
+                      {c.key === 'operating_cost_rate' && <span className="text-sm text-muted-foreground whitespace-nowrap">({(parseFloat(editValue) * 100).toFixed(0)}%)</span>}
+                      {c.key === 'markup_rate' && <span className="text-sm text-muted-foreground whitespace-nowrap">({(parseFloat(editValue) * 100).toFixed(0)}%)</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Input type="number" value={configs.find(c => c.key === 'warning_days')?.value || '90'} className="w-20 h-8 text-sm text-center"
-                      onBlur={e => {
-                        const val = e.target.value;
-                        if (val && parseInt(val) > 0) {
-                          updateConfig('warning_days', val);
-                        }
-                      }}
-                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    />
-                    <span className="text-sm text-muted-foreground">天</span>
-                  </div>
-                </div>
-                {/* Other configs */}
-                {configs.filter(c => c.key !== 'warning_days').map(c => (
-                  <div key={c.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div><p className="font-medium">{c.description || c.key}</p><p className="text-xs text-muted-foreground font-mono">{c.key}</p></div>
-                    <Input type="text" value={c.value} className="w-32 h-8 text-sm"
-                      onBlur={e => { if (e.target.value !== c.value) updateConfig(c.key, e.target.value); }}
-                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                    />
-                  </div>
-                ))}
-                {/* Counter Preset Quick Pick */}
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="font-medium mb-2">柜台编号快捷参考</p>
-                  <p className="text-xs text-muted-foreground mb-3">点击可复制到剪贴板，方便标准化柜台命名</p>
-                  <div className="flex flex-wrap gap-2">
-                    {['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'].map(counter => (
-                      <button
-                        key={counter}
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(counter).then(() => {
-                            toast.success(`已复制: ${counter}`);
-                          }).catch(() => {
-                            toast.error('复制失败');
-                          });
-                        }}
-                        className="inline-flex items-center justify-center px-3 py-1.5 rounded-full text-sm font-medium bg-background border border-border hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:hover:bg-emerald-950/30 dark:hover:border-emerald-700 dark:hover:text-emerald-300 transition-colors cursor-pointer"
-                      >
-                        {counter}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -1180,7 +1187,7 @@ function SettingsTab() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">快速导入存量货品。必填列: 名称。选填列: SKU(留空自动生成)、材质(按名称匹配，不存在则自动创建)、器型(按名称匹配，不存在则自动创建)、成本价、零售价、柜台、采购日期、产地、证书号、备注。SKU重复时自动跳过。</p>
+              <p className="text-sm text-muted-foreground">快速导入存量货品。<b>必填列: 名称</b>。选填列: 数量(默认1,同一货品创建N件)、SKU(留空自动生成)、材质(按名称匹配,不存在则自动创建)、器型(按名称匹配,不存在则自动创建)、成本价(单价)、零售价、柜台、采购日期、产地、证书号、匹配码(用于关联销售导入)、备注。名称+成本价+证书号相同的货品自动跳过不重复导入。</p>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" className="h-9 text-xs" onClick={handleDownloadCsvTemplate}>
                   <FileDown className="h-3.5 w-3.5 mr-1" />模板下载
@@ -1250,22 +1257,53 @@ function SettingsTab() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-1.5 p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
                       <CheckCircle className="h-4 w-4 text-emerald-600" />
-                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">成功: {csvResult.success}条</span>
+                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">成功: {csvResult.success}件</span>
                     </div>
+                    {(csvResult.duplicated ?? 0) > 0 && (
+                      <div className="flex items-center gap-1.5 p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">重复跳过: {csvResult.duplicated}件</span>
+                      </div>
+                    )}
                     {csvResult.skipped > 0 && (
                       <div className="flex items-center gap-1.5 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                        <Clock className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm font-medium text-amber-700 dark:text-amber-300">跳过: {csvResult.skipped}条</span>
-                        <span className="text-xs text-muted-foreground">(SKU重复)</span>
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <span className="text-sm font-medium text-amber-700 dark:text-amber-300">跳过: {csvResult.skipped}行</span>
                       </div>
                     )}
                     {csvResult.errors.length > 0 && (
                       <div className="flex items-center gap-1.5 p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
                         <XCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-sm font-medium text-red-700 dark:text-red-300">错误: {csvResult.errors.length}条</span>
+                        <span className="text-sm font-medium text-red-700 dark:text-red-300">错误: {csvResult.errors.length}行</span>
                       </div>
                     )}
                   </div>
+                  {/* Auto-created materials/types */}
+                  {csvResult.autoCreated && (csvResult.autoCreated.materials.length > 0 || csvResult.autoCreated.types.length > 0) && (
+                    <div className="p-2 bg-violet-50 dark:bg-violet-950/30 rounded-lg">
+                      <p className="text-xs font-medium text-violet-700 dark:text-violet-300 mb-1">自动创建的字典项</p>
+                      {csvResult.autoCreated.materials.length > 0 && (
+                        <p className="text-xs text-violet-600">材质: {csvResult.autoCreated.materials.join('、')}</p>
+                      )}
+                      {csvResult.autoCreated.types.length > 0 && (
+                        <p className="text-xs text-violet-600">器型: {csvResult.autoCreated.types.join('、')}</p>
+                      )}
+                    </div>
+                  )}
+                  {/* Inferred fields */}
+                  {csvResult.inferred && csvResult.inferred.length > 0 && (
+                    <div className="p-2 bg-sky-50 dark:bg-sky-950/30 rounded-lg">
+                      <p className="text-xs font-medium text-sky-700 dark:text-sky-300 mb-1">从名称推断的字段 (共{csvResult.inferred.length}处)</p>
+                      <div className="max-h-20 overflow-y-auto">
+                        {csvResult.inferred.slice(0, 10).map((inf, i) => (
+                          <p key={i} className="text-xs text-sky-600">第{inf.row}行: 推断{inf.field}={inf.value}</p>
+                        ))}
+                        {csvResult.inferred.length > 10 && (
+                          <p className="text-xs text-muted-foreground">...还有 {csvResult.inferred.length - 10} 处</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {csvResult.errors.length > 0 && (
                     <div className="max-h-40 overflow-y-auto custom-scrollbar">
                       <div className="space-y-1">
@@ -1519,10 +1557,11 @@ function SettingsTab() {
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>• 请先下载模板，按模板格式填写数据后再上传</p>
                 <p>• CSV文件需使用 <code className="px-1 py-0.5 bg-muted rounded text-xs">UTF-8</code> 编码，Excel另存为CSV时选择"CSV UTF-8"</p>
-                <p>• <b>库存导入</b>必填字段：材质、售价；其他字段可选</p>
-                <p>• <b>销售导入</b>必填字段：SKU编号、成交价；销售日期默认为今天</p>
-                <p>• 开启"自动创建"后，系统会自动创建CSV中提到但字典中不存在的材质、器型、标签</p>
-                <p>• 标签字段支持多个标签，用逗号或顿号分隔（如：限定款,热门）</p>
+                <p>• <b>库存导入</b>必填字段：名称；选填数量(默认1)、材质、器型、成本价(单价)、匹配码等；材质/器型可从名称自动推断</p>
+                <p>• <b>销售导入</b>必填字段：名称或SKU编号、成交价；如SKU不存在则按匹配码→名称+成本价匹配，匹配不到自动创建已售货品</p>
+                <p>• <b>匹配码</b>用于关联库存和销售数据：在库存CSV和销售CSV中使用相同的匹配码，系统自动关联</p>
+                <p>• 开启"自动创建"后，系统会自动创建CSV中提到但字典中不存在的材质、器型</p>
+                <p>• 名称+成本价+证书号相同的库存货品自动跳过不重复导入</p>
                 <p>• 建议先少量测试导入，确认无误后再大批量导入</p>
               </div>
             </CardContent>

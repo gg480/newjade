@@ -161,6 +161,32 @@ function ShortcutsHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 // ========== Desktop Top Navigation ==========
 function DesktopNav({ activeTab, onTabChange, className }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [storeName, setStoreName] = useState(() => {
+    try {
+      const stored = localStorage.getItem('jade_system_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.storeName) return parsed.storeName;
+      }
+    } catch {}
+    return '翡翠珠宝';
+  });
+
+  useEffect(() => {
+    // Sync store name from server config
+    let mounted = true;
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(data => {
+        if (mounted && data.code === 0 && Array.isArray(data.data)) {
+          const cfg = data.data.find((c: any) => c.key === 'store_name');
+          if (cfg?.value) setStoreName(cfg.value);
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
   const tabs: { id: TabId; label: string; icon: React.ElementType; title: string; shortcut?: string }[] = [
     { id: 'dashboard', label: '利润看板', icon: LayoutDashboard, title: '利润看板 - 销售统计和数据分析', shortcut: 'Alt+1' },
     { id: 'inventory', label: '库存管理', icon: Package, title: '库存管理 - 货品入库、出库和查询', shortcut: 'Alt+2' },
@@ -178,7 +204,7 @@ function DesktopNav({ activeTab, onTabChange, className }: { activeTab: TabId; o
           <div className="flex items-center h-14">
             <div className="flex items-center mr-8">
               <Gem className="h-5 w-5 text-emerald-600 mr-2 animate-pulse" style={{ animationDuration: '3s' }} />
-              <span className="text-lg font-bold text-emerald-600">玉器进销存</span>
+              <span className="text-lg font-bold text-emerald-600">{storeName}</span>
             </div>
             <div className="flex space-x-1 flex-1">
               {tabs.map(tab => {

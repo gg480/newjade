@@ -12,6 +12,7 @@ async function main() {
 
   // 1. 系统配置
   const configs = [
+    { key: 'store_name', value: '翡翠珠宝', description: '店铺名称' },
     { key: 'operating_cost_rate', value: '0.05', description: '经营成本率' },
     { key: 'markup_rate', value: '0.30', description: '零售价上浮比例' },
     { key: 'aging_threshold_days', value: '90', description: '压货预警天数(旧)' },
@@ -26,7 +27,7 @@ async function main() {
       create: c,
     });
   }
-  console.log('✅ 系统配置已插入/更新 (6条)');
+  console.log('✅ 系统配置已插入/更新 (7条)');
 
   // 2. 材质 (36种) — 含 category 大类
   const materials = [
@@ -66,6 +67,7 @@ async function main() {
     { name: '天河石', category: '水晶', sortOrder: 34 },
     { name: '红绿宝石共生', category: '水晶', sortOrder: 35 },
     { name: '车花透辉石', category: '水晶', sortOrder: 36 },
+    { name: '未分类', category: '其他', sortOrder: 99 },
   ];
   for (const m of materials) {
     await prisma.dictMaterial.upsert({
@@ -87,6 +89,7 @@ async function main() {
     { name: '戒指', specFields: JSON.stringify({ weight: { required: false }, metalWeight: { required: false }, ringSize: { required: true } }), sortOrder: 7 },
     { name: '耳饰', specFields: JSON.stringify({ weight: { required: false } }), sortOrder: 8 },
     { name: '摆件', specFields: JSON.stringify({ weight: { required: false }, size: { required: false } }), sortOrder: 9 },
+    { name: '未分类', specFields: JSON.stringify({ weight: { required: false } }), sortOrder: 99 },
   ];
   for (const t of types) {
     await prisma.dictType.upsert({

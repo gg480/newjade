@@ -17,6 +17,31 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [storeName, setStoreName] = useState(() => {
+    try {
+      const stored = localStorage.getItem('jade_system_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.storeName) return parsed.storeName;
+      }
+    } catch {}
+    return '翡翠珠宝';
+  });
+
+  useEffect(() => {
+    // Sync store name from server config
+    let mounted = true;
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(data => {
+        if (mounted && data.code === 0 && Array.isArray(data.data)) {
+          const cfg = data.data.find((c: any) => c.key === 'store_name');
+          if (cfg?.value) setStoreName(cfg.value);
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
   const [checking, setChecking] = useState(true);
 
   // Check for existing session on mount
@@ -113,7 +138,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-teal-600 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
-              翡翠进销存
+              {storeName}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">请输入管理密码以登录系统</p>
           </CardHeader>

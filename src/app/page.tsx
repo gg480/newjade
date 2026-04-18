@@ -179,19 +179,44 @@ export default function JadeInventoryPage() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState('');
   const [apiLoading, setApiLoading] = useState(false);
+  const [storeName, setStoreName] = useState(() => {
+    try {
+      const stored = localStorage.getItem('jade_system_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.storeName) return parsed.storeName;
+      }
+    } catch {}
+    return '翡翠珠宝';
+  });
+
+  // Sync store name from server config
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(data => {
+        if (mounted && data.code === 0 && Array.isArray(data.data)) {
+          const cfg = data.data.find((c: any) => c.key === 'store_name');
+          if (cfg?.value) setStoreName(cfg.value);
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
 
   // Dynamic page title based on active tab
   useEffect(() => {
     const titleMap: Record<TabId, string> = {
-      dashboard: '看板 - 翡翠珠宝进销存',
-      inventory: '库存管理 - 翡翠珠宝进销存',
-      sales: '销售记录 - 翡翠珠宝进销存',
-      batches: '批次管理 - 翡翠珠宝进销存',
-      customers: '客户管理 - 翡翠珠宝进销存',
-      logs: '操作日志 - 翡翠珠宝进销存',
-      settings: '系统设置 - 翡翠珠宝进销存',
+      dashboard: `看板 - ${storeName}进销存`,
+      inventory: `库存管理 - ${storeName}进销存`,
+      sales: `销售记录 - ${storeName}进销存`,
+      batches: `批次管理 - ${storeName}进销存`,
+      customers: `客户管理 - ${storeName}进销存`,
+      logs: `操作日志 - ${storeName}进销存`,
+      settings: `系统设置 - ${storeName}进销存`,
     };
-    document.title = titleMap[activeTab] || '翡翠珠宝进销存管理系统';
+    document.title = titleMap[activeTab] || `${storeName}进销存管理系统`;
     return () => { document.title = '翡翠珠宝进销存管理系统'; };
   }, [activeTab]);
 
@@ -377,7 +402,7 @@ export default function JadeInventoryPage() {
       <footer className="no-print mt-auto hidden md:block border-t border-border bg-card py-3">
         <div className="container mx-auto px-4 flex items-center justify-between text-sm">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5"><Gem className="h-4 w-4 text-emerald-600" />玉器进销存管理系统</span>
+            <span className="flex items-center gap-1.5"><Gem className="h-4 w-4 text-emerald-600" />{storeName}管理系统</span>
             <div className="w-px h-4 bg-border" />
             <QuickStatsBar />
           </div>
