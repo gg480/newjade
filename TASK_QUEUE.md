@@ -578,7 +578,7 @@ status: 已完成
 
 ### T03-b 新增状态专用 PATCH 路由
 ```
-status: 待执行
+status: 已完成
 依赖: T03-a
 涉及文件:
   - src/app/api/items/[id]/status/route.ts（新建）
@@ -610,7 +610,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T03-b完成(2026-03-05)。新建PATCH /api/items/[id]/status路由，入参priorityTier/shootingStatus/contentStatus（至少传一个）。校验传入值在constants枚举内否则400。shootingStatus从未拍变为其他时自动填firstShotAt，任何shootingStatus变化更新lastShotAt。contentStatus变为已发布或多平台发布时自动填firstPublishAt+更新lastPublishAt。写入OperationLog(action=update_status)。
 
 ---
 
