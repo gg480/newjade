@@ -23,16 +23,21 @@ RUN npx prisma generate && \
 # ---- Stage 3: Production ----
 FROM node:22-alpine AS runner
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Install su-exec for privilege dropping (lightweight sudo alternative)
+RUN apk add --no-cache su-exec
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
 ENV PORT=5000
 ENV HOSTNAME="0.0.0.0"
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# PUID/PGID for NAS permission compatibility
+# Default 0 = run as root (simplest, no permission issues)
+# Set to your NAS user id (e.g. 1000:1000) for tighter security
+ENV PUID=0
+ENV PGID=0
 
 # Copy application files
 COPY --from=builder /app/node_modules ./node_modules
@@ -43,20 +48,18 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.ts ./
 
-# Create data directories with write permissions
+# Create data directories and set permissions
 RUN mkdir -p /app/data/db /app/data/images /app/data/logs && \
-    chown -R nextjs:nodejs /app/data
+    chmod -R 777 /app/data
 
 # Copy and set up entrypoint script
 COPY --from=builder /app/scripts/entrypoint.sh /app/scripts/entrypoint.sh
-RUN chmod +x /app/scripts/entrypoint.sh && \
-    chown nextjs:nodejs /app/scripts/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint.sh
 
 # Single volume for all persistent data (db + images + logs)
 VOLUME ["/app/data"]
 
-USER nextjs
-
+# Container starts as root (for chown/permission fix), entrypoint drops to PUID if set
 EXPOSE 5000
 
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]

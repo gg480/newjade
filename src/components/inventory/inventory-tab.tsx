@@ -1067,7 +1067,7 @@ function InventoryTab() {
                           onCheckedChange={() => toggleSelect(item.id)}
                         />
                       </TableCell>
-                                      <TableCell className="w-12 px-2">
+                                      <TableCell className="w-12 px-2" onClick={e => e.stopPropagation()}>
                         {item.coverImage ? (
                           <div className="relative group/img">
                             <button
@@ -1190,7 +1190,7 @@ function InventoryTab() {
             <Card key={item.id} className={`hover:shadow-md transition-shadow ${selectedIds.has(item.id) ? 'ring-2 ring-emerald-400/50 bg-emerald-50 dark:bg-emerald-950/20' : ''} cursor-pointer`} onClick={() => setSelectedItemId(item.id)}>
               <CardContent className="p-4 space-y-3">
                 {/* Header: Thumbnail + Checkbox + SKU + Status */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
                   {item.coverImage ? (
                     <button
                       type="button"

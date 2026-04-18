@@ -16,9 +16,9 @@ services:
     environment:
       - DATA_DIR=/app/data
       - NODE_ENV=production
+      # PUID/PGID for NAS permission compatibility
+      # Default 0 = run as root (simplest, works on all NAS)
+      # Set to your NAS user/group id for tighter security (e.g. 1000:1000)
+      - PUID=0
+      - PGID=0
     restart: unless-stopped
-
-# Alternative: use a named volume instead of local directory
-# volumes:
-#   jade-data:
-#     driver: local
