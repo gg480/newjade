@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
-import { PRICE_RANGES } from '@/lib/constants';
+import { PRICE_RANGES, PRIORITY_TIERS } from '@/lib/constants';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -141,7 +141,7 @@ async function generateSkuCode(materialId: number, typeId?: number): Promise<str
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, craftId, era, mainColor, subColor, priceRange, storyPoints, operationNote, extraData, notes, supplierId, purchaseDate, tagIds, sellingPointIds, audienceIds, spec } = body;
+  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, craftId, era, mainColor, subColor, priceRange, storyPoints, operationNote, extraData, notes, supplierId, purchaseDate, tagIds, sellingPointIds, audienceIds, priorityTier, spec } = body;
 
   try {
     // For batch items, get materialId from batch if not provided
@@ -190,6 +190,9 @@ export async function POST(req: Request) {
     // Validate new content fields
     if (priceRange && !(PRICE_RANGES as readonly string[]).includes(priceRange)) {
       return NextResponse.json({ code: 400, data: null, message: '价格带只接受: 走量/中档/精品' }, { status: 400 });
+    }
+    if (priorityTier && !(PRIORITY_TIERS as readonly string[]).includes(priorityTier)) {
+      return NextResponse.json({ code: 400, data: null, message: `档位只接受: ${PRIORITY_TIERS.join('/')}` }, { status: 400 });
     }
     if (storyPoints && storyPoints.length > 5000) {
       return NextResponse.json({ code: 400, data: null, message: '故事点不能超过5000字符' }, { status: 400 });
@@ -246,6 +249,7 @@ export async function POST(req: Request) {
         supplierId: supplierId ? parseInt(supplierId) : null,
         purchaseDate: purchaseDate || null,
         status: 'in_stock',
+        priorityTier: priorityTier || '未定',
         ...(tagIds?.length ? {
           tags: { connect: tagIds.map((id: any) => ({ id: parseInt(id) })) },
         } : {}),

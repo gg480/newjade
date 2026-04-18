@@ -96,20 +96,37 @@ function ContentAttributesTab({ form, setForm, crafts, sellingPoints, audiences 
           </Select>
         </div>
       </div>
-      {/* 第四组：价格带 */}
-      <div className="space-y-1">
-        <Label className="text-xs">价格带</Label>
-        <Select value={form.priceRange || '_none'} onValueChange={v => setForm({ ...form, priceRange: v === '_none' ? '' : v })}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder="选择价格带" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="_none">不选择</SelectItem>
-            <SelectItem value="走量">走量</SelectItem>
-            <SelectItem value="中档">中档</SelectItem>
-            <SelectItem value="精品">精品</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* 第四组：价格带 / 档位 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">价格带</Label>
+          <Select value={form.priceRange || '_none'} onValueChange={v => setForm({ ...form, priceRange: v === '_none' ? '' : v })}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="选择价格带" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">不选择</SelectItem>
+              <SelectItem value="走量">走量</SelectItem>
+              <SelectItem value="中档">中档</SelectItem>
+              <SelectItem value="精品">精品</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">档位</Label>
+          <Select value={form.priorityTier || '_none'} onValueChange={v => setForm({ ...form, priorityTier: v === '_none' ? '' : v })}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="自动/手动选择" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">不选择</SelectItem>
+              <SelectItem value="A">A (≥5000)</SelectItem>
+              <SelectItem value="B">B (500-4999)</SelectItem>
+              <SelectItem value="C">C (&lt;500)</SelectItem>
+              <SelectItem value="未定">未定</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       {/* 第五组：卖点（多选） */}
       {sellingPoints.length > 0 && (
@@ -198,7 +215,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
     mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '',
     craftId: '', sellingPointIds: [] as number[], audienceIds: [] as number[],
-    tagIds: [] as number[],
+    tagIds: [] as number[], priorityTier: '',
   });
 
   const [batchForm, setBatchForm] = useState({
@@ -206,7 +223,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
     mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '',
     craftId: '', sellingPointIds: [] as number[], audienceIds: [] as number[],
-    tagIds: [] as number[],
+    tagIds: [] as number[], priorityTier: '',
   });
 
   useEffect(() => {
@@ -514,8 +531,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           audienceIds: highValueForm.audienceIds.length > 0 ? highValueForm.audienceIds : undefined,
           spec: Object.keys(spec).length > 0 ? spec : undefined,
           tagIds: highValueForm.tagIds.length > 0 ? highValueForm.tagIds : undefined,
+          priorityTier: highValueForm.priorityTier || undefined,
         });
-        toast.success('高货入库成功！');
       } else {
         if (!batchForm.batchId) { toast.error('请选择批次'); setSaving(false); return; }
         if (!batchForm.sellingPrice) { toast.error('请输入售价'); setSaving(false); return; }
@@ -541,11 +558,11 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           audienceIds: batchForm.audienceIds.length > 0 ? batchForm.audienceIds : undefined,
           spec: Object.keys(spec).length > 0 ? spec : undefined,
           tagIds: batchForm.tagIds.length > 0 ? batchForm.tagIds : undefined,
+          priorityTier: batchForm.priorityTier || undefined,
         });
-        toast.success('通货入库成功！');
       }
-      setHighValueForm({ materialId: '', typeId: '', costPrice: 0, sellingPrice: 0, name: '', origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', craftId: '', sellingPointIds: [], audienceIds: [], tagIds: [] });
-      setBatchForm({ batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', craftId: '', sellingPointIds: [], audienceIds: [], tagIds: [] });
+      setHighValueForm({ materialId: '', typeId: '', costPrice: 0, sellingPrice: 0, name: '', origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', craftId: '', sellingPointIds: [], audienceIds: [], tagIds: [], priorityTier: '' });
+      setBatchForm({ batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', mainColor: '', subColor: '', era: '', priceRange: '', storyPoints: '', operationNote: '', craftId: '', sellingPointIds: [], audienceIds: [], tagIds: [], priorityTier: '' });
       setMaterialCategory('');
       setMaterialSubType('');
       setBatchMaterialCategory('');
@@ -630,7 +647,15 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                     </Select>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1"><Label className="text-xs">成本价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.costPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
+                    <div className="space-y-1"><Label className="text-xs">成本价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.costPrice || ''} onChange={e => {
+                      const cp = parseFloat(e.target.value) || 0;
+                      // Auto-fill priorityTier based on costPrice (only if not manually set or matches old tier)
+                      const currentTier = highValueForm.priorityTier;
+                      const autoTier = cp >= 5000 ? 'A' : cp >= 500 ? 'B' : cp > 0 ? 'C' : '未定';
+                      const prevAutoTier = highValueForm.costPrice >= 5000 ? 'A' : highValueForm.costPrice >= 500 ? 'B' : highValueForm.costPrice > 0 ? 'C' : '未定';
+                      const shouldAutoFill = !currentTier || currentTier === prevAutoTier || currentTier === '未定';
+                      setHighValueForm(f => ({ ...f, costPrice: cp, ...(shouldAutoFill ? { priorityTier: autoTier } : {}) }));
+                    }} className="h-9" /></div>
                     <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={highValueForm.sellingPrice || ''} onChange={e => setHighValueForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
                   </div>
                   {/* Pricing Calculator */}
