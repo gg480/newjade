@@ -135,7 +135,7 @@ async function generateSkuCode(materialId: number, typeId?: number): Promise<str
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, craftId, era, mainColor, subColor, priceRange, storyPoints, operationNote, extraData, notes, supplierId, purchaseDate, tagIds, spec } = body;
+  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, craftId, era, mainColor, subColor, priceRange, storyPoints, operationNote, extraData, notes, supplierId, purchaseDate, tagIds, sellingPointIds, audienceIds, spec } = body;
 
   try {
     // For batch items, get materialId from batch if not provided
@@ -243,11 +243,21 @@ export async function POST(req: Request) {
         ...(tagIds?.length ? {
           tags: { connect: tagIds.map((id: any) => ({ id: parseInt(id) })) },
         } : {}),
+        ...(sellingPointIds?.length ? {
+          sellingPoints: {
+            create: sellingPointIds.map((spId: any) => ({ sellingPointId: parseInt(spId) })),
+          },
+        } : {}),
+        ...(audienceIds?.length ? {
+          audiences: {
+            create: audienceIds.map((aId: any) => ({ audienceId: parseInt(aId) })),
+          },
+        } : {}),
         ...(specData && Object.keys(specData).length > 0 ? {
           spec: { create: specData },
         } : {}),
       },
-      include: { material: true, type: true, spec: true, tags: true },
+      include: { material: true, type: true, spec: true, tags: true, sellingPoints: { include: { sellingPoint: true } }, audiences: { include: { audience: true } } },
     });
 
     // Log create_item

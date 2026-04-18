@@ -407,7 +407,7 @@ status: 已完成
 
 ### T02-d 新建卖点和人群字典表及 API
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T02-a 完成（与 T02-b/T02-c 可并行）
 涉及文件:
   - prisma/schema.prisma
@@ -478,13 +478,13 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T02-d完成(2026-04-21)。DictSellingPoint/ItemSellingPoint/DictAudience/ItemAudience模型已在schema中。已执行DATABASE_URL="file:./db/custom.db" npx prisma db push成功。seed-base.ts已含9种默认卖点(送礼/自戴/收藏/投资/孤品/性价比/名家出品/完美无瑕/稀有料子)和8种默认人群(年轻女性/中年女性/中年男性/资深藏家/新手入门/送长辈/送爱人/送朋友)。4个API路由已存在：GET/POST /api/dicts/selling-points、PATCH/DELETE /api/dicts/selling-points/[id]、GET/POST /api/dicts/audiences、PATCH/DELETE /api/dicts/audiences/[id]。
 
 ---
 
 ### T02-e item-create-dialog 卖点和人群多选
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T02-d
 涉及文件:
   - src/components/inventory/item-create-dialog.tsx
@@ -517,7 +517,7 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T02-e完成(2026-04-21)。item-create-dialog已有卖点和人群多选Checkbox组件（ContentAttributesTab），highValueForm和batchForm均含sellingPointIds/audienceIds数组。POST /api/items已支持sellingPointIds/audienceIds，创建Item后批量插入ItemSellingPoint/ItemAudience关联。PUT /api/items/[id]已支持sellingPointIds/audienceIds的replace语义（先删除旧关联再插入新关联）。GET /api/items/[id]响应已包含sellingPoints:[{id,name}]和audiences:[{id,name}]。item-detail-dialog内容属性区域已显示卖点和目标人群。
 
 ---
 
@@ -527,7 +527,7 @@ status: 阻塞-依赖未完成
 
 ### T03-a schema 新增状态字段和 constants
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T01-a 完成
 涉及文件:
   - prisma/schema.prisma
@@ -858,9 +858,9 @@ M2（拍摄任务/照片索引/NAS扫描）和 M10（认知底座）的任务在
 ## 进度统计（agent 每次启动时更新这一行）
 
 ```
-最后更新: 2026-04-19
-已完成: 11 / 19 个任务
+最后更新: 2026-04-21
+已完成: 13 / 19 个任务
 当前正在执行: 无
-下一个待执行: T02-d
+下一个待执行: T03-a
 预计 M1 完成: ____
 ```

@@ -16,6 +16,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       tags: true,
       images: true,
       saleRecords: { include: { customer: true } },
+      sellingPoints: { include: { sellingPoint: true } },
+      audiences: { include: { audience: true } },
     },
   });
   if (!item || item.isDeleted) {
@@ -41,6 +43,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       supplierName,
       ageDays,
       coverImage: item.images.find(i => i.isCover)?.filename || item.images[0]?.filename || null,
+      sellingPoints: item.sellingPoints?.map(sp => ({ id: sp.sellingPoint.id, name: sp.sellingPoint.name })) || [],
+      audiences: item.audiences?.map(a => ({ id: a.audience.id, name: a.audience.name })) || [],
     },
     message: 'ok',
   });
@@ -49,7 +53,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { tagIds, spec, ...data } = body;
+  const { tagIds, sellingPointIds, audienceIds, spec, ...data } = body;
 
   try {
     // Validate new content fields
@@ -71,6 +75,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       await db.itemTag.deleteMany({ where: { itemId: parseInt(id) } });
       if (tagIds.length > 0) {
         await db.itemTag.createMany({ data: tagIds.map((tid: number) => ({ itemId: parseInt(id), tagId: tid })) });
+      }
+    }
+
+    // Update selling points if provided (replace semantics)
+    if (sellingPointIds !== undefined) {
+      await db.itemSellingPoint.deleteMany({ where: { itemId: parseInt(id) } });
+      if (sellingPointIds.length > 0) {
+        await db.itemSellingPoint.createMany({ data: sellingPointIds.map((spId: number) => ({ itemId: parseInt(id), sellingPointId: spId })) });
+      }
+    }
+
+    // Update audiences if provided (replace semantics)
+    if (audienceIds !== undefined) {
+      await db.itemAudience.deleteMany({ where: { itemId: parseInt(id) } });
+      if (audienceIds.length > 0) {
+        await db.itemAudience.createMany({ data: audienceIds.map((aId: number) => ({ itemId: parseInt(id), audienceId: aId })) });
       }
     }
 
@@ -114,7 +134,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         batchId: data.batchId != null ? parseInt(data.batchId) : undefined,
         craftId: data.craftId != null ? parseInt(data.craftId) : undefined,
       },
-      include: { material: true, type: true, spec: true, tags: true },
+      include: { material: true, type: true, spec: true, tags: true, sellingPoints: { include: { sellingPoint: true } }, audiences: { include: { audience: true } } },
     });
 
     // Log edit_item with changed fields

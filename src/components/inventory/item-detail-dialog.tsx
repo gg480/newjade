@@ -281,7 +281,9 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                   { label: '经营笔记（私用）', value: item.operationNote, preWrap: true, privateNote: true },
                 ];
                 const nonEmpty = contentFields.filter(f => f.value);
-                if (nonEmpty.length === 0) return null;
+                const hasSellingPoints = item.sellingPoints && item.sellingPoints.length > 0;
+                const hasAudiences = item.audiences && item.audiences.length > 0;
+                if (nonEmpty.length === 0 && !hasSellingPoints && !hasAudiences) return null;
                 return (
                   <>
                     <Separator />
@@ -294,6 +296,18 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                             <span className={`text-sm ${f.preWrap ? 'whitespace-pre-wrap' : ''}`}>{f.value}</span>
                           </div>
                         ))}
+                        {hasSellingPoints && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">卖点：</span>
+                            <span className="text-sm">{item.sellingPoints.map((sp: any) => sp.name).join('、')}</span>
+                          </div>
+                        )}
+                        {hasAudiences && (
+                          <div>
+                            <span className="text-sm text-muted-foreground">目标人群：</span>
+                            <span className="text-sm">{item.audiences.map((a: any) => a.name).join('、')}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>
