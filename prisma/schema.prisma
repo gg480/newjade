@@ -151,6 +151,14 @@ model Item {
   origin        String?
   counter       Int?
   certNo        String?  @map("cert_no")
+  craftId       Int?     @map("craft_id")      // 工艺字典外键
+  era           String?                        // 年代款式
+  mainColor     String?  @map("main_color")    // 主色
+  subColor      String?  @map("sub_color")     // 副色
+  priceRange    String?  @map("price_range")   // 价格带：走量/中档/精品
+  storyPoints   String?  @map("story_points")  // 故事点（长文本）
+  operationNote String?  @map("operation_note")// 经营笔记（长文本，AI不读）
+  extraData     String?  @map("extra_data")    // JSON扩展预留字段
   notes         String?
   supplierId    Int?     @map("supplier_id")
   status        String   @default("in_stock") // in_stock / sold / returned
@@ -173,6 +181,7 @@ model Item {
   @@index([status])
   @@index([materialId])
   @@index([batchId])
+  @@index([priceRange])
   @@map("items")
 }
 

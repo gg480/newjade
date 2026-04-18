@@ -88,7 +88,7 @@ status: 已完成
 
 ### T01-a Prisma schema 新增商品内容属性字段
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T00-a, T00-b 完成后开始
 涉及文件:
   - prisma/schema.prisma
@@ -124,13 +124,13 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T01-a完成(2026-04-19)。Item model新增8个可空字段(craftId/era/mainColor/subColor/priceRange/storyPoints/operationNote/extraData)，origin和certNo已存在故跳过。新增@@index([priceRange])。已执行npx prisma db push成功。
 
 ---
 
 ### T01-b 更新 Item 创建 API 接受新字段
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T01-a
 涉及文件:
   - src/app/api/items/route.ts
@@ -164,7 +164,7 @@ status: 阻塞-依赖未完成
 
 ### T01-c 更新 Item 编辑 API 接受新字段
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T01-b
 涉及文件:
   - src/app/api/items/[id]/route.ts
@@ -188,7 +188,7 @@ status: 阻塞-依赖未完成
 
 ### T01-d 更新 item-create-dialog 显示新字段
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T01-c
 涉及文件:
   - src/components/inventory/item-create-dialog.tsx
@@ -235,7 +235,7 @@ status: 阻塞-依赖未完成
 
 ### T01-e 更新 item-detail-dialog 展示新字段
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T01-d
 涉及文件:
   - src/components/inventory/item-detail-dialog.tsx
@@ -265,7 +265,7 @@ status: 阻塞-依赖未完成
 
 ### T01-f 新增 constants.ts 枚举常量
 ```
-status: 阻塞-依赖未完成
+status: 待执行
 依赖: T01-b
 涉及文件:
   - src/lib/constants.ts（不存在则新建）
@@ -859,8 +859,8 @@ M2（拍摄任务/照片索引/NAS扫描）和 M10（认知底座）的任务在
 
 ```
 最后更新: 2026-04-19
-已完成: 2 / 19 个任务
-当前正在执行: T01-a
-下一个待执行: T01-a
+已完成: 3 / 19 个任务
+当前正在执行: T01-b
+下一个待执行: T01-b
 预计 M1 完成: ____
 ```
