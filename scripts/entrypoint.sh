@@ -86,9 +86,9 @@ else
   
   # Seed base config (materials, types, tags, system settings, metal prices)
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} tsx prisma/seed-base.ts 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
+    ${RUN_AS} node prisma/seed-base.js 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
   else
-    tsx prisma/seed-base.ts 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
+    node prisma/seed-base.js 2>/dev/null || echo "[WARN] Seed base data failed, you may need to run it manually"
   fi
   echo "[INFO] Base configuration data seeded"
 fi

@@ -20,12 +20,18 @@ COPY . .
 RUN npx prisma generate && \
     pnpm build
 
+# Pre-compile seed script to JS (no tsx needed at runtime)
+RUN npx esbuild prisma/seed-base.ts \
+    --bundle --platform=node --format=cjs \
+    --outfile=prisma/seed-base.js \
+    --external:@prisma/client
+
 # ---- Stage 3: Production (minimal) ----
 FROM node:22-alpine AS runner
 
-# Install su-exec for privilege dropping + prisma CLI + tsx for seed
+# Install su-exec for privilege dropping + prisma CLI for db push
 RUN apk add --no-cache su-exec && \
-    npm install -g prisma tsx
+    npm install -g prisma
 
 WORKDIR /app
 
@@ -42,7 +48,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 # Copy public folder
 COPY --from=builder /app/public ./public
-# Copy Prisma schema + seed for runtime db init
+# Copy Prisma schema + compiled seed for runtime db init
 COPY --from=builder /app/prisma ./prisma
 # Copy entrypoint script
 COPY --from=builder /app/scripts/entrypoint.sh /app/scripts/entrypoint.sh
