@@ -54,5 +54,5 @@ USER nextjs
 
 EXPOSE 5000
 
-# Initialize database on first run, then start server
-CMD ["sh", "-c", "npx prisma db push --skip-generate 2>/dev/null; pnpm run start"]
+# Initialize database schema + base config only (NO demo/test data), then start server
+CMD ["sh", "-c", "npx prisma db push --skip-generate 2>/dev/null && npx tsx prisma/seed-base.ts 2>/dev/null; pnpm run start"]

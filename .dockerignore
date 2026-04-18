@@ -10,3 +10,11 @@ skills/
 .z-ai-config
 coze-cli
 app.log
+db/
+prisma/seed-demo.ts
+prisma/seed-business.ts
+public/images/
+tests/
+CHANGELOG.md
+AGENTS.md
+docker-compose.yml
