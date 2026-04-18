@@ -136,6 +136,7 @@ export const itemsApi = {
   updateStatus: (id: number, data: { priorityTier?: string; shootingStatus?: string; contentStatus?: string }) =>
     request<any>(`/items/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
   getStatusSummary: () => request<any>('/items/stats/status-summary'),
+  exportForAI: (id: number) => request<any>(`/items/${id}/export-for-ai`),
 };
 
 // ========== Sales ==========
