@@ -188,7 +188,7 @@ status: 已完成
 
 ### T01-d 更新 item-create-dialog 显示新字段
 ```
-status: 待执行
+status: 已完成
 依赖: T01-c
 涉及文件:
   - src/components/inventory/item-create-dialog.tsx
@@ -229,7 +229,7 @@ status: 待执行
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T01-d完成(2026-04-19)。新增Tabs组件(基础信息/内容属性)。「内容属性」Tab包含：主色/副色、产地/年代款式、证书编号/价格带(Select)、故事点(Textarea 4行)、经营笔记(Textarea 3行)。产地和证书编号从基础信息Tab移到内容属性Tab。两种模式(高货/通货)均支持。表单提交时新字段加入API请求body。
 
 ---
 
