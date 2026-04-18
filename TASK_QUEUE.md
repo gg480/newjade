@@ -726,7 +726,7 @@ status: 已完成
 
 ### T04-a 新建单 SKU 导出 API
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T02-e, T03-a
 涉及文件:
   - src/app/api/items/[id]/export-for-ai/route.ts（新建）
@@ -784,13 +784,13 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T04-a完成(2026-03-05)。新建GET /api/items/[id]/export-for-ai路由，返回结构化JSON(中文字段名)。包含SKU编码/商品名称/材质大类/材质细类/器型/工艺/产地/年代款式/证书编号/主色/副色/尺寸/重量/价格带/建议售价/卖点标签/目标人群/故事点/图片(主图+所有图片)/状态(档位/拍摄状态/内容状态)/最后更新。不返回operationNote和extraData。所有字段无值时返回null而非undefined。commit: 059a779
 
 ---
 
 ### T04-b 列表页新增"导出 AI 喂料"按钮
 ```
-status: 阻塞-依赖未完成
+status: 已完成
 依赖: T04-a
 涉及文件:
   - src/components/inventory/item-detail-dialog.tsx
@@ -814,7 +814,7 @@ status: 阻塞-依赖未完成
   - 更新 CHANGELOG.md
   - status=已完成
 ```
-备注: ___
+备注: T04-b完成(2026-03-05)。api.ts新增itemsApi.exportForAI(id)方法。item-detail-dialog.tsx底部新增"复制AI喂料"(Copy图标)和"下载JSON"(Download图标)两个按钮。复制按钮调用exportForAI后JSON.stringify(null,2)写入剪贴板+toast提示。下载按钮同上但触发{SKU编码}.json文件下载。commit: 9b206f3
 
 ---
 
@@ -859,8 +859,8 @@ M2（拍摄任务/照片索引/NAS扫描）和 M10（认知底座）的任务在
 
 ```
 最后更新: 2026-03-05
-已完成: 18 / 19 个任务
+已完成: 20 / 21 个任务
 当前正在执行: 无
-下一个待执行: T04-a
+下一个待执行: T04-z (M1整体验收)
 预计 M1 完成: ____
 ```
