@@ -57,3 +57,6 @@ server.log
 /skills/db/custom.db
 db/*.db-journal
 db/*.db-wal
+prisma/db/*.db
+prisma/db/*.db-journal
+prisma/prisma/
