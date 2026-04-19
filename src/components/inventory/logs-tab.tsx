@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { logsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { EmptyState, LoadingSkeleton } from './shared';
@@ -107,32 +107,38 @@ function LogsTab() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  const fetchLogs = useCallback(async (page = pagination.page) => {
-    setLoading(true);
-    try {
-      const params: Record<string, any> = { page, size: 20 };
-      if (actionFilter) params.action = actionFilter;
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
-      if (searchText.trim()) params.search = searchText.trim();
-      const data = await logsApi.getLogs(params);
-      setLogs(data?.items || []);
-      setPagination(data?.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-    } catch {
-      toast.error('加载操作日志失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, actionFilter, startDate, endDate, searchText]);
+  // Refresh key for manual reload triggers
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  // Auto-load logs on mount and when deps change
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const params: Record<string, any> = { page: pagination.page, size: 20 };
+        if (actionFilter) params.action = actionFilter;
+        if (startDate) params.start_date = startDate;
+        if (endDate) params.end_date = endDate;
+        if (searchText.trim()) params.search = searchText.trim();
+        const data = await logsApi.getLogs(params);
+        if (!cancelled) {
+          setLogs(data?.items || []);
+          setPagination(data?.pagination || { total: 0, page: 1, size: 20, pages: 0 });
+        }
+      } catch { if (!cancelled) toast.error('加载操作日志失败'); } finally { if (!cancelled) setLoading(false); }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [pagination.page, actionFilter, startDate, endDate, searchText, refreshKey]);
 
   // Auto refresh every 10s
   useEffect(() => {
     if (!autoRefresh) return;
-    const timer = setInterval(() => fetchLogs(pagination.page), 10000);
+    const timer = setInterval(() => refresh(), 10000);
     return () => clearInterval(timer);
-  }, [autoRefresh, fetchLogs, pagination.page]);
+  }, [autoRefresh]);
 
   // Count active filters
   const activeFilterCount = [
@@ -144,7 +150,8 @@ function LogsTab() {
 
   function handleFilter() {
     setPagination(p => ({ ...p, page: 1 }));
-    fetchLogs(1);
+    setPagination(p => ({ ...p, page: 1 }));
+    refresh();
   }
 
   function handleReset() {
@@ -303,7 +310,7 @@ function LogsTab() {
                 <Clock className="h-3 w-3 mr-1" />
                 {autoRefresh ? '自动刷新中' : '自动刷新'}
               </Button>
-              <Button size="sm" variant="outline" className="h-9" onClick={() => fetchLogs(pagination.page)}>
+              <Button size="sm" variant="outline" className="h-9" onClick={() => refresh()}>
                 <RefreshCw className="h-3 w-3" />
               </Button>
             </div>
@@ -418,7 +425,7 @@ function LogsTab() {
       )}
 
       {/* Pagination */}
-      <Pagination page={pagination.page} pages={pagination.pages} onPageChange={p => { setPagination(prev => ({ ...prev, page: p })); fetchLogs(p); }} />
+      <Pagination page={pagination.page} pages={pagination.pages} onPageChange={p => { setPagination(prev => ({ ...prev, page: p })); }} />
     </div>
   );
 }

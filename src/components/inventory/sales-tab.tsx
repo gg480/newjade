@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { salesApi, exportApi, dashboardApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton } from './shared';
@@ -97,19 +97,31 @@ function SalesTab() {
   const [sparklineData, setSparklineData] = useState<any[]>([]);
   const [sparkLoading, setSparkLoading] = useState(true);
 
-  const fetchSales = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = { page: pagination.page, size: pagination.size };
-      if (filters.channel) params.channel = filters.channel;
-      if (filters.startDate) params.start_date = filters.startDate;
-      if (filters.endDate) params.end_date = filters.endDate;
-      if (filters.keyword) params.keyword = filters.keyword;
-      const data = await salesApi.getSales(params);
-      setSales(data.items || []);
-      setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-    } catch { toast.error('加载销售记录失败'); } finally { setLoading(false); }
-  }, [pagination.page, pagination.size, filters]);
+  // Refresh key for manual reload triggers (create, return, search, etc.)
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
+
+  // Auto-load sales data on mount and when deps change
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const params: any = { page: pagination.page, size: pagination.size };
+        if (filters.channel) params.channel = filters.channel;
+        if (filters.startDate) params.start_date = filters.startDate;
+        if (filters.endDate) params.end_date = filters.endDate;
+        if (filters.keyword) params.keyword = filters.keyword;
+        const data = await salesApi.getSales(params);
+        if (!cancelled) {
+          setSales(data.items || []);
+          setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
+        }
+      } catch { if (!cancelled) toast.error('加载销售记录失败'); } finally { if (!cancelled) setLoading(false); }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [pagination.page, pagination.size, refreshKey]);
 
   // Fetch today's stats separately
   useEffect(() => {
@@ -128,26 +140,27 @@ function SalesTab() {
     fetchTodayStats();
   }, []);
 
-  const fetchSparkline = useCallback(async () => {
-    setSparkLoading(true);
-    try {
-      const trend = await dashboardApi.getTrend({ months: 1 });
-      if (trend && trend.length > 0) {
-        setSparklineData(trend.map((t: any) => ({
-          date: t.yearMonth || t.date || t.label,
-          revenue: t.revenue || 0,
-          profit: t.profit || 0,
-        })));
-      } else {
-        setSparklineData([]);
-      }
-    } catch {
-      setSparklineData([]);
-    } finally { setSparkLoading(false); }
+  // Sparkline data
+  useEffect(() => {
+    let cancelled = false;
+    const loadSparkline = async () => {
+      setSparkLoading(true);
+      try {
+        const trend = await dashboardApi.getTrend({ months: 1 });
+        if (!cancelled && trend && trend.length > 0) {
+          setSparklineData(trend.map((t: any) => ({
+            date: t.yearMonth || t.date || t.label,
+            revenue: t.revenue || 0,
+            profit: t.profit || 0,
+          })));
+        } else if (!cancelled) {
+          setSparklineData([]);
+        }
+      } catch { if (!cancelled) setSparklineData([]); } finally { if (!cancelled) setSparkLoading(false); }
+    };
+    loadSparkline();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { fetchSales(); }, [fetchSales]);
-  useEffect(() => { fetchSparkline(); }, [fetchSparkline]);
 
   if (loading && sales.length === 0) return <LoadingSkeleton />;
 
@@ -279,7 +292,7 @@ function SalesTab() {
       });
       toast.success(`退货成功！已退款 ¥${returnForm.refundAmount.toFixed(2)}`);
       setReturnDialog({ open: false, sale: null });
-      fetchSales();
+      refresh();
     } catch (e: any) { toast.error(e.message || '退货失败'); }
   }
 
@@ -443,7 +456,7 @@ function SalesTab() {
             <div className="space-y-1"><Label className="text-xs">开始日期</Label><Input type="date" value={filters.startDate} onChange={e => { setFilters(f => ({ ...f, startDate: e.target.value })); setDatePreset('custom'); }} className="h-9" /></div>
             <div className="space-y-1"><Label className="text-xs">结束日期</Label><Input type="date" value={filters.endDate} onChange={e => { setFilters(f => ({ ...f, endDate: e.target.value })); setDatePreset('custom'); }} className="h-9" /></div>
             <div className="flex items-end gap-2">
-              <Button size="sm" onClick={() => { setPagination(p => ({ ...p, page: 1 })); fetchSales(); }} className="h-9"><Search className="h-3 w-3 mr-1" />搜索</Button>
+              <Button size="sm" onClick={() => { setPagination(p => ({ ...p, page: 1 })); refresh(); }} className="h-9"><Search className="h-3 w-3 mr-1" />搜索</Button>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -772,7 +785,7 @@ function SalesTab() {
       </div>
 
       {/* Bundle Sale Dialog */}
-      <BundleSaleDialog open={showBundle} onOpenChange={setShowBundle} onSuccess={fetchSales} />
+      <BundleSaleDialog open={showBundle} onOpenChange={setShowBundle} onSuccess={refresh} />
 
       {/* Enhanced Return Dialog */}
       <Dialog open={returnDialog.open} onOpenChange={open => setReturnDialog({ open, sale: open ? returnDialog.sale : null })}>

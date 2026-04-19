@@ -312,7 +312,11 @@ function DashboardTab() {
     }
   }, [minDays, getDateRange, warningDaysLoaded]);
 
-  useEffect(() => { if (warningDaysLoaded) fetchData(); }, [fetchData, warningDaysLoaded]);
+  // Refresh key for manual reload triggers
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
+
+  useEffect(() => { if (warningDaysLoaded) fetchData(); }, [warningDaysLoaded, refreshKey, distFilter, customStart, customEnd, minDays]);
 
   // Abort pending requests on unmount
   useEffect(() => {
@@ -324,31 +328,27 @@ function DashboardTab() {
   }, []);
 
   // Fetch recent sales (separate, lighter call)
-  const fetchRecentSales = useCallback(async () => {
-    try {
-      const res = await fetch('/api/dashboard/recent-sales');
-      const json = await res.json();
-      if (json.code === 0) {
-        setRecentSales(json.data || []);
-      }
-    } catch {
-      // silently fail
-    }
-  }, []);
-
   useEffect(() => {
-    fetchRecentSales();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchRecentSales, 30000);
-    return () => clearInterval(interval);
-  }, [fetchRecentSales]);
+    let cancelled = false;
+    const loadRecentSales = async () => {
+      try {
+        const res = await fetch('/api/dashboard/recent-sales');
+        const json = await res.json();
+        if (!cancelled && json.code === 0) {
+          setRecentSales(json.data || []);
+        }
+      } catch { /* silently fail */ }
+    };
+    loadRecentSales();
+    const interval = setInterval(loadRecentSales, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   const handleManualRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData().finally(() => {
-      setTimeout(() => setRefreshing(false), 600);
-    });
-  }, [fetchData]);
+    refresh();
+    setTimeout(() => setRefreshing(false), 600);
+  }, [refresh]);
 
   // ===== Heatmap calendar computation =====
   const heatmapCalendar = useMemo(() => {
@@ -1757,7 +1757,7 @@ function DashboardTab() {
                 <Label className="text-sm">阈值</Label>
                 <Input type="number" value={minDays} onChange={e => setMinDays(parseInt(e.target.value) || 90)} className="w-16 h-8 text-sm" />
                 <Label className="text-sm">天</Label>
-                <Button size="sm" variant="outline" onClick={fetchData}><RefreshCw className="h-3 w-3" /></Button>
+                <Button size="sm" variant="outline" onClick={refresh}><RefreshCw className="h-3 w-3" /></Button>
               </div>
             </div>
           </CardHeader>

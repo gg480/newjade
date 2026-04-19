@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { batchesApi, exportApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -49,22 +49,32 @@ function BatchesTab() {
   // Quick add item state
   const [quickAddBatch, setQuickAddBatch] = useState<any>(null);
 
-  const fetchBatches = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await batchesApi.getBatches({ page: pagination.page, size: pagination.size });
-      setBatches(data.items || []);
-      setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-    } catch { toast.error('加载批次失败'); } finally { setLoading(false); }
-  }, [pagination.page]);
+  // Refresh key for manual reload triggers
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
 
-  useEffect(() => { fetchBatches(); }, [fetchBatches]);
+  // Auto-load batches on mount and when deps change
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const data = await batchesApi.getBatches({ page: pagination.page, size: pagination.size });
+        if (!cancelled) {
+          setBatches(data.items || []);
+          setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
+        }
+      } catch { if (!cancelled) toast.error('加载批次失败'); } finally { if (!cancelled) setLoading(false); }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [pagination.page, refreshKey]);
 
   async function handleAllocate(batchId: number) {
     try {
       const result = await batchesApi.allocateBatch(batchId);
       toast.success(`成本分摊完成！共 ${result.items?.length || 0} 件货品`);
-      fetchBatches();
+      refresh();
     } catch (e: any) { toast.error(e.message || '分摊失败'); }
   }
 
@@ -85,7 +95,7 @@ function BatchesTab() {
       await batchesApi.updateBatch(editDialog.batch.id, editForm);
       toast.success('批次更新成功');
       setEditDialog({ open: false, batch: null });
-      fetchBatches();
+      refresh();
     } catch (e: any) { toast.error(e.message || '更新失败'); }
   }
 
@@ -95,7 +105,7 @@ function BatchesTab() {
       await batchesApi.deleteBatch(deleteBatch.id);
       toast.success('批次删除成功');
       setDeleteBatch(null);
-      fetchBatches();
+      refresh();
     } catch (e: any) {
       toast.error(e.message || '删除失败');
     }
@@ -567,14 +577,14 @@ function BatchesTab() {
       <Pagination page={pagination.page} pages={pagination.pages} onPageChange={p => setPagination(prev => ({ ...prev, page: p }))} />
 
       {/* Dialogs */}
-      <BatchCreateDialog open={showCreate} onOpenChange={setShowCreate} onSuccess={fetchBatches} />
+      <BatchCreateDialog open={showCreate} onOpenChange={setShowCreate} onSuccess={refresh} />
       <BatchDetailDialog batchId={detailBatchId} open={detailBatchId != null} onOpenChange={o => { if (!o) setDetailBatchId(null); }} />
       {/* Quick Add Item Dialog */}
       {quickAddBatch && (
         <ItemCreateDialog
           open={quickAddBatch !== null}
           onOpenChange={open => { if (!open) setQuickAddBatch(null); }}
-          onSuccess={() => { setQuickAddBatch(null); fetchBatches(); }}
+          onSuccess={() => { setQuickAddBatch(null); refresh(); }}
           defaultBatchId={quickAddBatch.id}
           defaultBatchInfo={{ materialId: quickAddBatch.materialId, supplierId: quickAddBatch.supplierId, typeId: quickAddBatch.typeId, purchaseDate: quickAddBatch.purchaseDate }}
         />

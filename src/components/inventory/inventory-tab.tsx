@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, salesApi, dictsApi, batchesApi, exportApi, customersApi } from '@/lib/api';
 import { CustomerSearchSelect } from './customer-search-select';
 import { itemsApiEnhanced } from '@/lib/api';
@@ -318,32 +318,37 @@ function InventoryTab() {
   // Only in_stock items among selected
   const selectedInStockItems = useMemo(() => selectedItems.filter(i => i.status === 'in_stock'), [selectedItems]);
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = { page: pagination.page, size: pagination.size };
-      if (filters.materialId) params.material_id = filters.materialId;
-      // Status: only send if exactly one active status; otherwise fetch all and filter client-side
-      if (activeStatuses.size === 1) params.status = Array.from(activeStatuses)[0];
-      if (filters.keyword) {
-        params.keyword = filters.keyword;
-        if (searchField !== 'all') params.search_field = searchField;
-      }
-      if (filters.counter) params.counter = filters.counter;
-      if (filters.batchId) params.batch_id = filters.batchId;
-      params.sort_by = sortBy;
-      params.sort_order = sortOrder;
-      const data = await itemsApi.getItems(params);
-      setItems(data.items || []);
-      setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-    } catch {
-      toast.error('加载库存失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.size, filters, activeStatuses, sortBy, sortOrder, searchField]);
+  // Refresh key for manual reload triggers
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  // Auto-load items on mount and when deps change
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const params: any = { page: pagination.page, size: pagination.size };
+        if (filters.materialId) params.material_id = filters.materialId;
+        if (activeStatuses.size === 1) params.status = Array.from(activeStatuses)[0];
+        if (filters.keyword) {
+          params.keyword = filters.keyword;
+          if (searchField !== 'all') params.search_field = searchField;
+        }
+        if (filters.counter) params.counter = filters.counter;
+        if (filters.batchId) params.batch_id = filters.batchId;
+        params.sort_by = sortBy;
+        params.sort_order = sortOrder;
+        const data = await itemsApi.getItems(params);
+        if (!cancelled) {
+          setItems(data.items || []);
+          setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
+        }
+      } catch { if (!cancelled) toast.error('加载库存失败'); } finally { if (!cancelled) setLoading(false); }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [pagination.page, pagination.size, refreshKey]);
 
   // Clear selection when page/filters change
   useEffect(() => { setSelectedIds(new Set()); }, [pagination.page, filters, activeStatuses, sortBy, sortOrder]);
@@ -402,7 +407,7 @@ function InventoryTab() {
       await salesApi.createSale(salePayload);
       toast.success('出库成功！');
       setSaleDialog({ open: false, item: null });
-      fetchItems();
+      refresh();
     } catch (e: any) { toast.error(e.message || '出库失败'); }
   }
 
@@ -418,7 +423,7 @@ function InventoryTab() {
       await itemsApi.deleteItem(deleteConfirmItem.id);
       toast.success('删除成功');
       setDeleteConfirmItem(null);
-      fetchItems();
+      refresh();
     } catch (e: any) {
       toast.error(e.message || '删除失败');
     }
@@ -430,7 +435,7 @@ function InventoryTab() {
       await itemsApi.updateItem(returnConfirmItem.item.id, { status: 'returned' });
       toast.success('退货成功！');
       setReturnConfirmItem({ open: false, item: null });
-      fetchItems();
+      refresh();
     } catch (e: any) { toast.error(e.message || '退货失败'); }
   }
 
@@ -590,7 +595,7 @@ function InventoryTab() {
     setBatchSellPrices({});
     setBatchSellForm(f => ({ ...f, customerId: '' }));
     clearSelection();
-    fetchItems();
+    refresh();
     if (failCount === 0) {
       toast.success(`批量出库成功！共 ${successCount} 件`);
     } else {
@@ -618,7 +623,7 @@ function InventoryTab() {
     setBatchDeleteOpen(false);
     setBatchDeleteHard(false);
     clearSelection();
-    fetchItems();
+    refresh();
     if (failCount === 0) {
       toast.success(`批量删除成功！共 ${successCount} 件${batchDeleteHard ? '（彻底删除）' : '（标记删除）'}`);
     } else {
@@ -645,7 +650,7 @@ function InventoryTab() {
       setBatchPriceOpen(false);
       setBatchPriceForm({ mode: 'percent', target: 'sellingPrice', value: '', direction: 'increase' });
       clearSelection();
-      fetchItems();
+      refresh();
       if (result.errors && result.errors.length > 0) {
         toast.warning(`批量调价完成：成功 ${result.success} 件，${result.errors.length} 件失败`);
       } else {
@@ -682,7 +687,7 @@ function InventoryTab() {
     setBatchCounterOpen(false);
     setBatchCounterForm({ counter: '' });
     clearSelection();
-    fetchItems();
+    refresh();
     if (failCount === 0) {
       toast.success(`批量修改柜台成功！共 ${successCount} 件`);
     } else {
@@ -927,7 +932,7 @@ function InventoryTab() {
               </Select>
             </div>
             <div className="flex items-end gap-2">
-              <Button size="sm" onClick={() => { setPagination(p => ({ ...p, page: 1 })); fetchItems(); }} className="h-9"><Search className="h-3 w-3 mr-1" />搜索</Button>
+              <Button size="sm" onClick={() => { setPagination(p => ({ ...p, page: 1 })); refresh(); }} className="h-9"><Search className="h-3 w-3 mr-1" />搜索</Button>
               <Button size="sm" variant="outline" onClick={() => { setFilters({ materialCategory: '', materialId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' }); setActiveStatuses(new Set(['in_stock'])); }} className="h-9">重置</Button>
             </div>
           </div>
@@ -1764,13 +1769,13 @@ function InventoryTab() {
       <ImageLightbox images={lightboxImages} initialIndex={lightboxIndex} open={lightboxOpen} onClose={() => setLightboxOpen(false)} />
 
       {/* Item Create Dialog */}
-      <ItemCreateDialog open={showCreate} onOpenChange={setShowCreate} onSuccess={fetchItems} />
+      <ItemCreateDialog open={showCreate} onOpenChange={setShowCreate} onSuccess={refresh} />
 
       {/* Item Detail Dialog */}
       <ItemDetailDialog itemId={detailItemId} open={detailItemId !== null} onOpenChange={open => { if (!open) setDetailItemId(null); }} />
 
       {/* Item Edit Dialog */}
-      <ItemEditDialog itemId={editItemId} open={editItemId !== null} onOpenChange={open => { if (!open) setEditItemId(null); }} onSuccess={fetchItems} />
+      <ItemEditDialog itemId={editItemId} open={editItemId !== null} onOpenChange={open => { if (!open) setEditItemId(null); }} onSuccess={refresh} />
 
       {/* Return Confirmation Dialog */}
       <Dialog open={returnConfirmItem.open} onOpenChange={open => setReturnConfirmItem({ open, item: open ? returnConfirmItem.item : null })}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { customersApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice, EmptyState, LoadingSkeleton, ConfirmDialog } from './shared';
@@ -439,21 +439,31 @@ function CustomersTab() {
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
   }, [keyword]);
 
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await customersApi.getCustomers({ page: pagination.page, size: pagination.size, keyword: debouncedKeyword, tag: tagFilter || undefined });
-      setCustomers(data.items || []);
-      setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-      setStats(data.stats || null);
-      setAllTags(data.allTags || []);
-    } catch { toast.error('加载客户失败'); } finally { setLoading(false); }
-  }, [pagination.page, debouncedKeyword, tagFilter]);
+  // Refresh key for manual reload triggers
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
+
+  // Auto-load customers on mount and when deps change
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const data = await customersApi.getCustomers({ page: pagination.page, size: pagination.size, keyword: debouncedKeyword, tag: tagFilter || undefined });
+        if (!cancelled) {
+          setCustomers(data.items || []);
+          setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
+          setStats(data.stats || null);
+          setAllTags(data.allTags || []);
+        }
+      } catch { if (!cancelled) toast.error('加载客户失败'); } finally { if (!cancelled) setLoading(false); }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [pagination.page, pagination.size, debouncedKeyword, tagFilter, refreshKey]);
 
   // Reset page when keyword or tag changes
   useEffect(() => { setPagination(p => ({ ...p, page: 1 })); }, [debouncedKeyword, tagFilter]);
-
-  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
   useEffect(() => {
     if (expandedCustomerId) {
@@ -475,7 +485,7 @@ function CustomersTab() {
       toast.success('客户创建成功');
       setShowCreate(false);
       setCreateForm({ name: '', phone: '', wechat: '', address: '', notes: '', tags: '' });
-      fetchCustomers();
+      refresh();
     } catch (e: any) { toast.error(e.message || '创建失败'); }
   }
 
@@ -486,7 +496,7 @@ function CustomersTab() {
       await customersApi.updateCustomer(editCustomer.id, { name: editForm.name, phone: editForm.phone, wechat: editForm.wechat, address: editForm.address, notes: editForm.notes, tags: tagsArr });
       toast.success('客户更新成功');
       setEditCustomer(null);
-      fetchCustomers();
+      refresh();
     } catch (e: any) { toast.error(e.message || '更新失败'); }
   }
 
@@ -982,7 +992,7 @@ function CustomersTab() {
             await customersApi.deleteCustomer(deleteCustomerConfirm.id);
             toast.success('客户已删除');
             setDeleteCustomerConfirm(null);
-            fetchCustomers();
+            refresh();
           } catch (e: any) { toast.error(e.message || '删除失败'); }
         }}
       />
@@ -993,7 +1003,7 @@ function CustomersTab() {
         open={profileCustomer !== null}
         onClose={() => setProfileCustomer(null)}
         onEdit={c => { setProfileCustomer(null); openEditDialog(c); }}
-        onTagsUpdated={fetchCustomers}
+        onTagsUpdated={refresh}
       />
     </div>
   );
