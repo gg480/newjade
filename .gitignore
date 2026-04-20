@@ -39,6 +39,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Coze platform (no longer used)
+.coze
+.zscripts/
+
 
 # typescript
 *.tsbuildinfo

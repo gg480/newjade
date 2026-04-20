@@ -104,11 +104,11 @@ tests/
 
 ## Environment Variables
 - `DATABASE_URL` - SQLite connection string (default: `file:./db/custom.db`, fallback in db.ts)
-- `COZE_PROJECT_DOMAIN_DEFAULT` - Deployment domain
 - `DEPLOY_RUN_PORT` - Service port (must be 5000)
 
 ## Deployment
-- `.coze` config uses `scripts/deploy-build.sh` for build (handles install + prisma + build)
+- Docker: Use `docker-compose.yml` or `Dockerfile` for standalone deployment
+- Build script: `scripts/deploy-build.sh` handles install + prisma + build
 - `package.json` has `postinstall: "prisma generate"` and `prebuild: "prisma generate"` as safeguards
 - Production start script: `DATABASE_URL=${DATABASE_URL:-file:./db/custom.db} NODE_ENV=production next start -p 5000`
 

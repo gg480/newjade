@@ -20,9 +20,35 @@ export const metadata: Metadata = {
   keywords: ["翡翠", "珠宝", "进销存", "库存管理", "销售管理"],
   authors: [{ name: "Z.ai Team" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
+
+/**
+ * Inline script for standalone deployment:
+ * - Basic iframe escape (clickjacking protection)
+ * - No aggressive fetch monitoring or DOM cleanup needed
+ */
+const standaloneInitScript = `
+(function() {
+  'use strict';
+
+  // If embedded in an iframe, try to break out (anti-clickjacking)
+  try {
+    if (window.self !== window.top) {
+      try {
+        window.top.location.href = window.self.location.href;
+      } catch (e) {
+        // Cross-origin iframe - can't break out, log warning
+        console.warn('[Jade] Running inside cross-origin iframe - some features may be limited');
+      }
+    }
+  } catch (e) {
+    // window.top access failed - we're in a cross-origin iframe
+    console.warn('[Jade] Running inside iframe - some features may be limited');
+  }
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -31,6 +57,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        {/* Standalone init script - runs before React hydration */}
+        <script dangerouslySetInnerHTML={{ __html: standaloneInitScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

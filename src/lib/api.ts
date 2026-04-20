@@ -1,29 +1,81 @@
 // API client for jade inventory system
-const BASE = '/api';
+// Enhanced with retry logic and error resilience
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+const BASE = '/api';
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+async function request<T>(path: string, options?: RequestInit, retryCount = 0): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
   // Attach auth token for API middleware
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (e) {
+      // localStorage unavailable (e.g. private browsing)
+      console.warn('[API] localStorage unavailable, skipping auth token');
     }
   }
   const { headers: _optHeaders, ...restOptions } = options || {};
-  const res = await fetch(`${BASE}${path}`, {
-    ...restOptions,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...restOptions,
+      headers,
+    });
+  } catch (fetchError: any) {
+    // Network error - retry with backoff
+    if (retryCount < MAX_RETRIES) {
+      console.warn(`[API] Fetch failed for ${path} (attempt ${retryCount + 1}/${MAX_RETRIES}):`, fetchError.message);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (retryCount + 1)));
+      return request<T>(path, options, retryCount + 1);
+    }
+    throw new Error(`网络请求失败: ${fetchError.message || 'Unknown error'}`);
+  }
+
   if (!res.ok) {
+    // Retry on server errors (5xx) but not on client errors (4xx)
+    if (res.status >= 500 && retryCount < MAX_RETRIES) {
+      console.warn(`[API] Server error ${res.status} for ${path} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (retryCount + 1)));
+      return request<T>(path, options, retryCount + 1);
+    }
     throw new Error(`请求失败: HTTP ${res.status} ${res.statusText}`);
   }
-  const json = await res.json();
+
+  let json: any;
+  try {
+    json = await res.json();
+  } catch (parseError) {
+    if (retryCount < MAX_RETRIES) {
+      console.warn(`[API] JSON parse failed for ${path} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (retryCount + 1)));
+      return request<T>(path, options, retryCount + 1);
+    }
+    throw new Error('服务器响应解析失败');
+  }
+
   if (json.code !== 0 && json.code !== 200) {
     throw new Error(json.message || '请求失败');
   }
   return json.data as T;
 }
+
+// ========== Health Check ==========
+export const healthApi = {
+  check: async (): Promise<{ ok: boolean; db: boolean; version: string }> => {
+    try {
+      const res = await fetch('/api/health');
+      const json = await res.json();
+      return json.data || json;
+    } catch {
+      return { ok: false, db: false, version: 'unknown' };
+    }
+  },
+};
 
 // ========== Dicts ==========
 export const dictsApi = {
@@ -98,7 +150,12 @@ export const itemsApi = {
   uploadImage: async (itemId: number, file: File) => {
     const formData = new FormData();
     formData.append('image', file);
-    const res = await fetch(`${BASE}/items/${itemId}/images`, { method: 'POST', body: formData });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/items/${itemId}/images`, { method: 'POST', body: formData });
+    } catch (e: any) {
+      throw new Error(`上传图片失败: ${e.message}`);
+    }
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '上传失败');
     return json.data;
@@ -166,7 +223,12 @@ export const backupApi = {
   restore: async (file: File) => {
     const formData = new FormData();
     formData.append('backup', file);
-    const res = await fetch(`${BASE}/backup`, { method: 'POST', body: formData });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/backup`, { method: 'POST', body: formData });
+    } catch (e: any) {
+      throw new Error(`恢复备份失败: ${e.message}`);
+    }
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '恢复失败');
     return json.data;
@@ -269,7 +331,12 @@ export const importApi = {
     formData.append('file', file);
     formData.append('autoCreate', String(options?.autoCreate ?? true));
     formData.append('skipExisting', String(options?.skipExisting ?? true));
-    const res = await fetch(`${BASE}/import/items`, { method: 'POST', body: formData });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/import/items`, { method: 'POST', body: formData });
+    } catch (e: any) {
+      throw new Error(`导入失败: ${e.message}`);
+    }
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '导入失败');
     return json.data;
@@ -277,7 +344,12 @@ export const importApi = {
   importCsvItems: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${BASE}/import/items-csv`, { method: 'POST', body: formData });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/import/items-csv`, { method: 'POST', body: formData });
+    } catch (e: any) {
+      throw new Error(`导入失败: ${e.message}`);
+    }
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '导入失败');
     return json.data;
@@ -286,7 +358,12 @@ export const importApi = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('autoCreate', String(options?.autoCreate ?? true));
-    const res = await fetch(`${BASE}/import/sales`, { method: 'POST', body: formData });
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/import/sales`, { method: 'POST', body: formData });
+    } catch (e: any) {
+      throw new Error(`导入失败: ${e.message}`);
+    }
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '导入失败');
     return json.data;
