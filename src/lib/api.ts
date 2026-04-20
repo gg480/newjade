@@ -10,9 +10,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       headers['Authorization'] = `Bearer ${token}`;
     }
   }
+  const { headers: _optHeaders, ...restOptions } = options || {};
   const res = await fetch(`${BASE}${path}`, {
+    ...restOptions,
     headers,
-    ...options,
   });
   if (!res.ok) {
     throw new Error(`请求失败: HTTP ${res.status} ${res.statusText}`);
@@ -296,14 +297,10 @@ export const importApi = {
 // ========== Batch Price ==========
 export const itemsApiEnhanced = {
   batchPriceAdjust: async (data: { ids: string[]; adjustmentType: 'percentage' | 'fixed'; value: number; direction: 'increase' | 'decrease' }) => {
-    const res = await fetch(`${BASE}/items/batch-price`, {
+    return request<any>('/items/batch-price', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '批量调价失败');
-    return json.data;
   },
 };
 

@@ -105,6 +105,7 @@ function SalesTab() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
+      console.log('[SalesTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
       setLoading(true);
       try {
         const params: any = { page: pagination.page, size: pagination.size };
@@ -113,11 +114,12 @@ function SalesTab() {
         if (filters.endDate) params.end_date = filters.endDate;
         if (filters.keyword) params.keyword = filters.keyword;
         const data = await salesApi.getSales(params);
+        console.log('[SalesTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
         if (!cancelled) {
           setSales(data.items || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
-      } catch { if (!cancelled) toast.error('加载销售记录失败'); } finally { if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[SalesTab] loadData FAILED:', e); if (!cancelled) toast.error('加载销售记录失败'); } finally { console.log('[SalesTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };
@@ -135,7 +137,7 @@ function SalesTab() {
           revenue: todayItems.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0),
           profit: todayItems.reduce((sum: number, s: any) => sum + (s.grossProfit || 0), 0),
         });
-      } catch { setTodayStats({ count: 0, revenue: 0, profit: 0 }); }
+      } catch (e) { console.error('[SalesTab]', e); setTodayStats({ count: 0, revenue: 0, profit: 0 }); }
     }
     fetchTodayStats();
   }, []);
@@ -156,7 +158,7 @@ function SalesTab() {
         } else if (!cancelled) {
           setSparklineData([]);
         }
-      } catch { if (!cancelled) setSparklineData([]); } finally { if (!cancelled) setSparkLoading(false); }
+      } catch (e) { console.error('[SalesTab]', e); if (!cancelled) setSparklineData([]); } finally { if (!cancelled) setSparkLoading(false); }
     };
     loadSparkline();
     return () => { cancelled = true; };

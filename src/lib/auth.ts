@@ -23,7 +23,7 @@ export async function cleanExpiredSessions(): Promise<void> {
         expiresAt: { lt: new Date() },
       },
     });
-  } catch {
+  } catch (e) { console.error('[Auth]', e);
     // Silently fail - not critical
   }
 }
@@ -67,7 +67,7 @@ export async function validateToken(token: string): Promise<boolean> {
     }
 
     return true;
-  } catch {
+  } catch (e) { console.error('[Auth]', e);
     return false;
   }
 }
@@ -78,7 +78,7 @@ export async function deleteSession(token: string): Promise<void> {
     await db.session.delete({
       where: { token },
     });
-  } catch {
+  } catch (e) { console.error('[Auth]', e);
     // Session may not exist, that's fine
   }
 }

@@ -153,7 +153,7 @@ function InventoryTab() {
       try {
         const mod = await import('@/components/inventory/barcode-scanner');
         setScannerComponent(() => mod.default || mod.BarcodeScanner);
-      } catch {
+      } catch (e) { console.error('[InventoryTab]', e);
         toast.error('扫码组件加载失败，请刷新页面重试');
         return;
       }
@@ -326,6 +326,7 @@ function InventoryTab() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
+      console.log('[InventoryTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
       setLoading(true);
       try {
         const params: any = { page: pagination.page, size: pagination.size };
@@ -340,11 +341,12 @@ function InventoryTab() {
         params.sort_by = sortBy;
         params.sort_order = sortOrder;
         const data = await itemsApi.getItems(params);
+        console.log('[InventoryTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
         if (!cancelled) {
           setItems(data.items || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
-      } catch { if (!cancelled) toast.error('加载库存失败'); } finally { if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[InventoryTab] loadData FAILED:', e); if (!cancelled) toast.error('加载库存失败'); } finally { console.log('[InventoryTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };
@@ -451,7 +453,7 @@ function InventoryTab() {
       } else {
         toast.error(`货品 ${item.skuCode} 当前状态为「${item.status === 'sold' ? '已售' : item.status === 'returned' ? '已退' : item.status}」，无法出库`);
       }
-    } catch {
+    } catch (e) { console.error('[InventoryTab]', e);
       toast.error('未找到该SKU对应的货品');
     } finally {
       setScanLoading(false);
@@ -469,7 +471,7 @@ function InventoryTab() {
       } else {
         toast.error(`货品 ${item.skuCode} 当前状态为「${item.status === 'sold' ? '已售' : item.status === 'returned' ? '已退' : item.status}」，无法出库`);
       }
-    } catch {
+    } catch (e) { console.error('[InventoryTab]', e);
       toast.error(`未找到条码「${code}」对应的货品`);
     } finally {
       setScanLoading(false);
@@ -585,7 +587,7 @@ function InventoryTab() {
           note: `批量出库${customerName ? ` - ${customerName}` : ''}`,
         });
         successCount++;
-      } catch {
+      } catch (e) { console.error('[InventoryTab]', e);
         failCount++;
       }
     }
@@ -614,7 +616,7 @@ function InventoryTab() {
       try {
         await itemsApi.deleteItem(item.id, batchDeleteHard);
         successCount++;
-      } catch {
+      } catch (e) { console.error('[InventoryTab]', e);
         failCount++;
       }
     }
@@ -678,7 +680,7 @@ function InventoryTab() {
       try {
         await itemsApi.updateItem(item.id, { counter: String(counter) });
         successCount++;
-      } catch {
+      } catch (e) { console.error('[InventoryTab]', e);
         failCount++;
       }
     }
@@ -1829,7 +1831,7 @@ function InventoryTab() {
         const margin = item.sellingPrice > 0 ? ((item.sellingPrice - cost) / item.sellingPrice * 100) : 0;
         const itemTagsRaw: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
         const itemTags: string[] = itemTagsRaw.map((t: any) => typeof t === 'string' ? t : t.name || '');
-        const specFields = item.specFields ? (typeof item.specFields === 'string' ? (() => { try { return JSON.parse(item.specFields); } catch { return {}; } })() : item.specFields) : {};
+        const specFields = item.specFields ? (typeof item.specFields === 'string' ? (() => { try { return JSON.parse(item.specFields); } catch (e) { console.error('[InventoryTab]', e); return {}; } })() : item.specFields) : {};
         return (
           <>
             {/* Backdrop */}

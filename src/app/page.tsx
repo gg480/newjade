@@ -32,7 +32,6 @@ const SettingsTab = dynamic(
 );
 import { MobileNav, DesktopNav, ShortcutsHelpDialog } from '@/components/inventory/navigation';
 import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff } from 'lucide-react';
-import { Toaster } from 'sonner';
 import { itemsApi, salesApi, batchesApi } from '@/lib/api';
 import {
   Tooltip, TooltipTrigger, TooltipContent, TooltipProvider,
@@ -71,7 +70,7 @@ function QuickStatsBar() {
         const batches = batchesData.value.items || [];
         setPendingBatches(batches.filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)).length);
       }
-    } catch {
+    } catch (e) { console.error('[Page]', e);
       // Silently fail
     }
   };
@@ -134,7 +133,7 @@ function MobileQuickStats({ className }: { className?: string }) {
         const sales = salesData.value.items || [];
         setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
       }
-    } catch {
+    } catch (e) { console.error('[Page]', e);
       // Silently fail
     }
   };
@@ -186,9 +185,14 @@ export default function JadeInventoryPage() {
         const parsed = JSON.parse(stored);
         if (parsed.storeName) return parsed.storeName;
       }
-    } catch {}
+    } catch (e) { console.error('[Page]', e);}
     return '翡翠珠宝';
   });
+
+  // MOUNT DIAGNOSTIC
+  useEffect(() => {
+    console.log('[PAGE] JadeInventoryPage MOUNTED, activeTab=', activeTab);
+  }, []);
 
   // Sync store name from server config
   useEffect(() => {
@@ -375,7 +379,6 @@ export default function JadeInventoryPage() {
 
   return (
     <>
-      <Toaster richColors position="top-right" />
       <div className="min-h-screen flex flex-col bg-background" id="app-root">
       {/* Top Loading Bar */}
       <div className="fixed top-0 left-0 right-0 z-[100] h-[2px] pointer-events-none">

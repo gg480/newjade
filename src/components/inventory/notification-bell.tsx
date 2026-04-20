@@ -124,7 +124,7 @@ export default function NotificationBell() {
           timestamp: new Date().toISOString(),
         });
       }
-    } catch {
+    } catch (e) { console.error('[Bell]', e);
       // Silently fail - notifications are non-critical
     }
 

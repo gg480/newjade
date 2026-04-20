@@ -57,7 +57,7 @@ function parseSpecFields(raw: string | null | undefined): Record<string, { requi
       return obj;
     }
     return parsed;
-  } catch {
+  } catch (e) { console.error('[SettingsTab]', e);
     return {};
   }
 }
@@ -94,7 +94,7 @@ function formatRelativeTime(dateStr: string): string {
     if (diffWeeks < 4) return `${diffWeeks}周前`;
     if (diffMonths < 12) return `${diffMonths}个月前`;
     return `${Math.floor(diffMonths / 12)}年前`;
-  } catch {
+  } catch (e) { console.error('[SettingsTab]', e);
     return dateStr;
   }
 }
@@ -195,22 +195,22 @@ function SettingsTab() {
     try {
       // Try new key first, fall back to old key for migration
       let stored: string | null = null;
-      try { stored = localStorage.getItem(STORAGE_KEY); } catch {}
+      try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) { console.error('[SettingsTab]', e);}
       if (!stored) {
-        try { stored = localStorage.getItem('app_settings'); } catch {}
+        try { stored = localStorage.getItem('app_settings'); } catch (e) { console.error('[SettingsTab]', e);}
       }
       if (stored) {
         const parsed = JSON.parse(stored);
         setSystemConfig({ ...defaultSettings, ...parsed });
       }
-    } catch { /* use defaults */ }
+    } catch (e) { console.error('[SettingsTab]', e); /* use defaults */ }
     // Load last backup time from localStorage
     try {
       const backupTime = localStorage.getItem('last_backup_time');
       if (backupTime) {
         setLastBackupFromStorage(backupTime);
       }
-    } catch { /* ignore */ }
+    } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
   }, []);
 
   // Sync store name from server config to local state on initial load
@@ -250,7 +250,7 @@ function SettingsTab() {
             const sizeStr = sizeJson.data?.find?.((c: any) => c.key === 'db_size')?.value;
             if (sizeStr) setDbSize(sizeStr);
           }
-        } catch { /* ignore */ }
+        } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
         // Fetch cleanup counts
         try {
           const [delRes, logRes] = await Promise.allSettled([
@@ -265,8 +265,8 @@ function SettingsTab() {
             const logJson = await logRes.value.json();
             setOldLogsCount(logJson.data?.count || 0);
           }
-        } catch { /* ignore */ }
-      } catch { /* silently fail */ } finally { setDbSizeLoading(false); }
+        } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
+      } catch (e) { console.error('[SettingsTab]', e); /* silently fail */ } finally { setDbSizeLoading(false); }
     }
     fetchStats();
   }, []);
@@ -284,7 +284,7 @@ function SettingsTab() {
         setTags(tg || []);
         setConfigs(c || []);
         setSuppliers(s?.items || []);
-      } catch { toast.error('加载设置数据失败'); } finally { setLoading(false); }
+      } catch (e) { console.error('[SettingsTab]', e); toast.error('加载设置数据失败'); } finally { setLoading(false); }
     }
     fetchAll();
   }, []);
@@ -299,7 +299,7 @@ function SettingsTab() {
 
   // Supplier handlers
   async function fetchSuppliers() {
-    try { const s = await suppliersApi.getSuppliers(); setSuppliers(s?.items || []); } catch { toast.error('加载供应商失败'); }
+    try { const s = await suppliersApi.getSuppliers(); setSuppliers(s?.items || []); } catch (e) { console.error('[SettingsTab]', e); toast.error('加载供应商失败'); }
   }
 
   async function handleCreateSupplier() {
@@ -331,7 +331,7 @@ function SettingsTab() {
       } else {
         toast.error(json.message || '清除失败');
       }
-    } catch {
+    } catch (e) { console.error('[SettingsTab]', e);
       toast.error('清除已删除货品失败');
     } finally {
       setCleanupLoading(null);
@@ -350,7 +350,7 @@ function SettingsTab() {
       } else {
         toast.error(json.message || '清除失败');
       }
-    } catch {
+    } catch (e) { console.error('[SettingsTab]', e);
       toast.error('清除操作日志失败');
     } finally {
       setCleanupLoading(null);
@@ -466,7 +466,7 @@ function SettingsTab() {
           return line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
         });
         setPreviewData({ headers, rows });
-      } catch {
+      } catch (e) { console.error('[SettingsTab]', e);
         toast.error('文件预览失败');
       }
     };

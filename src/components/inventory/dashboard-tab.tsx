@@ -157,7 +157,7 @@ function DashboardTab() {
           setMinDays(parseInt(warningDays.value));
         }
         setWarningDaysLoaded(true);
-      } catch {
+      } catch (e) { console.error('[DashboardTab]', e);
         setWarningDaysLoaded(true);
       }
     }
@@ -197,7 +197,7 @@ function DashboardTab() {
           setTopSellers(aggregateData.topSellers || []);
           setMomData(aggregateData.momData || null);
         }
-      } catch {
+      } catch (e) { console.error('[DashboardTab]', e);
         if (signal.aborted) return;
         // Fallback: load key metrics individually
         const keyResults = await Promise.allSettled([
@@ -303,7 +303,7 @@ function DashboardTab() {
       }
 
       setChartsLoaded(true);
-    } catch {
+    } catch (e) { console.error('[DashboardTab]', e);
       if (!controller.signal.aborted) {
         toast.error('加载看板数据失败');
       }
@@ -337,7 +337,7 @@ function DashboardTab() {
         if (!cancelled && json.code === 0) {
           setRecentSales(json.data || []);
         }
-      } catch { /* silently fail */ }
+      } catch (e) { console.error('[DashboardTab]', e); /* silently fail */ }
     };
     loadRecentSales();
     const interval = setInterval(loadRecentSales, 30000);
@@ -656,7 +656,7 @@ function DashboardTab() {
                           if (diffHours < 24) return `${diffHours}小时前`;
                           if (diffDays < 7) return `${diffDays}天前`;
                           return sale.saleDate || '';
-                        } catch {
+                        } catch (e) { console.error('[DashboardTab]', e);
                           return sale.saleDate || '';
                         }
                       })()}

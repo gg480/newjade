@@ -109,7 +109,7 @@ function BarcodeScanner({ onScan, onClose, open }: BarcodeScannerProps) {
           await scannerRef.current.stop();
         }
         scannerRef.current.clear();
-      } catch {
+      } catch (e) { console.error('[Scanner]', e);
         // Ignore cleanup errors
       }
       scannerRef.current = null;

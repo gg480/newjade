@@ -64,7 +64,7 @@ function BatchesTab() {
           setBatches(data.items || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
-      } catch { if (!cancelled) toast.error('加载批次失败'); } finally { if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[BatchesTab]', e); if (!cancelled) toast.error('加载批次失败'); } finally { if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };

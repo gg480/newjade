@@ -29,7 +29,7 @@ function MobileNav({ activeTab, onTabChange, className }: { activeTab: TabId; on
         if (cancelled) return;
         const batches = data.items || [];
         setPendingBatches(batches.filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)).length);
-      } catch { /* silently fail */ }
+      } catch (e) { console.error('[Nav]', e); /* silently fail */ }
       // Check sales today
       try {
         const todayStr = new Date().toISOString().slice(0, 10);
@@ -38,7 +38,7 @@ function MobileNav({ activeTab, onTabChange, className }: { activeTab: TabId; on
           const salesData = await salesRes.json();
           setHasSalesToday((salesData.pagination?.total || 0) > 0);
         }
-      } catch { /* silently fail */ }
+      } catch (e) { console.error('[Nav]', e); /* silently fail */ }
     };
     // Delay initial load to avoid competing with dashboard requests
     const timer = setTimeout(load, 3000);
@@ -168,7 +168,7 @@ function DesktopNav({ activeTab, onTabChange, className }: { activeTab: TabId; o
         const parsed = JSON.parse(stored);
         if (parsed.storeName) return parsed.storeName;
       }
-    } catch {}
+    } catch (e) { console.error('[Nav]', e);}
     return '翡翠珠宝';
   });
 

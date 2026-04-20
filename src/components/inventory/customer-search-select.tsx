@@ -38,7 +38,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
         const data = await customersApi.getCustomers(keyword ? { keyword, size: 20 } : { size: 50 });
         const items = data?.items || data || [];
         setOptions(items);
-      } catch {
+      } catch (e) { console.error('[SearchSelect]', e);
         setOptions([]);
       } finally {
         setLoading(false);

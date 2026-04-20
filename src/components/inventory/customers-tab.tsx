@@ -456,7 +456,7 @@ function CustomersTab() {
           setStats(data.stats || null);
           setAllTags(data.allTags || []);
         }
-      } catch { if (!cancelled) toast.error('加载客户失败'); } finally { if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[CustomersTab]', e); if (!cancelled) toast.error('加载客户失败'); } finally { if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };

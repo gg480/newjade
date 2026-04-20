@@ -127,7 +127,7 @@ function LogsTab() {
           setLogs(data?.items || []);
           setPagination(data?.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
-      } catch { if (!cancelled) toast.error('加载操作日志失败'); } finally { if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[LogsTab]', e); if (!cancelled) toast.error('加载操作日志失败'); } finally { if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };
