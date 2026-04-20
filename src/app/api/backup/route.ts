@@ -3,15 +3,39 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
 
-// Resolve db directory: use DATA_DIR env or cwd/db
-function getDbDir(): string {
-  const dataDir = process.env.DATA_DIR;
-  if (dataDir) return path.join(dataDir, 'db');
-  return path.join(process.cwd(), 'db');
+function resolveDbPathFromEnv(): string | null {
+  const dbUrl = process.env.DATABASE_URL || '';
+  if (dbUrl.startsWith('file:')) {
+    const raw = dbUrl.slice('file:'.length);
+    if (!raw) return null;
+    return path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw);
+  }
+  return null;
 }
 
 function getDbPath(): string {
-  return path.join(getDbDir(), 'custom.db');
+  const fromDbUrl = resolveDbPathFromEnv();
+  if (fromDbUrl) return fromDbUrl;
+
+  const dataDir = process.env.DATA_DIR;
+  if (dataDir) return path.join(dataDir, 'db', 'custom.db');
+
+  const cwdDefault = path.join(process.cwd(), 'db', 'custom.db');
+  if (existsSync(cwdDefault)) return cwdDefault;
+
+  // Local dev fallback
+  return path.join(process.cwd(), 'prisma', 'dev.db');
+}
+
+function getPreRestoreBackupDir(): string {
+  const base = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
+  return path.join(base, 'pre-restore');
+}
+
+function getTimestampTag(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
 // GET /api/backup — Download SQLite database backup
@@ -24,13 +48,12 @@ export async function GET() {
     }
 
     const buffer = await readFile(dbPath);
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `jade-backup-${timestamp}.db`;
+    const filename = `jade-backup-${getTimestampTag()}.db`;
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
-        'Content-Type': 'image/octet-stream',
+        'Content-Type': 'application/x-sqlite3',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': buffer.length.toString(),
       },
@@ -51,8 +74,9 @@ export async function POST(req: Request) {
     }
 
     // Validate file extension
-    if (!file.name.endsWith('.db')) {
-      return NextResponse.json({ code: 400, data: null, message: '仅支持 .db 文件恢复' }, { status: 400 });
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith('.db') && !lowerName.endsWith('.sqlite') && !lowerName.endsWith('.sqlite3')) {
+      return NextResponse.json({ code: 400, data: null, message: '仅支持 .db/.sqlite/.sqlite3 文件恢复' }, { status: 400 });
     }
 
     // Validate file size (max 100MB)
@@ -61,14 +85,19 @@ export async function POST(req: Request) {
     }
 
     const dbPath = getDbPath();
-    const backupDir = getDbDir();
+    const dbDir = path.dirname(dbPath);
+    const preRestoreDir = getPreRestoreBackupDir();
 
     // Ensure db directory exists
-    await mkdir(backupDir, { recursive: true });
+    await mkdir(dbDir, { recursive: true });
+    await mkdir(preRestoreDir, { recursive: true });
+
+    let preRestoreBackupFilename: string | null = null;
 
     // Save current db as backup before overwriting
     if (existsSync(dbPath)) {
-      const preBackupPath = path.join(backupDir, `pre-restore-${Date.now()}.db`);
+      preRestoreBackupFilename = `pre-restore-${getTimestampTag()}.db`;
+      const preBackupPath = path.join(preRestoreDir, preRestoreBackupFilename);
       const currentBuffer = await readFile(dbPath);
       await writeFile(preBackupPath, currentBuffer);
     }
@@ -79,7 +108,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       code: 0,
-      data: { filename: file.name, size: file.size },
+      data: { filename: file.name, size: file.size, preRestoreBackupFilename },
       message: '数据库恢复成功，请刷新页面',
     });
   } catch (e: any) {

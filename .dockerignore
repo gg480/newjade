@@ -11,6 +11,12 @@ skills/
 coze-cli
 app.log
 db/
+*.db
+*.sqlite
+*.sqlite3
+prisma/*.db
+prisma/*.sqlite
+prisma/*.sqlite3
 prisma/seed-demo.ts
 prisma/seed-business.ts
 public/images/

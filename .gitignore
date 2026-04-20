@@ -60,3 +60,7 @@ db/*.db-wal
 db/custom.db
 *.db-journal
 *.db-wal
+*.db
+prisma/*.db
+prisma/*.sqlite
+prisma/*.sqlite3

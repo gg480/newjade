@@ -120,6 +120,11 @@ function ActiveFilterTags({ filters, materials, allBatches, allCounters, onClear
 function InventoryTab() {
   const { setActiveTab } = useAppStore();
   const [items, setItems] = useState<any[]>([]);
+  const [summary, setSummary] = useState({
+    statusCounts: { in_stock: 0, sold: 0, returned: 0 },
+    totalCost: 0,
+    totalMarketValue: 0,
+  });
   const [materials, setMaterials] = useState<any[]>([]);
   const [allBatches, setAllBatches] = useState<any[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
@@ -163,6 +168,7 @@ function InventoryTab() {
 
   // Batch operation dialogs
   const [batchSellOpen, setBatchSellOpen] = useState(false);
+  const [batchRestoreOpen, setBatchRestoreOpen] = useState(false);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchPriceOpen, setBatchPriceOpen] = useState(false);
   const [batchCounterOpen, setBatchCounterOpen] = useState(false);
@@ -234,11 +240,7 @@ function InventoryTab() {
   }, [items]);
 
   // Status counts for filter buttons
-  const statusCounts = useMemo(() => ({
-    in_stock: items.filter(i => i.status === 'in_stock').length,
-    sold: items.filter(i => i.status === 'sold').length,
-    returned: items.filter(i => i.status === 'returned').length,
-  }), [items]);
+  const statusCounts = useMemo(() => summary.statusCounts, [summary.statusCounts]);
 
   // Toggle status filter
   function toggleStatusFilter(status: string) {
@@ -317,6 +319,7 @@ function InventoryTab() {
 
   // Only in_stock items among selected
   const selectedInStockItems = useMemo(() => selectedItems.filter(i => i.status === 'in_stock'), [selectedItems]);
+  const selectedReturnedItems = useMemo(() => selectedItems.filter(i => i.status === 'returned'), [selectedItems]);
 
   // Refresh key for manual reload triggers
   const [refreshKey, setRefreshKey] = useState(0);
@@ -345,6 +348,11 @@ function InventoryTab() {
         if (!cancelled) {
           setItems(data.items || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
+          setSummary(data.summary || {
+            statusCounts: { in_stock: 0, sold: 0, returned: 0 },
+            totalCost: 0,
+            totalMarketValue: 0,
+          });
         }
       } catch (e) { console.error('[InventoryTab] loadData FAILED:', e); if (!cancelled) toast.error('加载库存失败'); } finally { console.log('[InventoryTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
     };
@@ -439,6 +447,48 @@ function InventoryTab() {
       setReturnConfirmItem({ open: false, item: null });
       refresh();
     } catch (e: any) { toast.error(e.message || '退货失败'); }
+  }
+
+  async function handleRestoreToStock(itemId?: number) {
+    try {
+      if (itemId != null) {
+        const target = sortedItems.find(i => i.id === itemId);
+        if (!target || target.status !== 'returned') return;
+        await itemsApi.updateItem(itemId, { status: 'in_stock' });
+        toast.success(`货品 ${target.skuCode} 已恢复在库`);
+        refresh();
+        return;
+      }
+
+      if (selectedReturnedItems.length === 0) {
+        toast.error('仅支持恢复已退货品');
+        return;
+      }
+      setBatchLoading(true);
+      setBatchProgress({ current: 0, total: selectedReturnedItems.length });
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < selectedReturnedItems.length; i++) {
+        const item = selectedReturnedItems[i];
+        try {
+          await itemsApi.updateItem(item.id, { status: 'in_stock' });
+          successCount++;
+        } catch {
+          failCount++;
+        }
+        setBatchProgress({ current: i + 1, total: selectedReturnedItems.length });
+      }
+
+      if (failCount === 0) toast.success(`批量恢复在库成功！共 ${successCount} 件`);
+      else toast.warning(`批量恢复完成：成功 ${successCount} 件，失败 ${failCount} 件`);
+      setBatchRestoreOpen(false);
+      clearSelection();
+      refresh();
+    } finally {
+      setBatchLoading(false);
+      setBatchProgress(null);
+    }
   }
 
   async function handleScanSku() {
@@ -747,7 +797,8 @@ function InventoryTab() {
 
   if (loading && items.length === 0) return <LoadingSkeleton />;
 
-  const totalValue = filteredItems.reduce((sum, i) => sum + (i.allocatedCost || i.estimatedCost || i.costPrice || 0), 0);
+  const totalCost = summary.totalCost || 0;
+  const totalMarketValue = summary.totalMarketValue || 0;
 
   const sortFieldLabels: Record<string, string> = {
     created_at: '入库时间',
@@ -813,19 +864,19 @@ function InventoryTab() {
         <Card className="relative overflow-hidden border-l-4 border-l-sky-500 hover:shadow-md hover:border-sky-400 transition-all duration-200">
           <CardContent className="p-4">
             <div className="absolute -right-1 -bottom-1 opacity-10"><CheckCircle className="h-16 w-16 text-sky-500" /></div>
-            <p className="text-sm text-muted-foreground">在库中</p><p className="text-2xl font-bold text-emerald-600">{items.filter(i => i.status === 'in_stock').length}</p>
+            <p className="text-sm text-muted-foreground">在库中</p><p className="text-2xl font-bold text-emerald-600">{statusCounts.in_stock}</p>
           </CardContent>
         </Card>
         <Card className="relative overflow-hidden border-l-4 border-l-amber-500 hover:shadow-md hover:border-amber-400 transition-all duration-200">
           <CardContent className="p-4">
             <div className="absolute -right-1 -bottom-1 opacity-10"><DollarSign className="h-16 w-16 text-amber-500" /></div>
-            <p className="text-sm text-muted-foreground">库存价值</p><p className="text-2xl font-bold text-emerald-600">{formatPrice(totalValue)}</p>
+            <p className="text-sm text-muted-foreground">总成本</p><p className="text-2xl font-bold text-emerald-600">{formatPrice(totalCost)}</p>
           </CardContent>
         </Card>
         <Card className="relative overflow-hidden border-l-4 border-l-purple-500 hover:shadow-md hover:border-purple-400 transition-all duration-200">
           <CardContent className="p-4">
             <div className="absolute -right-1 -bottom-1 opacity-10"><BarChart3 className="h-16 w-16 text-purple-500" /></div>
-            <p className="text-sm text-muted-foreground">当前页</p><p className="text-2xl font-bold">{pagination.page}/{pagination.pages || 1}</p>
+            <p className="text-sm text-muted-foreground">总货值</p><p className="text-2xl font-bold">{formatPrice(totalMarketValue)}</p>
           </CardContent>
         </Card>
       </div>
@@ -997,43 +1048,6 @@ function InventoryTab() {
         </CardContent>
       </Card>
 
-      {/* Quick Stats Summary Bar */}
-      {!loading && filteredItems.length > 0 && (
-        <div className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-muted/50 rounded-lg px-4 py-3">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">共 {filteredItems.length} 件</p>
-              <p className="text-sm font-medium tabular-nums">{pagination.total} 件总计</p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">总货值</p>
-              <p className="text-sm font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
-                ¥{filteredItems.reduce((s, i) => s + (i.sellingPrice || 0), 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
-              </p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">总成本</p>
-              <p className="text-sm font-medium tabular-nums text-amber-600 dark:text-amber-400">
-                ¥{filteredItems.reduce((s, i) => s + (i.allocatedCost || i.estimatedCost || i.costPrice || 0), 0).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
-              </p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">潜在利润</p>
-              {(() => {
-                const totalValue = filteredItems.reduce((s, i) => s + (i.sellingPrice || 0), 0);
-                const totalCost = filteredItems.reduce((s, i) => s + (i.allocatedCost || i.estimatedCost || i.costPrice || 0), 0);
-                const profit = totalValue - totalCost;
-                return (
-                  <p className={`text-sm font-medium tabular-nums ${profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {profit >= 0 ? '+' : ''}¥{profit.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
-                  </p>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Items Table */}
       {sortedItems.length === 0 ? (
         <EmptyState icon={Package} title="暂无货品" desc="还没有入库任何货品，点击「新增入库」开始" />
@@ -1164,6 +1178,12 @@ function InventoryTab() {
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setReturnConfirmItem({ open: true, item }); }}>
                                   <RotateCcw className="h-3.5 w-3.5 mr-2" />
                                   <span>退货</span>
+                                </DropdownMenuItem>
+                              )}
+                              {item.status === 'returned' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRestoreToStock(item.id); }}>
+                                  <Package className="h-3.5 w-3.5 mr-2" />
+                                  <span>恢复在库</span>
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="text-red-600 focus:text-red-600">
@@ -1299,6 +1319,11 @@ function InventoryTab() {
                           <RotateCcw className="h-3.5 w-3.5 mr-2" /><span>退货</span>
                         </DropdownMenuItem>
                       )}
+                      {item.status === 'returned' && (
+                        <DropdownMenuItem onClick={() => handleRestoreToStock(item.id)}>
+                          <Package className="h-3.5 w-3.5 mr-2" /><span>恢复在库</span>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-red-600 focus:text-red-600">
                         <Trash2 className="h-3.5 w-3.5 mr-2" /><span>删除</span>
                       </DropdownMenuItem>
@@ -1340,6 +1365,14 @@ function InventoryTab() {
                 disabled={selectedInStockItems.length === 0}
               >
                 <ShoppingCart className="h-3 w-3 mr-1" />批量出库
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 bg-white text-orange-700 hover:bg-orange-50"
+                onClick={() => setBatchRestoreOpen(true)}
+                disabled={selectedReturnedItems.length === 0}
+              >
+                <Package className="h-3 w-3 mr-1" />批量恢复在库
               </Button>
               <Button
                 size="sm"
@@ -1511,6 +1544,38 @@ function InventoryTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Batch Restore In-Stock */}
+      <AlertDialog open={batchRestoreOpen} onOpenChange={setBatchRestoreOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-orange-600" />
+              批量恢复在库
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              即将恢复 <span className="text-orange-600 font-bold">{selectedReturnedItems.length}</span> 件已退货品为在库状态。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {batchProgress && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>恢复进度</span>
+                <span>{batchProgress.current} / {batchProgress.total}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-orange-500 rounded-full transition-all duration-300" style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }} />
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => setBatchRestoreOpen(false)} disabled={batchLoading}>取消</Button>
+            <Button onClick={() => handleRestoreToStock()} disabled={batchLoading || selectedReturnedItems.length === 0} className="bg-orange-600 hover:bg-orange-700">
+              {batchLoading ? `处理中 ${batchProgress ? `${batchProgress.current}/${batchProgress.total}` : '...'}` : `确认恢复 ${selectedReturnedItems.length} 件`}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Batch Delete Confirmation */}
       <AlertDialog open={batchDeleteOpen} onOpenChange={setBatchDeleteOpen}>
@@ -1878,6 +1943,11 @@ function InventoryTab() {
                     <DollarSignIcon className="h-3 w-3 mr-1" />快速出库
                   </Button>
                 )}
+                {item.status === 'returned' && (
+                  <Button size="sm" className="flex-1 h-8 text-xs bg-orange-600 hover:bg-orange-700" onClick={() => handleRestoreToStock(item.id)}>
+                    <Package className="h-3 w-3 mr-1" />恢复在库
+                  </Button>
+                )}
               </div>
               {/* Details */}
               <div className="px-4 py-4 space-y-4">
@@ -2035,6 +2105,11 @@ function InventoryTab() {
                     setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '' });
                   }}>
                     <DollarSignIcon className="h-3 w-3 mr-1" />快速出库
+                  </Button>
+                )}
+                {item.status === 'returned' && (
+                  <Button size="sm" className="flex-1 h-8 text-xs bg-orange-600 hover:bg-orange-700" onClick={() => handleRestoreToStock(item.id)}>
+                    <Package className="h-3 w-3 mr-1" />恢复在库
                   </Button>
                 )}
               </div>

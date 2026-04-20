@@ -222,6 +222,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.2.2
+      '@types/node':
+        specifier: 25.6.0
+        version: 25.6.0
       '@types/papaparse':
         specifier: ^5.5.2
         version: 5.5.2

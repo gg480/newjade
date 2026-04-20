@@ -16,23 +16,22 @@ export async function GET(req: Request) {
   const sortBy = searchParams.get('sort_by') || 'created_at';
   const sortOrder = searchParams.get('sort_order') || 'desc';
 
-  const where: any = { isDeleted: false };
-  if (materialId) where.materialId = parseInt(materialId);
-  if (typeId) where.typeId = parseInt(typeId);
-  if (status) where.status = status;
-  if (batchId) where.batchId = parseInt(batchId);
-  if (counter) where.counter = parseInt(counter);
+  const baseWhere: any = { isDeleted: false };
+  if (materialId) baseWhere.materialId = parseInt(materialId);
+  if (typeId) baseWhere.typeId = parseInt(typeId);
+  if (batchId) baseWhere.batchId = parseInt(batchId);
+  if (counter) baseWhere.counter = parseInt(counter);
   if (keyword) {
     if (searchField === 'sku') {
-      where.skuCode = { contains: keyword };
+      baseWhere.skuCode = { contains: keyword };
     } else if (searchField === 'name') {
-      where.name = { contains: keyword };
+      baseWhere.name = { contains: keyword };
     } else if (searchField === 'material') {
-      where.material = { name: { contains: keyword } };
+      baseWhere.material = { name: { contains: keyword } };
     } else if (searchField === 'type') {
-      where.type = { name: { contains: keyword } };
+      baseWhere.type = { name: { contains: keyword } };
     } else {
-      where.OR = [
+      baseWhere.OR = [
         { skuCode: { contains: keyword } },
         { name: { contains: keyword } },
         { certNo: { contains: keyword } },
@@ -40,6 +39,8 @@ export async function GET(req: Request) {
       ];
     }
   }
+  const where: any = { ...baseWhere };
+  if (status) where.status = status;
 
   // Build order by clause
   const validSortFields = ['created_at', 'selling_price', 'cost_price', 'purchase_date', 'sku_code', 'name'];
@@ -59,21 +60,34 @@ export async function GET(req: Request) {
   const orderBy: any = {};
   orderBy[orderByField] = direction;
 
-  const total = await db.item.count({ where });
-  const items = await db.item.findMany({
-    where,
-    include: {
-      material: true,
-      type: true,
-      spec: true,
-      tags: true,
-      images: { where: { isCover: true }, take: 1 },
-      batch: { select: { purchaseDate: true, batchCode: true, totalCost: true, quantity: true } },
-    },
-    orderBy,
-    skip: (page - 1) * size,
-    take: size,
-  });
+  const [total, items, summaryRows] = await Promise.all([
+    db.item.count({ where }),
+    db.item.findMany({
+      where,
+      include: {
+        material: true,
+        type: true,
+        spec: true,
+        tags: true,
+        images: { where: { isCover: true }, take: 1 },
+        batch: { select: { purchaseDate: true, batchCode: true, totalCost: true, quantity: true } },
+      },
+      orderBy,
+      skip: (page - 1) * size,
+      take: size,
+    }),
+    db.item.findMany({
+      where: baseWhere,
+      select: {
+        status: true,
+        sellingPrice: true,
+        costPrice: true,
+        allocatedCost: true,
+        batchId: true,
+        batch: { select: { totalCost: true, quantity: true } },
+      },
+    }),
+  ]);
 
   const today = new Date();
   const itemsWithExtras = items.map(item => {
@@ -97,11 +111,30 @@ export async function GET(req: Request) {
     };
   });
 
+  const summary = summaryRows.reduce((acc, row) => {
+    if (row.status === 'in_stock') acc.statusCounts.in_stock += 1;
+    else if (row.status === 'sold') acc.statusCounts.sold += 1;
+    else if (row.status === 'returned') acc.statusCounts.returned += 1;
+
+    const estimatedCost = (!row.allocatedCost && row.batchId && row.batch && row.batch.quantity > 0)
+      ? row.batch.totalCost / row.batch.quantity
+      : null;
+    const rowCost = row.allocatedCost ?? estimatedCost ?? row.costPrice ?? 0;
+    acc.totalCost += rowCost;
+    acc.totalMarketValue += row.sellingPrice ?? 0;
+    return acc;
+  }, {
+    statusCounts: { in_stock: 0, sold: 0, returned: 0 },
+    totalCost: 0,
+    totalMarketValue: 0,
+  });
+
   return NextResponse.json({
     code: 0,
     data: {
       items: itemsWithExtras,
       pagination: { total, page, size, pages: Math.ceil(total / size) },
+      summary,
     },
     message: 'ok',
   });

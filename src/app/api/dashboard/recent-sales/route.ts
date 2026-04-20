@@ -5,7 +5,10 @@ export async function GET() {
   try {
     const sales = await db.saleRecord.findMany({
       take: 5,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { saleDate: 'desc' },
+        { id: 'desc' },
+      ],
       include: {
         item: {
           select: {
@@ -33,7 +36,6 @@ export async function GET() {
       actualPrice: sale.actualPrice,
       channel: sale.channel,
       saleDate: sale.saleDate,
-      createdAt: sale.createdAt.toISOString(),
     }));
 
     return NextResponse.json({

@@ -4,6 +4,32 @@ import { parse } from 'csv-parse/sync';
 
 const db = new PrismaClient();
 
+function normalizeDateInput(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const raw = String(input).trim();
+  if (!raw) return null;
+  const normalized = raw
+    .replace(/[年./]/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .replace(/\s+/g, '');
+  const m = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}-${String(parseInt(m[3], 10)).padStart(2, '0')}`;
+  }
+  const num = Number(raw);
+  if (!Number.isNaN(num) && num > 20000 && num < 100000) {
+    const base = new Date(Date.UTC(1899, 11, 30));
+    const dt = new Date(base.getTime() + num * 86400000);
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+  }
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return null;
+}
+
 // Auto-generate SKU code (same logic as items/route.ts)
 async function generateSkuCode(materialId: number, typeId?: number | null): Promise<string> {
   const mCode = String(materialId).padStart(2, '0');
@@ -12,19 +38,46 @@ async function generateSkuCode(materialId: number, typeId?: number | null): Prom
   const dateStr = String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
   const prefixFull = `${mCode}${tCode}-${dateStr}-`;
 
-  const lastItem = await db.item.findFirst({
+  const existingItems = await db.item.findMany({
     where: { skuCode: { startsWith: prefixFull } },
-    orderBy: { skuCode: 'desc' },
+    select: { skuCode: true },
   });
 
-  let seq = 1;
-  if (lastItem) {
-    const parts = lastItem.skuCode.split('-');
-    const lastSeq = parseInt(parts[parts.length - 1]);
-    if (!isNaN(lastSeq)) seq = lastSeq + 1;
+  let maxSeq = 0;
+  for (const item of existingItems) {
+    const parts = item.skuCode.split('-');
+    const seq = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
   }
 
-  return `${prefixFull}${String(seq).padStart(3, '0')}`;
+  return `${prefixFull}${String(maxSeq + 1).padStart(3, '0')}`;
+}
+
+async function createItemWithGeneratedSku(
+  data: Omit<Parameters<typeof db.item.create>[0]['data'], 'skuCode'>,
+  materialId: number,
+  typeId: number | null,
+): Promise<void> {
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const skuCode = await generateSkuCode(materialId, typeId);
+    try {
+      await db.item.create({
+        data: {
+          ...data,
+          skuCode,
+        },
+      });
+      return;
+    } catch (err: unknown) {
+      lastErr = err;
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes('Unique constraint failed on the fields: (`sku_code`)')) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr ?? new Error('生成SKU失败，请重试');
 }
 
 // Find or create material by name
@@ -242,19 +295,15 @@ export async function POST(req: NextRequest) {
         // Parse purchase date
         let parsedDate: string | null = null;
         if (purchaseDate) {
-          const d = new Date(purchaseDate);
-          if (!isNaN(d.getTime())) {
-            parsedDate = d.toISOString().slice(0, 10);
-          }
+          parsedDate = normalizeDateInput(purchaseDate);
         }
 
-        // Dedup check: skip if same name + costPrice + certNo already exists
-        if (quantity === 1) {
+        // Dedup check by matchKey: if the same matchKey already exists, skip the row.
+        // Business rule: each inventory piece should carry a stable matchKey.
+        if (matchKey) {
           const existing = await db.item.findFirst({
             where: {
-              name,
-              costPrice: cost && !isNaN(cost) ? cost : null,
-              certNo: certNo || null,
+              notes: { contains: `[MK:${matchKey}]` },
               isDeleted: false,
             },
           });
@@ -272,11 +321,8 @@ export async function POST(req: NextRequest) {
         ].filter(Boolean).join(' ') || null;
 
         for (let q = 0; q < quantity; q++) {
-          const finalSkuCode = await generateSkuCode(materialId, typeId);
-
-          await db.item.create({
-            data: {
-              skuCode: finalSkuCode,
+          await createItemWithGeneratedSku(
+            {
               name: name,
               materialId: materialId,
               typeId: typeId,
@@ -290,7 +336,9 @@ export async function POST(req: NextRequest) {
               notes: notesWithKey,
               status: 'in_stock',
             },
-          });
+            materialId,
+            typeId,
+          );
         }
 
         success += quantity;

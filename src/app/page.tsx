@@ -186,7 +186,7 @@ export default function JadeInventoryPage() {
         if (parsed.storeName) return parsed.storeName;
       }
     } catch (e) { console.error('[Page]', e);}
-    return '翡翠珠宝';
+    return '兴盛艺珠宝';
   });
 
   // MOUNT DIAGNOSTIC
@@ -221,7 +221,7 @@ export default function JadeInventoryPage() {
       settings: `系统设置 - ${storeName}进销存`,
     };
     document.title = titleMap[activeTab] || `${storeName}进销存管理系统`;
-    return () => { document.title = '翡翠珠宝进销存管理系统'; };
+    return () => { document.title = '兴盛艺珠宝进销存管理系统'; };
   }, [activeTab]);
 
   // Network status detection
@@ -384,7 +384,7 @@ export default function JadeInventoryPage() {
       <div className="fixed top-0 left-0 right-0 z-[100] h-[2px] pointer-events-none">
         <div className="loading-bar h-full w-full" />
       </div>
-      <DesktopNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" />
+      <DesktopNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" loading={apiLoading} />
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 dark:bg-amber-600 text-white text-center text-sm py-1.5 px-4 animate-in slide-in-from-top-1 duration-200">
           <div className="flex items-center justify-center gap-2">
@@ -405,7 +405,10 @@ export default function JadeInventoryPage() {
       <footer className="no-print mt-auto hidden md:block border-t border-border bg-card py-3">
         <div className="container mx-auto px-4 flex items-center justify-between text-sm">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5"><Gem className="h-4 w-4 text-emerald-600" />{storeName}管理系统</span>
+            <span className="flex items-center gap-1.5">
+              <img src="/logo-xingshengyi.png" alt="兴盛艺珠宝Logo" className="h-4 w-4 rounded-sm object-cover" />
+              {storeName}管理系统
+            </span>
             <div className="w-px h-4 bg-border" />
             <QuickStatsBar />
           </div>
@@ -419,7 +422,7 @@ export default function JadeInventoryPage() {
             )}
             <span className="text-muted-foreground text-xs">按 ? 查看快捷键</span>
             <span className="text-muted-foreground text-xs">最后更新: {lastUpdateTime}</span>
-            <span className="text-muted-foreground">技术支持: Z.ai</span>
+            <span className="text-muted-foreground">技术支持: Lrunning</span>
           </div>
         </div>
       </footer>

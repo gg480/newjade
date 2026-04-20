@@ -40,12 +40,17 @@ docker compose up -d
 
 ## 数据持久化说明
 
-所有业务数据和图片都挂载到本地 `./data/` 目录，**删除/更新容器不会丢失数据**：
+业务数据支持分目录挂载（推荐 SSD/HDD 分离），**删除/更新容器不会丢失数据**：
 
 ```
-./data/
+./jade-ssd/
 ├── db/              ← SQLite 数据库（货品/销售/客户等全部业务数据）
 │   └── custom.db
+├── logs/            ← 日志目录（预留）
+├── backups/         ← 恢复前自动备份目录
+└── config/          ← 配置目录（预留）
+
+./jade-hdd/
 └── images/          ← 货品图片文件
     ├── item_1_*.jpg
     └── ...
@@ -55,8 +60,11 @@ docker compose up -d
 
 | 本地路径 | 容器路径 | 内容 | 说明 |
 |---------|---------|------|------|
-| `./data/db/` | `/app/db/` | SQLite 数据库 | 包含全部业务数据 |
-| `./data/images/` | `/app/public/images/` | 货品图片 | 上传的货品照片 |
+| `./jade-ssd/db/` | `/app/data/db/` | SQLite 数据库 | 核心业务数据，建议 SSD |
+| `./jade-hdd/images/` | `/app/data/images/` | 货品图片 | 建议 HDD |
+| `./jade-ssd/logs/` | `/app/data/logs/` | 日志目录 | 预留 |
+| `./jade-ssd/backups/` | `/app/backups/` | 恢复前自动备份 | 预留 |
+| `./jade-ssd/config/` | `/app/config/` | 配置目录 | 预留 |
 
 > **重要**：首次启动时，系统会自动创建数据库和目录。后续升级镜像只需 `docker compose up -d`，数据完整保留。
 
@@ -92,7 +100,7 @@ docker compose build
 docker compose up -d
 ```
 
-> 数据目录 `./data/` 不受影响，业务数据完整保留。
+> 数据目录 `./jade-ssd/` 和 `./jade-hdd/` 不受影响，业务数据完整保留。
 
 ---
 
@@ -102,10 +110,10 @@ docker compose up -d
 
 ```bash
 # 方式1：手动复制数据目录
-cp -r ./data ./backup_$(date +%Y%m%d)
+cp -r ./jade-ssd ./backup_ssd_$(date +%Y%m%d)
 
 # 方式2：仅备份数据库
-cp ./data/db/custom.db ./backup_custom_$(date +%Y%m%d).db
+cp ./jade-ssd/db/custom.db ./backup_custom_$(date +%Y%m%d).db
 ```
 
 ### 恢复
@@ -114,8 +122,8 @@ cp ./data/db/custom.db ./backup_custom_$(date +%Y%m%d).db
 # 停止服务
 docker compose down
 
-# 恢复数据
-cp -r ./backup_YYYYMMDD/* ./data/
+# 恢复数据（示例）
+cp -r ./backup_ssd_YYYYMMDD/* ./jade-ssd/
 
 # 重启
 docker compose up -d
@@ -127,7 +135,7 @@ docker compose up -d
 # 添加 crontab，每天凌晨3点自动备份
 crontab -e
 # 添加以下行：
-0 3 * * * cp /path/to/jade-inventory-next/data/db/custom.db /path/to/backups/jade_$(date +\%Y\%m\%d).db
+0 3 * * * cp /path/to/jade-inventory-next/jade-ssd/db/custom.db /path/to/backups/jade_$(date +\%Y\%m\%d).db
 ```
 
 ---
@@ -147,9 +155,10 @@ ports:
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DATABASE_URL` | `file:/app/db/custom.db` | 数据库路径（一般无需修改） |
+| `DATA_DIR` | `/app/data` | 数据根目录（db/images/logs） |
+| `BACKUP_DIR` | `/app/backups` | 恢复前自动备份目录 |
 | `TZ` | `Asia/Shanghai` | 时区 |
-| `PORT` | `3000` | 容器内端口（无需修改） |
+| `PORT` | `5000` | 容器内端口（通常无需修改） |
 
 ---
 
@@ -159,15 +168,18 @@ ports:
 
 1. 在极空间「容器管理」中，选择「创建容器」
 2. 镜像：先在本地构建并推送，或使用镜像导入功能
-3. 端口映射：主机端口 `8080` → 容器端口 `3000`
-4. **必须挂载两个目录**：
+3. 端口映射：主机端口 `5000` → 容器端口 `5000`
+4. **建议挂载多个目录（支持 SSD/HDD 分盘）**：
 
 | 本地路径（NAS绝对路径） | 容器路径 | 说明 |
 |----------------------|---------|------|
-| `/volume1/jade-data/db` | `/app/db` | 数据库 |
-| `/volume1/jade-data/images` | `/app/public/images` | 图片 |
+| `/volumeSSD/jade/db` | `/app/data/db` | 数据库（SSD） |
+| `/volumeHDD/jade/images` | `/app/data/images` | 图片（HDD） |
+| `/volumeSSD/jade/logs` | `/app/data/logs` | 日志 |
+| `/volumeSSD/jade/backups` | `/app/backups` | 恢复前备份 |
+| `/volumeSSD/jade/config` | `/app/config` | 配置（预留） |
 
-5. 环境变量添加：`DATABASE_URL=file:/app/db/custom.db`
+5. 环境变量添加：`DATA_DIR=/app/data`、`BACKUP_DIR=/app/backups`
 
 ### 群晖 NAS
 
@@ -177,8 +189,10 @@ ports:
 4. 修改 volumes 路径为群晖绝对路径，例如：
    ```yaml
    volumes:
-     - /volume1/docker/jade/db:/app/db
-     - /volume1/docker/jade/images:/app/public/images
+     - /volumeSSD/docker/jade/db:/app/data/db
+     - /volumeHDD/docker/jade/images:/app/data/images
+     - /volumeSSD/docker/jade/logs:/app/data/logs
+     - /volumeSSD/docker/jade/backups:/app/backups
    ```
 5. 启动项目
 
@@ -201,7 +215,7 @@ docker compose logs jade-inventory   # 查看错误日志
 ```bash
 # 进入容器检查
 docker compose exec jade-inventory sh
-ls -la /app/db/          # 检查数据库文件
+ls -la /app/data/db/     # 检查数据库文件
 npx prisma db push       # 手动同步数据库结构
 ```
 
@@ -209,7 +223,7 @@ npx prisma db push       # 手动同步数据库结构
 
 ```bash
 # 检查图片目录挂载
-docker compose exec jade-inventory ls -la /app/public/images/
+docker compose exec jade-inventory ls -la /app/data/images/
 ```
 
 ---
@@ -221,14 +235,14 @@ docker compose exec jade-inventory ls -la /app/public/images/
     │
     ▼ http://localhost:8080
 Docker 容器 (Next.js standalone)
-    ├── :3000            → Next.js 服务
-    ├── /app/db/         → SQLite 数据库（挂载到本地）
-    └── /app/public/images/ → 图片文件（挂载到本地）
+    ├── :5000               → Next.js 服务
+    ├── /app/data/db/       → SQLite 数据库（建议 SSD）
+    ├── /app/data/images/   → 图片文件（建议 HDD）
+    ├── /app/data/logs/     → 日志目录
+    └── /app/backups/       → 恢复前自动备份
     │
     ▼ 持久化
-本地 ./data/
-├── db/custom.db
-└── images/
+本地 ./jade-ssd/ + ./jade-hdd/
 ```
 
 **技术栈**：

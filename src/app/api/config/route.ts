@@ -12,9 +12,19 @@ export async function PUT(req: Request) {
     return NextResponse.json({ code: 400, data: null, message: '缺少 key 或 value' }, { status: 400 });
   }
   try {
-    const config = await db.sysConfig.update({ where: { key }, data: { value } });
+    const normalizedKey = String(key).trim();
+    const normalizedValue = String(value);
+    const config = await db.sysConfig.upsert({
+      where: { key: normalizedKey },
+      update: { value: normalizedValue },
+      create: {
+        key: normalizedKey,
+        value: normalizedValue,
+        description: normalizedKey,
+      },
+    });
     return NextResponse.json({ code: 0, data: config, message: 'ok' });
   } catch (e: any) {
-    return NextResponse.json({ code: 404, data: null, message: '配置项不存在' }, { status: 404 });
+    return NextResponse.json({ code: 500, data: null, message: `保存配置失败: ${e.message || 'unknown error'}` }, { status: 500 });
   }
 }

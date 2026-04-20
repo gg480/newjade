@@ -1,33 +1,51 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function normalizeSaleDate(input: string | null | undefined): string {
+  if (!input) return '';
+  const raw = String(input).trim();
+  const m = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (!m) return '';
+  return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}-${String(parseInt(m[3], 10)).padStart(2, '0')}`;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const startDate = searchParams.get('start_date') || '';
-  const endDate = searchParams.get('end_date') || new Date().toISOString().slice(0, 10);
+  const endDate = searchParams.get('end_date') || toLocalDateString(new Date());
   const agingDays = parseInt(searchParams.get('aging_days') || '90');
   const months = parseInt(searchParams.get('months') || '12');
   const limit = parseInt(searchParams.get('limit') || '5');
 
   try {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const todayStr = toLocalDateString(now);
+    const monthStart = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
 
     // ========== 1. Summary ==========
-    const [totalItems, inStockItems, monthSales, soldCount, returnedCount] = await Promise.all([
+    const [totalItems, inStockItems, allSales, soldCount, returnedCount] = await Promise.all([
       db.item.count({ where: { status: 'in_stock', isDeleted: false } }),
       db.item.findMany({
         where: { status: 'in_stock', isDeleted: false },
         select: { costPrice: true, allocatedCost: true },
       }),
       db.saleRecord.findMany({
-        where: { saleDate: { gte: monthStart } },
         include: { item: true },
       }),
       db.item.count({ where: { status: 'sold', isDeleted: false } }),
       db.item.count({ where: { status: 'returned', isDeleted: false } }),
     ]);
+    const monthSales = allSales.filter(s => {
+      const d = normalizeSaleDate(s.saleDate);
+      return d && d >= monthStart && d <= todayStr;
+    });
 
     const totalStockValue = inStockItems.reduce((sum, i) => sum + (i.allocatedCost || i.costPrice || 0), 0);
     const monthRevenue = monthSales.reduce((sum, s) => sum + s.actualPrice, 0);
@@ -161,18 +179,10 @@ export async function GET(req: Request) {
     // ========== 5. Month-over-Month Comparison ==========
     const thisMonthStart = monthStart;
     const thisMonthEnd = todayStr;
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+    const lastMonthStart = toLocalDateString(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    const lastMonthEnd = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), 0));
 
-    const [thisMonthSales, lastMonthSales, thisNewItems, lastNewItems] = await Promise.all([
-      db.saleRecord.findMany({
-        where: { saleDate: { gte: thisMonthStart, lte: thisMonthEnd } },
-        include: { item: true },
-      }),
-      db.saleRecord.findMany({
-        where: { saleDate: { gte: lastMonthStart, lte: lastMonthEnd } },
-        include: { item: true },
-      }),
+    const [thisNewItems, lastNewItems] = await Promise.all([
       db.item.count({
         where: { createdAt: { gte: new Date(thisMonthStart), lte: new Date(thisMonthEnd + 'T23:59:59') }, isDeleted: false },
       }),
@@ -180,6 +190,14 @@ export async function GET(req: Request) {
         where: { createdAt: { gte: new Date(lastMonthStart), lte: new Date(lastMonthEnd + 'T23:59:59') }, isDeleted: false },
       }),
     ]);
+    const thisMonthSales = allSales.filter(s => {
+      const d = normalizeSaleDate(s.saleDate);
+      return d && d >= thisMonthStart && d <= thisMonthEnd;
+    });
+    const lastMonthSales = allSales.filter(s => {
+      const d = normalizeSaleDate(s.saleDate);
+      return d && d >= lastMonthStart && d <= lastMonthEnd;
+    });
 
     const thisRevenue = thisMonthSales.reduce((sum, s) => sum + s.actualPrice, 0);
     const thisProfit = thisMonthSales.reduce((sum, s) => {

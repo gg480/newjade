@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Gem, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         if (parsed.storeName) return parsed.storeName;
       }
     } catch {}
-    return '翡翠珠宝';
+    return '兴盛艺珠宝';
   });
 
   useEffect(() => {
@@ -133,8 +133,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <Card className="shadow-2xl border-emerald-200/80 dark:border-emerald-800/50 backdrop-blur-sm bg-white/80 dark:bg-gray-900/80">
           <CardHeader className="text-center pb-2 pt-8">
             <div className="flex items-center justify-center gap-2 mb-3">
-              <div className="p-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl shadow-lg shadow-emerald-500/30 animate-pulse-slow">
-                <Gem className="h-9 w-9 text-white" />
+              <div className="p-2 bg-white/70 dark:bg-gray-900/70 rounded-2xl shadow-lg shadow-emerald-500/20 animate-pulse-slow">
+                <img src="/logo-xingshengyi.png" alt="兴盛艺珠宝Logo" className="h-14 w-14 rounded-md object-cover" />
               </div>
             </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-teal-600 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
@@ -186,7 +186,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 )}
               </Button>
             </form>
-            <p className="text-center text-xs text-muted-foreground/60 mt-6">技术支持: Z.ai</p>
+            <p className="text-center text-xs text-muted-foreground/60 mt-6">技术支持: Lrunning</p>
           </CardContent>
         </Card>
       </div>

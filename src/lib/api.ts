@@ -15,10 +15,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...restOptions,
     headers,
   });
-  if (!res.ok) {
-    throw new Error(`请求失败: HTTP ${res.status} ${res.statusText}`);
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    json = null;
   }
-  const json = await res.json();
+  if (!res.ok) {
+    const detail = json?.message || `HTTP ${res.status} ${res.statusText}`;
+    throw new Error(`请求失败: ${detail}`);
+  }
   if (json.code !== 0 && json.code !== 200) {
     throw new Error(json.message || '请求失败');
   }
@@ -117,6 +123,8 @@ export const salesApi = {
   },
   createSale: (data: any) =>
     request<any>('/sales', { method: 'POST', body: JSON.stringify(data) }),
+  updateSale: (id: number, data: any) =>
+    request<any>(`/sales/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   createBundleSale: (data: any) =>
     request<any>('/sales/bundle', { method: 'POST', body: JSON.stringify(data) }),
   returnSale: (data: any) =>

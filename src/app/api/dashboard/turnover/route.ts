@@ -1,26 +1,41 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function normalizeSaleDate(input: string | null | undefined): string {
+  if (!input) return '';
+  const raw = String(input).trim();
+  const m = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (!m) return '';
+  return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}-${String(parseInt(m[3], 10)).padStart(2, '0')}`;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const months = parseInt(searchParams.get('months') || '6');
 
   const now = new Date();
-  const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+  const allSales = await db.saleRecord.findMany({ include: { item: true } });
 
   const result = [];
 
   for (let i = months - 1; i >= 0; i--) {
     const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-    const monthStartStr = monthStart.toISOString().slice(0, 10);
-    const monthEndStr = monthEnd.toISOString().slice(0, 10);
+    const monthStartStr = toLocalDateString(monthStart);
+    const monthEndStr = toLocalDateString(monthEnd);
     const yearMonth = monthStartStr.slice(0, 7);
 
     // Cost of goods sold in this month
-    const sales = await db.saleRecord.findMany({
-      where: { saleDate: { gte: monthStartStr, lte: monthEndStr } },
-      include: { item: true },
+    const sales = allSales.filter(s => {
+      const d = normalizeSaleDate(s.saleDate);
+      return d && d >= monthStartStr && d <= monthEndStr;
     });
     const cogs = sales.reduce((sum, s) => {
       const cost = s.item?.allocatedCost || s.item?.costPrice || 0;

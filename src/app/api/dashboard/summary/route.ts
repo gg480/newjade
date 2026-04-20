@@ -1,13 +1,28 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function normalizeSaleDate(input: string | null | undefined): string {
+  if (!input) return '';
+  const raw = String(input).trim();
+  const m = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (!m) return '';
+  return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}-${String(parseInt(m[3], 10)).padStart(2, '0')}`;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const agingDays = parseInt(searchParams.get('aging_days') || '90');
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const todayStr = now.toISOString().slice(0, 10);
+  const monthStart = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+  const todayStr = toLocalDateString(now);
 
   // Total items in stock
   const totalItems = await db.item.count({ where: { status: 'in_stock', isDeleted: false } });
@@ -20,9 +35,12 @@ export async function GET(req: Request) {
   const totalStockValue = inStockItems.reduce((sum, i) => sum + (i.allocatedCost || i.costPrice || 0), 0);
 
   // Month sales
-  const monthSales = await db.saleRecord.findMany({
-    where: { saleDate: { gte: monthStart } },
+  const allSales = await db.saleRecord.findMany({
     include: { item: true },
+  });
+  const monthSales = allSales.filter(s => {
+    const d = normalizeSaleDate(s.saleDate);
+    return d && d >= monthStart && d <= todayStr;
   });
   const monthRevenue = monthSales.reduce((sum, s) => sum + s.actualPrice, 0);
   const monthProfit = monthSales.reduce((sum, s) => {

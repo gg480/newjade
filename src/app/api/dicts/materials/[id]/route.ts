@@ -12,12 +12,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const body = await req.json();
   try {
+    const data = {
+      ...body,
+      name: typeof body?.name === 'string' ? body.name.trim() : body?.name,
+      subType: typeof body?.subType === 'string' ? (body.subType.trim() || null) : body?.subType,
+    };
     const item = await db.dictMaterial.update({
       where: { id: parseInt(id) },
-      data: body,
+      data,
     });
     return NextResponse.json({ code: 0, data: item, message: 'ok' });
   } catch (e: any) {
+    if (e.message?.includes('Unique')) {
+      return NextResponse.json({ code: 400, data: null, message: '材质名称+子类已存在' }, { status: 400 });
+    }
     return NextResponse.json({ code: 500, data: null, message: '更新失败' }, { status: 500 });
   }
 }

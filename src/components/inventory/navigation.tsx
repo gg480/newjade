@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import {
   LayoutDashboard, Package, ShoppingCart, Layers, Users, Settings,
-  BarChart3, Gem, ScrollText, Keyboard,
+  BarChart3, ScrollText, Keyboard,
 } from 'lucide-react';
 
 // ========== Mobile Bottom Navigation ==========
@@ -159,7 +159,7 @@ function ShortcutsHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 }
 
 // ========== Desktop Top Navigation ==========
-function DesktopNav({ activeTab, onTabChange, className }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string }) {
+function DesktopNav({ activeTab, onTabChange, className, loading = false }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string; loading?: boolean }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [storeName, setStoreName] = useState(() => {
     try {
@@ -169,7 +169,7 @@ function DesktopNav({ activeTab, onTabChange, className }: { activeTab: TabId; o
         if (parsed.storeName) return parsed.storeName;
       }
     } catch (e) { console.error('[Nav]', e);}
-    return '翡翠珠宝';
+    return '兴盛艺珠宝';
   });
 
   useEffect(() => {
@@ -203,7 +203,12 @@ function DesktopNav({ activeTab, onTabChange, className }: { activeTab: TabId; o
         <div className="container mx-auto px-4">
           <div className="flex items-center h-14">
             <div className="flex items-center mr-8">
-              <Gem className="h-5 w-5 text-emerald-600 mr-2 animate-pulse" style={{ animationDuration: '3s' }} />
+              <img
+                src="/logo-xingshengyi.png"
+                alt="兴盛艺珠宝"
+                className={`h-6 w-6 rounded-sm object-cover mr-2 ${loading ? 'animate-pulse' : ''}`}
+                style={loading ? { animationDuration: '1.2s' } : undefined}
+              />
               <span className="text-lg font-bold text-emerald-600">{storeName}</span>
             </div>
             <div className="flex space-x-1 flex-1">

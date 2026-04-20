@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, itemsApi, salesApi, batchesApi, customersApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice, EmptyState, LoadingSkeleton } from './shared';
@@ -148,6 +148,7 @@ function SettingsTab() {
   const [restoring, setRestoring] = useState(false);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
 
   // Import states
@@ -184,7 +185,7 @@ function SettingsTab() {
 
   // System config (synced to server SysConfig for store_name, others in localStorage)
   const STORAGE_KEY = 'jade_system_config';
-  const defaultSettings = { storeName: '翡翠珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
+  const defaultSettings = { storeName: '兴盛艺珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
   const [systemConfig, setSystemConfig] = useState(defaultSettings);
 
   // Editable server configs (local edit state, saved on blur)
@@ -213,11 +214,15 @@ function SettingsTab() {
     } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
   }, []);
 
-  // Sync store name from server config to local state on initial load
+  // Sync key settings from server config to local state
   useEffect(() => {
     const storeNameConfig = configs.find(c => c.key === 'store_name');
     if (storeNameConfig?.value) {
       setSystemConfig(prev => ({ ...prev, storeName: storeNameConfig.value }));
+    }
+    const warningDaysConfig = configs.find(c => c.key === 'warning_days');
+    if (warningDaysConfig?.value && !isNaN(parseInt(warningDaysConfig.value))) {
+      setSystemConfig(prev => ({ ...prev, lowStockDays: parseInt(warningDaysConfig.value) || prev.lowStockDays }));
     }
     // Initialize editConfigs from server configs
     const editMap: Record<string, string> = {};
@@ -882,7 +887,7 @@ function SettingsTab() {
                           updateConfig('store_name', systemConfig.storeName);
                         }
                         localStorage.setItem(STORAGE_KEY, JSON.stringify(systemConfig));
-                      }} className="h-8 text-sm" placeholder="翡翠珠宝" />
+                      }} className="h-8 text-sm" placeholder="兴盛艺珠宝" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">默认货币符号</Label>
@@ -905,19 +910,25 @@ function SettingsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-xs" onClick={() => {
+                    <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-xs" onClick={async () => {
                       localStorage.setItem(STORAGE_KEY, JSON.stringify(systemConfig));
-                      // Sync store name to server
-                      const serverVal = configs.find(c => c.key === 'store_name')?.value;
-                      if (systemConfig.storeName !== serverVal) {
-                        updateConfig('store_name', systemConfig.storeName);
+                      // Sync store name and warning days to server
+                      const storeNameVal = configs.find(c => c.key === 'store_name')?.value;
+                      const warningDaysVal = configs.find(c => c.key === 'warning_days')?.value;
+                      const tasks: Promise<void>[] = [];
+                      if (systemConfig.storeName !== storeNameVal) {
+                        tasks.push(updateConfig('store_name', systemConfig.storeName));
                       }
+                      if (String(systemConfig.lowStockDays) !== String(warningDaysVal || '')) {
+                        tasks.push(updateConfig('warning_days', String(systemConfig.lowStockDays)));
+                      }
+                      await Promise.all(tasks);
                       toast.success('设置已保存');
                     }}>
                       <CheckCircle className="h-3 w-3 mr-1" />保存设置
                     </Button>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => {
-                      const defaults = { storeName: '翡翠珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
+                      const defaults = { storeName: '兴盛艺珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
                       setSystemConfig(defaults);
                       localStorage.removeItem(STORAGE_KEY);
                       toast.success('已恢复默认设置');
@@ -1037,20 +1048,45 @@ function SettingsTab() {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <Button className="bg-emerald-600 hover:bg-emerald-700" asChild onClick={() => {
-                  const nowIso = new Date().toISOString();
-                  const nowDisplay = new Date().toLocaleString('zh-CN');
-                  setLastBackupTime(nowDisplay);
-                  setLastBackupFromStorage(nowDisplay);
-                  localStorage.setItem('last_backup_time', nowIso);
-                  setTimeout(() => {
-                    // Estimate file size after download starts
-                    toast.success('备份下载已开始');
-                  }, 100);
+                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={async () => {
+                  try {
+                    const res = await fetch(backupApi.download());
+                    if (!res.ok) {
+                      let errMsg = `下载失败（HTTP ${res.status}）`;
+                      try {
+                        const errJson = await res.json();
+                        if (errJson?.message) errMsg = errJson.message;
+                      } catch {
+                        // ignore parse error
+                      }
+                      throw new Error(errMsg);
+                    }
+
+                    const blob = await res.blob();
+                    const cd = res.headers.get('content-disposition') || '';
+                    const match = cd.match(/filename="?([^"]+)"?/);
+                    const filename = match?.[1] || `jade-backup-${new Date().toISOString().slice(0, 10)}.db`;
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    const nowIso = new Date().toISOString();
+                    const nowDisplay = new Date().toLocaleString('zh-CN');
+                    setLastBackupTime(nowDisplay);
+                    setLastBackupFromStorage(nowDisplay);
+                    localStorage.setItem('last_backup_time', nowIso);
+                    toast.success('备份下载完成');
+                  } catch (e: any) {
+                    toast.error(e.message || '备份下载失败');
+                  }
                 }}>
-                  <a href={backupApi.download()} download>
-                    <Download className="h-4 w-4 mr-2" />下载数据库备份
-                  </a>
+                  <Download className="h-4 w-4 mr-2" />下载数据库备份
                 </Button>
               </div>
             </CardContent>
@@ -1065,10 +1101,27 @@ function SettingsTab() {
                 <p className="text-sm text-red-700 dark:text-red-300 font-medium">⚠️ 恢复操作将覆盖当前所有数据，请谨慎操作！</p>
               </div>
               <div className="flex items-center gap-3">
-                <Input type="file" accept=".db" onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (f) { setRestoreFile(f); setShowRestoreConfirm(true); }
-                }} className="max-w-xs" />
+                <input
+                  ref={restoreFileInputRef}
+                  type="file"
+                  accept=".db,.sqlite,.sqlite3,application/octet-stream"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) { setRestoreFile(f); setShowRestoreConfirm(true); }
+                    // allow selecting same file again
+                    e.currentTarget.value = '';
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  className="h-9"
+                  onClick={() => restoreFileInputRef.current?.click()}
+                  disabled={restoring}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  上传备份文件
+                </Button>
                 {restoring && <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />}
               </div>
             </CardContent>
@@ -1944,8 +1997,9 @@ function SettingsTab() {
               if (!restoreFile) return;
               setRestoring(true);
               try {
-                await backupApi.restore(restoreFile);
-                toast.success('数据库恢复成功，页面将在3秒后刷新');
+                const result = await backupApi.restore(restoreFile);
+                const preName = result?.preRestoreBackupFilename;
+                toast.success(preName ? `数据库恢复成功（已先备份: ${preName}），页面将在3秒后刷新` : '数据库恢复成功，页面将在3秒后刷新');
                 setShowRestoreConfirm(false);
                 setRestoreFile(null);
                 setTimeout(() => window.location.reload(), 3000);

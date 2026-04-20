@@ -10,14 +10,21 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Map all persistent data to a local directory on your NAS
-      # - db/       → SQLite database
-      # - images/   → User uploaded images
-      # - logs/     → Application logs
-      # Change ./jade-data to any path on your NAS
-      - ./jade-data:/app/data
+      # ===== 可按磁盘类型分开挂载 =====
+      # 建议：DB/日志/配置放 SSD，图片放 HDD
+      # SSD: 数据库
+      - ./jade-ssd/db:/app/data/db
+      # HDD: 图片
+      - ./jade-hdd/images:/app/data/images
+      # SSD: 日志目录（当前主要是预留）
+      - ./jade-ssd/logs:/app/data/logs
+      # SSD: 运行目录备份（恢复前自动备份文件）
+      - ./jade-ssd/backups:/app/backups
+      # SSD: 预留配置目录（后续文件配置可放这里）
+      - ./jade-ssd/config:/app/config
     environment:
       - DATA_DIR=/app/data
+      - BACKUP_DIR=/app/backups
       - NODE_ENV=production
       # PUID/PGID for NAS permission compatibility
       # Default 0 = run as root (simplest, works on all NAS)

@@ -25,7 +25,7 @@ model SysConfig {
 // ──────────────────────────────────────────────
 model DictMaterial {
   id           Int       @id @default(autoincrement())
-  name         String    @unique
+  name         String
   category     String?   @map("category") // 材质大类: 玉/贵金属/水晶/文玩/其他
   subType      String?   @map("sub_type")
   origin       String?
@@ -37,6 +37,7 @@ model DictMaterial {
   items        Item[]
   metalPrices  MetalPrice[]
 
+  @@unique([name, subType])
   @@map("dict_material")
 }
 

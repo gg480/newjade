@@ -22,7 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   ShoppingCart, TrendingUp, DollarSign, BarChart3, Search, Link2, FileDown, RotateCcw, Store, MessageCircle,
-  CalendarDays, ArrowUp, ArrowDown, CreditCard, ChevronDown, ChevronUp, Printer, Gem, User, Phone, Tag, AlertTriangle, X, Package, XIcon, Eye,
+  CalendarDays, ArrowUp, ArrowDown, ArrowUpDown, CreditCard, ChevronDown, ChevronUp, Printer, Gem, User, Phone, Tag, AlertTriangle, X, Package, XIcon, Eye,
 } from 'lucide-react';
 
 import {
@@ -37,6 +37,13 @@ const PAYMENT_METHODS = [
   { value: '支付宝', label: '支付宝', icon: '📱', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300 border-sky-300 dark:border-sky-700' },
   { value: '分期', label: '分期', icon: '📋', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-300 dark:border-amber-700' },
 ];
+
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function getPaymentMethod(note: string | null | undefined): string | null {
   if (!note) return null;
@@ -62,15 +69,28 @@ function formatPaymentBadge(note: string | null | undefined) {
 function SalesTab() {
   const [sales, setSales] = useState<any[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
+  const [salesStats, setSalesStats] = useState({
+    totalCount: 0,
+    totalRevenue: 0,
+    totalProfit: 0,
+    channelCount: { store: 0, wechat: 0 },
+    channelRevenue: { store: 0, wechat: 0 },
+  });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ channel: '', startDate: '', endDate: '', keyword: '' });
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showBundle, setShowBundle] = useState(false);
   const [datePreset, setDatePreset] = useState('all');
 
   // Return dialog state
   const [returnDialog, setReturnDialog] = useState<{ open: boolean; sale: any }>({ open: false, sale: null });
-  const [returnForm, setReturnForm] = useState({ refundAmount: 0, returnReason: '', returnDate: new Date().toISOString().slice(0, 10) });
+  const [returnForm, setReturnForm] = useState({ refundAmount: 0, returnReason: '', returnDate: toLocalDateString(new Date()) });
+  const [returnReasonMode, setReturnReasonMode] = useState<string>('_custom');
   const [returnSubmitting, setReturnSubmitting] = useState(false);
+  const [editDialog, setEditDialog] = useState<{ open: boolean; sale: any }>({ open: false, sale: null });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editForm, setEditForm] = useState({ actualPrice: 0, channel: 'store', saleDate: toLocalDateString(new Date()), note: '' });
   const RETURN_REASONS = [
     { value: '质量问题', label: '质量问题', color: 'text-red-600' },
     { value: '尺寸不合适', label: '尺寸不合适', color: 'text-amber-600' },
@@ -113,6 +133,8 @@ function SalesTab() {
         if (filters.startDate) params.start_date = filters.startDate;
         if (filters.endDate) params.end_date = filters.endDate;
         if (filters.keyword) params.keyword = filters.keyword;
+        params.sort_by = sortBy;
+        params.sort_order = sortOrder;
         const data = await salesApi.getSales(params);
         console.log('[SalesTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
         if (!cancelled) {
@@ -123,13 +145,58 @@ function SalesTab() {
     };
     loadData();
     return () => { cancelled = true; };
-  }, [pagination.page, pagination.size, refreshKey]);
+  }, [pagination.page, pagination.size, refreshKey, sortBy, sortOrder]);
+
+  // Load full stats under current filters (not limited by page size)
+  useEffect(() => {
+    let cancelled = false;
+    const loadSalesStats = async () => {
+      try {
+        const baseParams: any = {};
+        if (filters.channel) baseParams.channel = filters.channel;
+        if (filters.startDate) baseParams.start_date = filters.startDate;
+        if (filters.endDate) baseParams.end_date = filters.endDate;
+        if (filters.keyword) baseParams.keyword = filters.keyword;
+
+        const size = 500;
+        let page = 1;
+        let pages = 1;
+        const all: any[] = [];
+        do {
+          const data = await salesApi.getSales({ ...baseParams, page, size });
+          all.push(...(data.items || []));
+          pages = data.pagination?.pages || 1;
+          page += 1;
+        } while (page <= pages);
+
+        if (cancelled) return;
+        const totalRevenue = all.reduce((sum, s) => sum + (s.actualPrice || 0), 0);
+        const totalProfit = all.reduce((sum, s) => sum + (s.grossProfit || 0), 0);
+        const storeSales = all.filter(s => s.channel === 'store');
+        const wechatSales = all.filter(s => s.channel === 'wechat');
+        setSalesStats({
+          totalCount: all.length,
+          totalRevenue,
+          totalProfit,
+          channelCount: { store: storeSales.length, wechat: wechatSales.length },
+          channelRevenue: {
+            store: storeSales.reduce((sum, s) => sum + (s.actualPrice || 0), 0),
+            wechat: wechatSales.reduce((sum, s) => sum + (s.actualPrice || 0), 0),
+          },
+        });
+      } catch (e) {
+        console.error('[SalesTab]', e);
+      }
+    };
+    loadSalesStats();
+    return () => { cancelled = true; };
+  }, [filters.channel, filters.startDate, filters.endDate, filters.keyword, refreshKey]);
 
   // Fetch today's stats separately
   useEffect(() => {
     async function fetchTodayStats() {
       try {
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = toLocalDateString(new Date());
         const data = await salesApi.getSales({ start_date: todayStr, end_date: todayStr, size: 1000 });
         const todayItems = data.items || [];
         setTodayStats({
@@ -168,13 +235,24 @@ function SalesTab() {
 
   const totalRevenue = sales.reduce((s, sale) => s + (sale.actualPrice || 0), 0);
   const totalProfit = sales.reduce((s, sale) => s + (sale.grossProfit || 0), 0);
-  const storeCount = sales.filter(s => s.channel === 'store').length;
-  const wechatCount = sales.filter(s => s.channel === 'wechat').length;
+  const storeCount = salesStats.channelCount.store;
+  const wechatCount = salesStats.channelCount.wechat;
 
   // Return handler
   function openReturnDialog(sale: any) {
     setReturnDialog({ open: true, sale });
-    setReturnForm({ refundAmount: sale.actualPrice || 0, returnReason: '', returnDate: new Date().toISOString().slice(0, 10) });
+    setReturnForm({ refundAmount: sale.actualPrice || 0, returnReason: '', returnDate: toLocalDateString(new Date()) });
+    setReturnReasonMode('_custom');
+  }
+
+  function openEditDialog(sale: any) {
+    setEditDialog({ open: true, sale });
+    setEditForm({
+      actualPrice: sale.actualPrice || 0,
+      channel: sale.channel || 'store',
+      saleDate: sale.saleDate || toLocalDateString(new Date()),
+      note: getPaymentNote(sale.note),
+    });
   }
 
   function toggleExpand(saleId: number) {
@@ -298,6 +376,35 @@ function SalesTab() {
     } catch (e: any) { toast.error(e.message || '退货失败'); }
   }
 
+  async function handleEditSale() {
+    if (!editDialog.sale) return;
+    if (!editForm.actualPrice || isNaN(editForm.actualPrice) || editForm.actualPrice <= 0) {
+      toast.error('请输入有效的成交价');
+      return;
+    }
+    if (!editForm.saleDate) {
+      toast.error('请选择销售日期');
+      return;
+    }
+    try {
+      setEditSubmitting(true);
+      await salesApi.updateSale(editDialog.sale.id, {
+        actualPrice: editForm.actualPrice,
+        channel: editForm.channel,
+        saleDate: editForm.saleDate,
+        note: editForm.note || '',
+      });
+      toast.success('销售记录已更新');
+      setEditDialog({ open: false, sale: null });
+      if (detailSale && detailSale.id === editDialog.sale.id) setDetailSale(null);
+      refresh();
+    } catch (e: any) {
+      toast.error(e.message || '更新销售记录失败');
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
+
   function formatChannelBadge(channel: string) {
     if (!channel) return null;
     if (channel === 'store') return <Badge variant="outline" className="border-sky-300 text-sky-700 dark:border-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30"><Store className="h-2.5 w-2.5 mr-1" />门店</Badge>;
@@ -309,26 +416,61 @@ function SalesTab() {
     setDatePreset(preset);
     const today = new Date();
     let start = '';
-    let end = today.toISOString().slice(0, 10);
+    let end = toLocalDateString(today);
     switch (preset) {
       case 'today': start = end; break;
       case 'week': {
         // 本周: Monday to today
         const dayOfWeek = today.getDay();
         const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        start = new Date(today.getTime() - mondayOffset * 86400000).toISOString().slice(0, 10);
+        start = toLocalDateString(new Date(today.getTime() - mondayOffset * 86400000));
         break;
       }
-      case 'month': start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10); break;
-      case 'lastMonth': start = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().slice(0, 10); end = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10); break;
-      case 'quarter': start = new Date(today.getFullYear(), today.getMonth() - 2, 1).toISOString().slice(0, 10); break;
-      case 'year': start = new Date(today.getFullYear(), 0, 1).toISOString().slice(0, 10); break;
-      case 'days30': start = new Date(today.getTime() - 30 * 86400000).toISOString().slice(0, 10); break;
-      case 'days90': start = new Date(today.getTime() - 90 * 86400000).toISOString().slice(0, 10); break;
-      case 'thisYear': start = new Date(today.getFullYear(), 0, 1).toISOString().slice(0, 10); break;
+      case 'month': start = toLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1)); break;
+      case 'lastMonth':
+        start = toLocalDateString(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+        end = toLocalDateString(new Date(today.getFullYear(), today.getMonth(), 0));
+        break;
+      case 'quarter': {
+        const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+        start = toLocalDateString(new Date(today.getFullYear(), quarterStartMonth, 1));
+        break;
+      }
+      case 'year': start = toLocalDateString(new Date(today.getFullYear(), 0, 1)); break;
+      // 含今天共30天：今天往前推29天
+      case 'days30': start = toLocalDateString(new Date(today.getTime() - 29 * 86400000)); break;
+      case 'days90': start = toLocalDateString(new Date(today.getTime() - 89 * 86400000)); break;
+      case 'thisYear': start = toLocalDateString(new Date(today.getFullYear(), 0, 1)); break;
       default: start = ''; end = '';
     }
     setFilters(f => ({ ...f, startDate: start, endDate: end }));
+  }
+
+  function SortableHead({ field, label, align = 'left' }: { field: string; label: string; align?: 'left' | 'right' | 'center' }) {
+    const active = sortBy === field;
+    return (
+      <TableHead className={align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : ''}>
+        <button
+          type="button"
+          onClick={() => toggleSort(field)}
+          className={`inline-flex items-center gap-1 text-xs md:text-sm hover:text-foreground ${align === 'right' ? 'ml-auto' : ''}`}
+          title={`按${label}排序`}
+        >
+          <span>{label}</span>
+          {active ? (sortOrder === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+        </button>
+      </TableHead>
+    );
+  }
+
+  function toggleSort(field: string) {
+    setPagination(p => ({ ...p, page: 1 }));
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
   }
 
   return (
@@ -398,7 +540,7 @@ function SalesTab() {
           <CardContent className="p-4">
             <div className="absolute -right-1 -bottom-1 opacity-10"><TrendingUp className="h-16 w-16 text-sky-500" /></div>
             <p className="text-sm text-muted-foreground">客单价</p>
-            <p className="text-2xl font-bold text-sky-600">{pagination.total > 0 ? formatPrice(totalRevenue / pagination.total) : '-'}</p>
+            <p className="text-2xl font-bold text-sky-600">{salesStats.totalCount > 0 ? formatPrice(salesStats.totalRevenue / salesStats.totalCount) : '-'}</p>
           </CardContent>
         </Card>
         <Card className="relative overflow-hidden border-l-4 border-l-amber-500 hover:shadow-md hover:border-amber-400 transition-all duration-200">
@@ -496,9 +638,15 @@ function SalesTab() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10"><Checkbox checked={sales.length > 0 && selectedSaleIds.size === sales.length} onCheckedChange={toggleSelectAll} /></TableHead>
-                      <TableHead>销售单号</TableHead><TableHead>SKU</TableHead><TableHead>渠道</TableHead><TableHead>支付方式</TableHead><TableHead>货品</TableHead>
-                      <TableHead className="text-right">成交价</TableHead>
-                      <TableHead>日期</TableHead><TableHead>客户</TableHead><TableHead className="text-right">毛利</TableHead>
+                      <SortableHead field="sale_no" label="销售单号" />
+                      <SortableHead field="item_sku" label="SKU" />
+                      <SortableHead field="channel" label="渠道" />
+                      <TableHead>支付方式</TableHead>
+                      <SortableHead field="item_name" label="货品" />
+                      <SortableHead field="actual_price" label="成交价" align="right" />
+                      <SortableHead field="sale_date" label="日期" />
+                      <SortableHead field="customer_name" label="客户" />
+                      <TableHead className="text-right">毛利</TableHead>
                       <TableHead className="text-center">操作</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -540,6 +688,9 @@ function SalesTab() {
                         </TableCell>
                         <TableCell className="text-center" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-amber-600 hover:text-amber-700" onClick={() => openEditDialog(sale)} title="编辑">
+                              <Tag className="h-3 w-3 mr-1" />编辑
+                            </Button>
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-emerald-600 hover:text-emerald-700" onClick={() => setDetailSale(sale)} title="查看详情">
                               <Eye className="h-3 w-3 mr-1" />详情
                             </Button>
@@ -649,6 +800,9 @@ function SalesTab() {
                   )}
                   {/* Action buttons */}
                   <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs text-amber-600" onClick={() => openEditDialog(sale)}>
+                      <Tag className="h-3 w-3 mr-1" />编辑
+                    </Button>
                     <Button size="sm" variant="outline" className="h-7 px-3 text-xs text-emerald-600" onClick={() => setDetailSale(sale)}>
                       <Eye className="h-3 w-3 mr-1" />详情
                     </Button>
@@ -756,11 +910,11 @@ function SalesTab() {
                 </div>
                 <div className="flex-1 space-y-2">
                   {[
-                    { label: '门店', count: storeCount, revenue: sales.filter(s => s.channel === 'store').reduce((sum, s) => sum + (s.actualPrice || 0), 0), color: 'bg-emerald-500', icon: Store },
-                    { label: '微信', count: wechatCount, revenue: sales.filter(s => s.channel === 'wechat').reduce((sum, s) => sum + (s.actualPrice || 0), 0), color: 'bg-sky-500', icon: MessageCircle },
+                    { label: '门店', count: storeCount, revenue: salesStats.channelRevenue.store, color: 'bg-emerald-500', icon: Store },
+                    { label: '微信', count: wechatCount, revenue: salesStats.channelRevenue.wechat, color: 'bg-sky-500', icon: MessageCircle },
                   ].filter(ch => ch.count > 0).map(ch => {
                     const ChIcon = ch.icon;
-                    const pct = sales.length > 0 ? Math.round((ch.count / sales.length) * 100) : 0;
+                    const pct = salesStats.totalCount > 0 ? Math.round((ch.count / salesStats.totalCount) * 100) : 0;
                     return (
                       <div key={ch.label} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
@@ -772,7 +926,7 @@ function SalesTab() {
                           <span className="text-emerald-600 font-medium text-xs">{formatPrice(ch.revenue)}</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-1.5">
-                          <div className={`${ch.color} rounded-full h-1.5 transition-all duration-500`} style={{ width: `${pct}%` }} />
+                          <div className={`${ch.color} rounded-full h-1.5 transition-all duration-500`} style={{ width: `${Math.min(pct, 100)}%` }} />
                         </div>
                       </div>
                     );
@@ -788,6 +942,45 @@ function SalesTab() {
 
       {/* Bundle Sale Dialog */}
       <BundleSaleDialog open={showBundle} onOpenChange={setShowBundle} onSuccess={refresh} />
+
+      {/* Edit Sale Dialog */}
+      <Dialog open={editDialog.open} onOpenChange={open => setEditDialog({ open, sale: open ? editDialog.sale : null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-amber-600" />编辑销售记录</DialogTitle>
+            <DialogDescription>
+              单号: <span className="font-mono">{editDialog.sale?.saleNo}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>成交价</Label>
+              <Input type="number" min="0" step="0.01" value={editForm.actualPrice || ''} onChange={e => setEditForm(f => ({ ...f, actualPrice: e.target.value ? parseFloat(e.target.value) : 0 }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>销售渠道</Label>
+              <Select value={editForm.channel} onValueChange={v => setEditForm(f => ({ ...f, channel: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="store">门店</SelectItem><SelectItem value="wechat">微信</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>销售日期</Label>
+              <Input type="date" value={editForm.saleDate} onChange={e => setEditForm(f => ({ ...f, saleDate: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>备注</Label>
+              <Textarea value={editForm.note} onChange={e => setEditForm(f => ({ ...f, note: e.target.value }))} placeholder="可选" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialog({ open: false, sale: null })} disabled={editSubmitting}>取消</Button>
+            <Button onClick={handleEditSale} disabled={editSubmitting} className="bg-amber-600 hover:bg-amber-700">
+              {editSubmitting ? '保存中...' : '保存修改'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Return Dialog */}
       <Dialog open={returnDialog.open} onOpenChange={open => setReturnDialog({ open, sale: open ? returnDialog.sale : null })}>
@@ -863,7 +1056,14 @@ function SalesTab() {
             {/* Return Reason Dropdown */}
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">退货原因</Label>
-              <Select value={returnForm.returnReason || '_custom'} onValueChange={v => setReturnForm(f => ({ ...f, returnReason: v === '_custom' ? '' : v }))}>
+              <Select value={returnReasonMode} onValueChange={v => {
+                setReturnReasonMode(v);
+                if (v !== '_custom') {
+                  setReturnForm(f => ({ ...f, returnReason: v }));
+                } else {
+                  setReturnForm(f => ({ ...f, returnReason: '' }));
+                }
+              }}>
                 <SelectTrigger className="h-10"><SelectValue placeholder="请选择退货原因" /></SelectTrigger>
                 <SelectContent>
                   {RETURN_REASONS.map(r => (
@@ -874,11 +1074,11 @@ function SalesTab() {
                   <SelectItem value="_custom">自定义原因...</SelectItem>
                 </SelectContent>
               </Select>
-              {!returnForm.returnReason && (
+              {returnReasonMode === '_custom' && (
                 <Input
                   className="mt-2 h-9 text-sm"
                   placeholder="输入自定义退货原因..."
-                  value={returnForm.returnReason === '_custom' ? '' : ''}
+                  value={returnForm.returnReason}
                   onChange={e => setReturnForm(f => ({ ...f, returnReason: e.target.value }))}
                 />
               )}
@@ -920,36 +1120,16 @@ function SalesTab() {
           {printSale && (
             <div id="print-receipt-content" className="print-only-content font-mono text-sm space-y-3 py-2">
               <div className="text-center border-b border-dashed pb-3">
-                <p className="text-lg font-bold">翡翠珠宝</p>
+                <p className="text-lg font-bold">兴盛艺珠宝</p>
                 <p className="text-xs text-muted-foreground">销售凭证</p>
               </div>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span>单号:</span><span>{printSale.saleNo}</span></div>
-                <div className="flex justify-between"><span>日期:</span><span>{printSale.saleDate}</span></div>
-              </div>
-              <div className="border-t border-dashed pt-2 space-y-1.5">
-                <p className="font-medium">{printSale.itemName || printSale.itemSku}</p>
-                <p className="text-xs text-muted-foreground">SKU: {printSale.itemSku}</p>
-                {printSale.materialName && <p className="text-xs text-muted-foreground">材质: {printSale.materialName}</p>}
-                {printSale.typeName && <p className="text-xs text-muted-foreground">器型: {printSale.typeName}</p>}
-              </div>
-              <div className="border-t border-dashed pt-2 space-y-1 text-xs">
-                <div className="flex justify-between"><span>成本价:</span><span>{formatPrice(printSale.costPrice)}</span></div>
-                <div className="flex justify-between font-bold"><span>售价:</span><span>{formatPrice(printSale.actualPrice)}</span></div>
-                <div className="flex justify-between"><span>毛利:</span><span className={printSale.grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>{formatPrice(printSale.grossProfit)}</span></div>
-              </div>
-              {printSale.customerName && (
-                <div className="border-t border-dashed pt-2 text-xs">
-                  <div className="flex justify-between"><span>客户:</span><span>{printSale.customerName}</span></div>
-                  {printSale.customerPhone && <div className="flex justify-between"><span>电话:</span><span>{printSale.customerPhone}</span></div>}
-                </div>
-              )}
-              <div className="border-t border-dashed pt-2 text-xs">
-                <div className="flex justify-between"><span>支付:</span><span>{getPaymentMethod(printSale.note) || '未指定'}</span></div>
-                <div className="flex justify-between"><span>渠道:</span><span>{printSale.channel === 'store' ? '门店' : printSale.channel === 'wechat' ? '微信' : printSale.channel || '-'}</span></div>
+              <div className="border-t border-dashed pt-2 text-xs space-y-1.5">
+                <div className="flex justify-between"><span>日期:</span><span>{printSale.saleDate || '-'}</span></div>
+                <div className="flex justify-between"><span>商品名称:</span><span>{printSale.itemName || printSale.itemSku || '-'}</span></div>
+                <div className="flex justify-between"><span>器型:</span><span>{printSale.typeName || '-'}</span></div>
+                <div className="flex justify-between"><span>材质:</span><span>{printSale.materialName || '-'}</span></div>
               </div>
               <div className="border-t border-dashed pt-2 text-center text-xs text-muted-foreground">
-                <p className="font-mono tracking-widest">{printSale.itemSku}</p>
                 <p className="mt-1">感谢惠顾</p>
               </div>
             </div>
@@ -1142,6 +1322,9 @@ function SalesTab() {
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2 pt-2">
+                <Button size="sm" variant="outline" className="flex-1 text-amber-600" onClick={() => { setDetailSale(null); openEditDialog(detailSale); }}>
+                  <Tag className="h-3 w-3 mr-1" />编辑
+                </Button>
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => { setDetailSale(null); handlePrintReceipt(detailSale); }}>
                   <Printer className="h-3 w-3 mr-1" />打印小票
                 </Button>

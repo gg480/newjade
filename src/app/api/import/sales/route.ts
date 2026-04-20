@@ -3,101 +3,34 @@ import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
 import { parse as csvParse } from 'csv-parse/sync';
 
-// Auto-generate SKU code
-async function generateSkuCode(materialId: number, typeId?: number | null): Promise<string> {
-  const mCode = String(materialId).padStart(2, '0');
-  const tCode = typeId ? String(typeId).padStart(2, '0') : '00';
-  const today = new Date();
-  const dateStr = String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
-  const prefixFull = `${mCode}${tCode}-${dateStr}-`;
+function normalizeDateInput(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const raw = String(input).trim();
+  if (!raw) return null;
 
-  const lastItem = await db.item.findFirst({
-    where: { skuCode: { startsWith: prefixFull } },
-    orderBy: { skuCode: 'desc' },
-  });
-
-  let seq = 1;
-  if (lastItem) {
-    const parts = lastItem.skuCode.split('-');
-    const lastSeq = parseInt(parts[parts.length - 1]);
-    if (!isNaN(lastSeq)) seq = lastSeq + 1;
+  const normalized = raw
+    .replace(/[年./]/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .replace(/\s+/g, '');
+  const m = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}-${String(parseInt(m[3], 10)).padStart(2, '0')}`;
   }
 
-  return `${prefixFull}${String(seq).padStart(3, '0')}`;
-}
-
-// Find or create material by name
-async function findOrCreateMaterial(name: string, materialCache: Map<string, any>): Promise<number> {
-  if (!name || !name.trim()) {
-    const uncategorized = materialCache.get('未分类');
-    if (uncategorized) return uncategorized.id;
-    const created = await db.dictMaterial.create({ data: { name: '未分类', category: '其他', sortOrder: 99 } });
-    materialCache.set('未分类', created);
-    return created.id;
+  const num = Number(raw);
+  if (!Number.isNaN(num) && num > 20000 && num < 100000) {
+    // Excel serial date (1900-based)
+    const base = new Date(Date.UTC(1899, 11, 30));
+    const dt = new Date(base.getTime() + num * 86400000);
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
   }
-  const trimmed = name.trim();
-  const cached = materialCache.get(trimmed);
-  if (cached) return cached.id;
 
-  const categoryMap: Record<string, string> = {
-    '翡翠': '玉', '和田玉': '玉', '碧玉': '玉',
-    '黄金': '贵金属', '银': '贵金属', '铂金': '贵金属', '18K金': '贵金属',
-    '珍珠': '其他', '朱砂': '文玩', '蜜蜡': '文玩', '琥珀': '文玩',
-  };
-  const category = categoryMap[trimmed] || '其他';
-  const created = await db.dictMaterial.create({ data: { name: trimmed, category } });
-  materialCache.set(trimmed, created);
-  return created.id;
-}
-
-// Find or create type by name
-async function findOrCreateType(name: string, typeCache: Map<string, any>): Promise<number | null> {
-  if (!name || !name.trim()) {
-    const uncategorized = typeCache.get('未分类');
-    if (uncategorized) return uncategorized.id;
-    const lastType = await db.dictType.findFirst({ orderBy: { sortOrder: 'desc' } });
-    const sortOrder = (lastType?.sortOrder || 0) + 1;
-    const created = await db.dictType.create({
-      data: { name: '未分类', specFields: JSON.stringify({ weight: { required: false } }), sortOrder },
-    });
-    typeCache.set('未分类', created);
-    return created.id;
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
-  const trimmed = name.trim();
-  const cached = typeCache.get(trimmed);
-  if (cached) return cached.id;
-
-  const lastType = await db.dictType.findFirst({ orderBy: { sortOrder: 'desc' } });
-  const sortOrder = (lastType?.sortOrder || 0) + 1;
-  const created = await db.dictType.create({
-    data: { name: trimmed, specFields: JSON.stringify({ weight: { required: false } }), sortOrder },
-  });
-  typeCache.set(trimmed, created);
-  return created.id;
-}
-
-// Infer material/type from item name
-function inferFromName(name: string): { material?: string; type?: string } {
-  if (!name) return {};
-  const result: { material?: string; type?: string } = {};
-  const materialKeywords: [string, string][] = [
-    ['翡翠', '翡翠'], ['和田玉', '和田玉'], ['碧玉', '碧玉'],
-    ['黄金', '黄金'], ['18K', '18K金'], ['银', '银'], ['铂金', '铂金'],
-    ['蜜蜡', '蜜蜡'], ['琥珀', '琥珀'], ['朱砂', '朱砂'],
-    ['绿松石', '绿松石'], ['南红', '南红'], ['珍珠', '珍珠'],
-  ];
-  for (const [keyword, material] of materialKeywords) {
-    if (name.includes(keyword)) { result.material = material; break; }
-  }
-  const typeKeywords: [string, string][] = [
-    ['手镯', '手镯'], ['手链', '手链'], ['项链', '项链'], ['脚链', '脚链'],
-    ['戒指', '戒指'], ['吊坠', '吊坠'], ['耳环', '耳饰'], ['耳钉', '耳饰'],
-    ['摆件', '摆件'], ['挂件', '吊坠'], ['平安扣', '吊坠'],
-  ];
-  for (const [keyword, type] of typeKeywords) {
-    if (name.includes(keyword)) { result.type = type; break; }
-  }
-  return result;
+  return null;
 }
 
 // Generate sale number
@@ -145,25 +78,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ code: 400, data: null, message: 'CSV文件为空' }, { status: 400 });
     }
 
-    // Build caches
-    const materialCache = new Map<string, any>();
-    const typeCache = new Map<string, any>();
-    const allMaterials = await db.dictMaterial.findMany();
-    const allTypes = await db.dictType.findMany();
-    allMaterials.forEach(m => materialCache.set(m.name, m));
-    allTypes.forEach(t => typeCache.set(t.name, t));
-
     // Channel mapping
     const CHANNEL_MAP: Record<string, string> = {
       '门店': 'store', '微信': 'wechat', '网店': 'wechat', '线上': 'wechat',
       'store': 'store', 'wechat': 'wechat',
     };
 
-    const results: { row: number; success: boolean; skuCode?: string; saleNo?: string; error?: string; autoCreatedItem?: boolean }[] = [];
+    const results: { row: number; success: boolean; skuCode?: string; saleNo?: string; error?: string }[] = [];
     let successCount = 0;
     let failCount = 0;
-    let autoCreatedItemCount = 0;
-    const autoCreated: { materials: string[]; types: string[] } = { materials: [], types: [] };
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -172,21 +95,19 @@ export async function POST(req: Request) {
       try {
         // Support multiple column name conventions
         const name = row['名称'] || row['name'] || row['货品名称'] || '';
-        const skuCode = row['SKU'] || row['sku'] || row['SKU编号'] || row['编码'] || '';
         const matchKey = row['匹配码'] || row['matchKey'] || row['关联码'] || '';
-        let materialName = row['材质'] || row['material'] || row['材质名称'] || '';
-        let typeName = row['器型'] || row['type'] || row['器型名称'] || '';
-        const costRaw = row['成本价'] || row['costPrice'] || row['成本'] || '';
+        const retailPriceStr = row['零售价'] || row['sellingPrice'] || row['售价'] || row['标价'] || '';
         const actualPriceStr = row['成交价'] || row['actualPrice'] || row['销售价'] || row['售价'] || '';
-        const saleDate = row['销售日期'] || row['saleDate'] || row['日期'] || '';
+        const saleDateRaw = row['销售日期'] || row['saleDate'] || row['日期'] || '';
+        const saleDate = normalizeDateInput(saleDateRaw);
         const channelInput = row['渠道'] || row['channel'] || '门店';
         const customerName = row['客户姓名'] || row['客户'] || row['customerName'] || '';
         const customerPhone = row['客户电话'] || row['电话'] || row['customerPhone'] || '';
         const note = row['备注'] || row['notes'] || '';
 
-        // Validate required: need at least name or skuCode to identify the item
-        if (!name && !skuCode) {
-          results.push({ row: rowNum, success: false, error: '缺少名称和SKU编号（至少填一项）' });
+        // Sales import must identify item by matchKey from inventory.
+        if (!matchKey) {
+          results.push({ row: rowNum, success: false, error: '缺少匹配码（销售导入必须提供匹配码）' });
           failCount++;
           continue;
         }
@@ -197,6 +118,12 @@ export async function POST(req: Request) {
           failCount++;
           continue;
         }
+
+        if (saleDateRaw && !saleDate) {
+          results.push({ row: rowNum, success: false, error: `销售日期格式无效: ${saleDateRaw}` });
+          failCount++;
+          continue;
+        }
         const actualPrice = parseFloat(actualPriceStr);
         if (isNaN(actualPrice) || actualPrice <= 0) {
           results.push({ row: rowNum, success: false, error: '成交价格式无效' });
@@ -204,90 +131,49 @@ export async function POST(req: Request) {
           continue;
         }
 
-        // Find existing item by: 1) SKU, 2) matchKey in notes, 3) name+costPrice
-        let item = null;
-        let autoCreatedItem = false;
-
-        if (skuCode) {
-          item = await db.item.findUnique({ where: { skuCode } });
-        }
-
-        if (!item && matchKey) {
-          // Search by matchKey stored in notes as [MK:xxx]
-          item = await db.item.findFirst({
-            where: {
-              notes: { contains: `[MK:${matchKey}]` },
-              isDeleted: false,
-            },
-          });
-        }
-
-        if (!item && name) {
-          // Try to find by name + costPrice
-          const cost = costRaw ? parseFloat(costRaw) : undefined;
-          item = await db.item.findFirst({
-            where: {
-              name,
-              ...(cost && !isNaN(cost) ? { costPrice: cost } : {}),
-              isDeleted: false,
-            },
-          });
-        }
-
-        // If item not found and autoCreate is enabled, create a "sold" item
-        if (!item && autoCreate && name) {
-          // Infer material/type from name if not provided
-          if (!materialName || !typeName) {
-            const inf = inferFromName(name);
-            if (!materialName && inf.material) materialName = inf.material;
-            if (!typeName && inf.type) typeName = inf.type;
-          }
-
-          const materialId = await findOrCreateMaterial(materialName, materialCache);
-          const typeId = await findOrCreateType(typeName, typeCache);
-
-          // Check new entries in caches for autoCreated tracking
-          for (const [k, v] of materialCache) {
-            if (!allMaterials.find(m => m.name === k) && !autoCreated.materials.includes(k)) {
-              autoCreated.materials.push(k);
-            }
-          }
-          for (const [k, v] of typeCache) {
-            if (!allTypes.find(t => t.name === k) && !autoCreated.types.includes(k)) {
-              autoCreated.types.push(k);
-            }
-          }
-
-          const newSkuCode = await generateSkuCode(materialId, typeId);
-          const cost = costRaw ? parseFloat(costRaw) : null;
-
-          item = await db.item.create({
-            data: {
-              skuCode: newSkuCode,
-              name,
-              materialId,
-              typeId,
-              costPrice: cost && !isNaN(cost) ? cost : null,
-              allocatedCost: cost && !isNaN(cost) ? cost : null,
-              sellingPrice: actualPrice,
-              status: 'sold', // Already sold
-              purchaseDate: saleDate || null,
-            },
-          });
-          autoCreatedItem = true;
-          autoCreatedItemCount++;
-        }
+        // Search by matchKey stored in notes as [MK:xxx]
+        const item = await db.item.findFirst({
+          where: {
+            notes: { contains: `[MK:${matchKey}]` },
+            isDeleted: false,
+          },
+        });
 
         if (!item) {
-          results.push({ row: rowNum, success: false, error: skuCode ? `SKU「${skuCode}」不存在` : `未找到货品「${name}」` });
+          results.push({ row: rowNum, success: false, error: `匹配码「${matchKey}」未在库存中找到对应货品` });
           failCount++;
           continue;
         }
 
-        if (item.status === 'sold' && !autoCreatedItem) {
+        if (item.status === 'sold') {
           results.push({ row: rowNum, success: false, skuCode: item.skuCode, error: `SKU「${item.skuCode}」已售出` });
           failCount++;
           continue;
+        }
+
+        if (name && item.name && name !== item.name) {
+          results.push({
+            row: rowNum,
+            success: false,
+            skuCode: item.skuCode,
+            error: `名称与库存不一致（导入=${name}，库存=${item.name}）`,
+          });
+          failCount++;
+          continue;
+        }
+
+        if (retailPriceStr) {
+          const retailPrice = parseFloat(retailPriceStr);
+          if (!isNaN(retailPrice) && item.sellingPrice !== retailPrice) {
+            results.push({
+              row: rowNum,
+              success: false,
+              skuCode: item.skuCode,
+              error: `零售价与库存不一致（导入=${retailPrice}，库存=${item.sellingPrice}）`,
+            });
+            failCount++;
+            continue;
+          }
         }
 
         // Determine channel
@@ -316,7 +202,7 @@ export async function POST(req: Request) {
             itemId: item.id,
             actualPrice,
             channel,
-            saleDate: saleDate || new Date().toISOString().slice(0, 10),
+            saleDate: saleDate || normalizeDateInput(new Date().toISOString().slice(0, 10))!,
             customerId,
             note: note || null,
           },
@@ -333,12 +219,13 @@ export async function POST(req: Request) {
         await logAction('import_sale', 'sale', sale.id, {
           saleNo,
           skuCode: item.skuCode,
+          matchKey,
           actualPrice,
-          saleDate,
+          saleDate: saleDate || '',
           row: rowNum,
         });
 
-        results.push({ row: rowNum, success: true, skuCode: item.skuCode, saleNo, autoCreatedItem });
+        results.push({ row: rowNum, success: true, skuCode: item.skuCode, saleNo });
         successCount++;
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -353,11 +240,9 @@ export async function POST(req: Request) {
         total: rows.length,
         successCount,
         failCount,
-        autoCreatedItemCount,
-        autoCreated,
         results,
       },
-      message: `导入完成: 成功${successCount}条${autoCreatedItemCount > 0 ? `(含${autoCreatedItemCount}条自动创建货品)` : ''}, 失败${failCount}条`,
+      message: `导入完成: 成功${successCount}条, 失败${failCount}条`,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

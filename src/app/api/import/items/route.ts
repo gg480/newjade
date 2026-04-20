@@ -3,6 +3,32 @@ import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
 import Papa from 'papaparse';
 
+function normalizeDateInput(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const raw = String(input).trim();
+  if (!raw) return null;
+  const normalized = raw
+    .replace(/[年./]/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .replace(/\s+/g, '');
+  const m = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    return `${m[1]}-${String(parseInt(m[2], 10)).padStart(2, '0')}-${String(parseInt(m[3], 10)).padStart(2, '0')}`;
+  }
+  const num = Number(raw);
+  if (!Number.isNaN(num) && num > 20000 && num < 100000) {
+    const base = new Date(Date.UTC(1899, 11, 30));
+    const dt = new Date(base.getTime() + num * 86400000);
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+  }
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return null;
+}
+
 // CSV 列名到系统字段的映射
 const ITEM_FIELD_MAP: Record<string, string> = {
   'SKU编号': 'skuCode',
@@ -26,6 +52,9 @@ const ITEM_FIELD_MAP: Record<string, string> = {
   '颗数': 'beadCount',
   '产地': 'origin',
   '证书号': 'certNo',
+  '匹配码': 'matchKey',
+  '关联码': 'matchKey',
+  'matchKey': 'matchKey',
   '标签': 'tagNames',
   '备注': 'notes',
   '底价': 'floorPrice',
@@ -55,19 +84,19 @@ async function generateSkuCode(materialId: number): Promise<string> {
   const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
   const prefixFull = `${prefix}-${dateStr}-`;
 
-  const lastItem = await db.item.findFirst({
+  const existingItems = await db.item.findMany({
     where: { skuCode: { startsWith: prefixFull } },
-    orderBy: { skuCode: 'desc' },
+    select: { skuCode: true },
   });
 
-  let seq = 1;
-  if (lastItem) {
-    const parts = lastItem.skuCode.split('-');
-    const lastSeq = parseInt(parts[parts.length - 1]);
-    if (!isNaN(lastSeq)) seq = lastSeq + 1;
+  let maxSeq = 0;
+  for (const item of existingItems) {
+    const parts = item.skuCode.split('-');
+    const seq = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
   }
 
-  return `${prefixFull}${String(seq).padStart(3, '0')}`;
+  return `${prefixFull}${String(maxSeq + 1).padStart(3, '0')}`;
 }
 
 interface ImportResult {
@@ -221,6 +250,30 @@ export async function POST(req: Request) {
             typeId = type.id;
           }
 
+          // Check duplicate by matchKey first
+          const matchKey = mapped.matchKey || '';
+          if (matchKey) {
+            const existingByMatchKey = await db.item.findFirst({
+              where: {
+                notes: { contains: `[MK:${matchKey}]` },
+                isDeleted: false,
+              },
+            });
+            if (existingByMatchKey) {
+              if (skipExisting) {
+                results.push({
+                  row: rowNum,
+                  success: false,
+                  skuCode: existingByMatchKey.skuCode,
+                  name: existingByMatchKey.name || mapped.name,
+                  error: `匹配码「${matchKey}」已存在，已跳过`,
+                });
+                failCount++;
+                continue;
+              }
+            }
+          }
+
           // Check SKU existence
           const skuCode = mapped.skuCode || '';
           if (skuCode) {
@@ -243,7 +296,7 @@ export async function POST(req: Request) {
                 if (mapped.counter) updateData.counter = parseInt(mapped.counter) || null;
                 if (mapped.certNo) updateData.certNo = mapped.certNo;
                 if (mapped.notes) updateData.notes = mapped.notes;
-                if (mapped.purchaseDate) updateData.purchaseDate = mapped.purchaseDate;
+                if (mapped.purchaseDate) updateData.purchaseDate = normalizeDateInput(mapped.purchaseDate);
                 if (mapped.floorPrice) updateData.floorPrice = parseFloat(mapped.floorPrice) || null;
 
                 await db.item.update({ where: { skuCode }, data: updateData });
@@ -255,7 +308,7 @@ export async function POST(req: Request) {
           }
 
           // Generate SKU if not provided
-          const finalSkuCode = skuCode || await generateSkuCode(material.id);
+          let finalSkuCode = skuCode;
 
           // Build spec data
           const specData: Record<string, unknown> = {};
@@ -299,31 +352,60 @@ export async function POST(req: Request) {
 
           // Create item
           const costPrice = mapped.costPrice ? parseFloat(mapped.costPrice) : null;
-          const item = await db.item.create({
-            data: {
-              skuCode: finalSkuCode,
-              name: mapped.name || null,
-              materialId: material.id,
-              typeId: typeId || null,
-              costPrice: costPrice ?? null,
-              allocatedCost: costPrice ?? null,
-              sellingPrice,
-              floorPrice: mapped.floorPrice ? parseFloat(mapped.floorPrice) : null,
-              origin: mapped.origin || null,
-              counter: mapped.counter ? parseInt(mapped.counter) : null,
-              certNo: mapped.certNo || null,
-              notes: mapped.notes || null,
-              supplierId,
-              purchaseDate: mapped.purchaseDate || null,
-              status: 'in_stock',
-              ...(tagIds.length > 0 ? {
-                tags: { connect: tagIds.map(id => ({ id })) },
-              } : {}),
-              ...(Object.keys(specData).length > 0 ? {
-                spec: { create: specData },
-              } : {}),
-            },
-          });
+          const notesWithKey = [matchKey ? `[MK:${matchKey}]` : '', mapped.notes || ''].filter(Boolean).join(' ') || null;
+          const createData = {
+            name: mapped.name || null,
+            materialId: material.id,
+            typeId: typeId || null,
+            costPrice: costPrice ?? null,
+            allocatedCost: costPrice ?? null,
+            sellingPrice,
+            floorPrice: mapped.floorPrice ? parseFloat(mapped.floorPrice) : null,
+            origin: mapped.origin || null,
+            counter: mapped.counter ? parseInt(mapped.counter) : null,
+            certNo: mapped.certNo || null,
+            notes: notesWithKey,
+            supplierId,
+            purchaseDate: normalizeDateInput(mapped.purchaseDate) || null,
+            status: 'in_stock',
+            ...(tagIds.length > 0 ? {
+              tags: { connect: tagIds.map(id => ({ id })) },
+            } : {}),
+            ...(Object.keys(specData).length > 0 ? {
+              spec: { create: specData },
+            } : {}),
+          };
+
+          let item;
+          if (finalSkuCode) {
+            item = await db.item.create({
+              data: {
+                skuCode: finalSkuCode,
+                ...createData,
+              },
+            });
+          } else {
+            let lastErr: unknown = null;
+            for (let attempt = 0; attempt < 8; attempt++) {
+              finalSkuCode = await generateSkuCode(material.id);
+              try {
+                item = await db.item.create({
+                  data: {
+                    skuCode: finalSkuCode,
+                    ...createData,
+                  },
+                });
+                break;
+              } catch (err: unknown) {
+                lastErr = err;
+                const message = err instanceof Error ? err.message : String(err);
+                if (!message.includes('Unique constraint failed on the fields: (`sku_code`)')) {
+                  throw err;
+                }
+              }
+            }
+            if (!item) throw lastErr ?? new Error('生成SKU失败，请重试');
+          }
 
           await logAction('import_item', 'item', item.id, {
             skuCode: finalSkuCode,
