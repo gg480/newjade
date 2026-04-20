@@ -20,21 +20,23 @@ git clone https://github.com/gg480/jade-inventory-next.git
 cd jade-inventory-next
 ```
 
-### 2. 构建镜像
+### 2. 配置 NAS 环境变量
 
 ```bash
-docker compose build
+cp .env.nas.example .env
+# 按你的 NAS 实际绝对路径修改 .env
 ```
 
-> 首次构建约需 2-5 分钟，取决于网络速度。
+> 建议将 `JADE_IMAGE` 指向 GitHub Actions 构建出的 `sha-xxxx` 标签，避免 `latest` 漂移。
 
 ### 3. 启动服务
 
 ```bash
+docker compose pull
 docker compose up -d
 ```
 
-访问 **http://localhost:8080** 即可使用。
+访问 **http://localhost:5000** 即可使用。
 
 ---
 
@@ -95,8 +97,8 @@ docker compose down             # 停止并删除容器（数据不受影响）
 ### 更新到最新版本
 
 ```bash
-git pull
-docker compose build
+git pull                           # 更新 compose / 文档
+docker compose pull                # 拉取新镜像（建议固定 sha tag）
 docker compose up -d
 ```
 
@@ -122,11 +124,30 @@ cp ./jade-ssd/db/custom.db ./backup_custom_$(date +%Y%m%d).db
 # 停止服务
 docker compose down
 
-# 恢复数据（示例）
-cp -r ./backup_ssd_YYYYMMDD/* ./jade-ssd/
+# 恢复数据库（示例）
+cp /path/to/backup/custom.db ./jade-ssd/db/custom.db
 
 # 重启
 docker compose up -d
+```
+
+### 应急恢复（加载已有备份 DB）
+
+当新镜像升级后出现“页面可打开但数据加载失败”时，可按以下顺序快速恢复：
+
+```bash
+# 1) 停止容器
+docker compose down
+
+# 2) 放置已验证可用的备份库到数据库挂载目录
+cp /path/to/your_backup.db ./jade-ssd/db/custom.db
+
+# 3) 启动服务并观察日志
+docker compose up -d
+docker compose logs --tail 120 jade-inventory
+
+# 4) 连通性检查（核心 API）
+sh scripts/nas-healthcheck.sh http://127.0.0.1:5000
 ```
 
 ### 定时自动备份（可选）
@@ -159,6 +180,9 @@ ports:
 | `BACKUP_DIR` | `/app/backups` | 恢复前自动备份目录 |
 | `TZ` | `Asia/Shanghai` | 时区 |
 | `PORT` | `5000` | 容器内端口（通常无需修改） |
+| `JADE_IMAGE` | `...:latest` | 生产建议固定为 `sha-xxxx` 标签 |
+| `JADE_DB_DIR` | `./jade-ssd/db` | 建议改 NAS 绝对路径 |
+| `JADE_IMAGE_DIR` | `./jade-hdd/images` | 建议改 NAS 绝对路径 |
 
 ---
 
@@ -210,6 +234,7 @@ docker compose logs jade-inventory   # 查看错误日志
 - 端口被占用：修改 `docker-compose.yml` 中的主机端口
 - 数据目录权限不足：`chmod -R 777 ./data`
 - Prisma 参数不兼容：若日志出现 `unknown or unexpected option: --skip-generate`，请升级到最新镜像（已移除该参数）
+- Prisma 主版本漂移：若日志出现 `Prisma CLI Version: 7.x` 且 schema 校验失败，请升级到锁定版本镜像（运行时已固定 Prisma 6.11.1）
 
 ### 数据库错误
 
@@ -226,6 +251,42 @@ npx prisma db push       # 手动同步数据库结构
 # 检查图片目录挂载
 docker compose exec jade-inventory ls -la /app/data/images/
 ```
+
+### 页面提示“数据加载失败”
+
+```bash
+# 1) 核心健康检查
+curl -s http://127.0.0.1:5000/api/health
+
+# 2) 看板接口检查（常见首个报错来源）
+curl -s "http://127.0.0.1:5000/api/dashboard/summary?aging_days=90"
+
+# 3) 关键数据接口检查
+curl -s "http://127.0.0.1:5000/api/items?page=1&size=1"
+curl -s "http://127.0.0.1:5000/api/sales?page=1&size=1"
+
+# 4) 对照容器日志
+docker compose logs --tail 200 jade-inventory
+```
+
+---
+
+## 回滚机制（镜像 / 数据 / 配置）
+
+### 镜像回滚（推荐）
+
+1. 将 `.env` 中 `JADE_IMAGE` 改回上一个可用 `sha-xxxx` 标签  
+2. 执行 `docker compose pull && docker compose up -d`
+
+### 数据回滚
+
+1. `docker compose down`  
+2. 用备份库覆盖 `./jade-ssd/db/custom.db`  
+3. `docker compose up -d`
+
+### 配置回滚
+
+保持 `docker-compose.yml` 与 `.env` 版本化（Git 管理），出现异常时回退到上一个已验证提交。
 
 ---
 

@@ -25,6 +25,7 @@ echo "  DATA_DIR: ${DATA_DIR}"
 echo "  DATABASE: ${DB_PATH}"
 echo "  PUID: ${PUID}  PGID: ${PGID}"
 echo "========================================"
+echo "[INFO] Prisma CLI: $(prisma -v 2>/dev/null | awk -F': ' '/Prisma CLI Version/{print $2}' || echo unknown)"
 
 # 1. Ensure directories exist (with permission fix)
 mkdir -p "${DB_DIR}" "${IMG_DIR}" "${LOG_DIR}" 2>/dev/null || {

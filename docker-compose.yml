@@ -2,32 +2,33 @@ version: "3.8"
 
 services:
   jade-inventory:
-    # 阿里云 ACR（国内快，推荐极空间使用）
-    image: crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:latest
-    # Docker Hub（备选，国内慢）
-    # image: lrunningmjgoat/jade-inventory:latest
+    # 建议在 .env 中设置 JADE_IMAGE 为固定 sha tag，避免 latest 漂移
+    # 示例:
+    # JADE_IMAGE=crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:sha-xxxxxxxx
+    image: ${JADE_IMAGE:-crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:latest}
     container_name: jade-inventory
     ports:
-      - "5000:5000"
+      - "${JADE_PORT:-5000}:5000"
     volumes:
-      # ===== 可按磁盘类型分开挂载 =====
-      # 建议：DB/日志/配置放 SSD，图片放 HDD
-      # SSD: 数据库
-      - ./jade-ssd/db:/app/data/db
-      # HDD: 图片
-      - ./jade-hdd/images:/app/data/images
-      # SSD: 日志目录（当前主要是预留）
-      - ./jade-ssd/logs:/app/data/logs
-      # SSD: 运行目录备份（恢复前自动备份文件）
-      - ./jade-ssd/backups:/app/backups
-      # SSD: 预留配置目录（后续文件配置可放这里）
-      - ./jade-ssd/config:/app/config
+      # 建议在 .env 中配置宿主机绝对路径（NAS 更稳定）
+      - ${JADE_DB_DIR:-./jade-ssd/db}:/app/data/db
+      - ${JADE_IMAGE_DIR:-./jade-hdd/images}:/app/data/images
+      - ${JADE_LOG_DIR:-./jade-ssd/logs}:/app/data/logs
+      - ${JADE_BACKUP_DIR:-./jade-ssd/backups}:/app/backups
+      - ${JADE_CONFIG_DIR:-./jade-ssd/config}:/app/config
     environment:
       - DATA_DIR=/app/data
       - BACKUP_DIR=/app/backups
       - NODE_ENV=production
+      - TZ=${TZ:-Asia/Shanghai}
       # PUID/PGID for NAS permission compatibility
       # Default 0 = run as root (simplest, works on all NAS)
-      - PUID=0
-      - PGID=0
+      - PUID=${PUID:-0}
+      - PGID=${PGID:-0}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped

@@ -43,9 +43,9 @@ jobs:
         with:
           images: docker.io/${{ env.DOCKERHUB_IMAGE }}
           tags: |
-            type=sha,prefix=
+            type=sha,prefix=sha-
             type=ref,event=branch
-            latest
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Extract metadata for ACR
         id: meta-acr
@@ -53,11 +53,12 @@ jobs:
         with:
           images: ${{ env.ACR_REGISTRY }}/${{ env.ACR_IMAGE }}
           tags: |
-            type=sha,prefix=
+            type=sha,prefix=sha-
             type=ref,event=branch
-            latest
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -69,3 +70,15 @@ jobs:
           labels: ${{ steps.meta-dockerhub.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Publish image summary
+        run: |
+          echo "## Docker Image Build Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest**: \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Hub tags**" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta-dockerhub.outputs.tags }}" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**ACR tags**" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta-acr.outputs.tags }}" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY

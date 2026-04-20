@@ -29,9 +29,11 @@ RUN npx esbuild prisma/seed-base.ts \
 # ---- Stage 3: Production (minimal) ----
 FROM node:22-alpine AS runner
 
-# Install su-exec for privilege dropping + prisma CLI for db push
+# Install su-exec for privilege dropping + sqlite tools + pinned Prisma CLI
+# Keep Prisma CLI major version aligned with @prisma/client in package.json
+ARG PRISMA_CLI_VERSION=6.11.1
 RUN apk add --no-cache su-exec && \
-    npm install -g prisma
+    npm install -g prisma@${PRISMA_CLI_VERSION}
 
 WORKDIR /app
 
