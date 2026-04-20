@@ -209,6 +209,7 @@ docker compose logs jade-inventory   # 查看错误日志
 常见原因：
 - 端口被占用：修改 `docker-compose.yml` 中的主机端口
 - 数据目录权限不足：`chmod -R 777 ./data`
+- Prisma 参数不兼容：若日志出现 `unknown or unexpected option: --skip-generate`，请升级到最新镜像（已移除该参数）
 
 ### 数据库错误
 

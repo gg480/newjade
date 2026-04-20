@@ -2,7 +2,7 @@
 requires = ["nodejs-24"]
 
 [dev]
-build = ["sh", "-c", "mkdir -p \"$PWD/db\" && pnpm install && DATABASE_URL=\"file:$PWD/db/custom.db\" npx prisma db push --skip-generate && DATABASE_URL=\"file:$PWD/db/custom.db\" npx tsx prisma/seed-base.ts && DATABASE_URL=\"file:$PWD/db/custom.db\" npx tsx prisma/seed-business.ts && echo DATABASE_URL=\"file:$PWD/db/custom.db\" > .env"]
+build = ["sh", "-c", "mkdir -p \"$PWD/db\" && pnpm install && DATABASE_URL=\"file:$PWD/db/custom.db\" npx prisma db push && DATABASE_URL=\"file:$PWD/db/custom.db\" npx tsx prisma/seed-base.ts && DATABASE_URL=\"file:$PWD/db/custom.db\" npx tsx prisma/seed-business.ts && echo DATABASE_URL=\"file:$PWD/db/custom.db\" > .env"]
 run   = ["pnpm", "run", "dev"]
 
 [deploy]

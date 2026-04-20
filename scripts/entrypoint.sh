@@ -62,9 +62,9 @@ if [ -f "${DB_PATH}" ]; then
   echo "[INFO] Preserving existing data, applying schema migration if needed..."
   
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} prisma db push --skip-generate 2>&1 || echo "[WARN] Schema migration had issues, continuing..."
+    ${RUN_AS} prisma db push 2>&1 || echo "[WARN] Schema migration had issues, continuing..."
   else
-    prisma db push --skip-generate 2>&1 || echo "[WARN] Schema migration had issues, continuing..."
+    prisma db push 2>&1 || echo "[WARN] Schema migration had issues, continuing..."
   fi
   echo "[INFO] Schema sync completed"
 else
@@ -73,12 +73,12 @@ else
   # Create schema
   echo "[INFO] Creating database schema..."
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} prisma db push --skip-generate 2>&1 || {
+    ${RUN_AS} prisma db push 2>&1 || {
       echo "[ERROR] Failed to create database schema. Check Prisma schema and permissions."
       exit 1
     }
   else
-    prisma db push --skip-generate 2>&1 || {
+    prisma db push 2>&1 || {
       echo "[ERROR] Failed to create database schema. Check Prisma schema and permissions."
       exit 1
     }
