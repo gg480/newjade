@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { parse } from 'csv-parse/sync';
-
-const db = new PrismaClient();
 
 function normalizeDateInput(input: string | null | undefined): string | null {
   if (!input) return null;

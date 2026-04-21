@@ -26,6 +26,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ code: 404, data: null, message: '未找到该货品' }, { status: 404 });
   }
 
+  // Sales lookup only allows in-stock items to enter sell flow.
+  if (item.status !== 'in_stock') {
+    return NextResponse.json(
+      {
+        code: 409,
+        data: {
+          skuCode: item.skuCode,
+          status: item.status,
+        },
+        message: `货品 ${item.skuCode} 当前状态为「${item.status === 'sold' ? '已售' : item.status === 'returned' ? '已退' : item.status}」，无法出库`,
+      },
+      { status: 409 },
+    );
+  }
+
   return NextResponse.json({
     code: 0,
     data: {

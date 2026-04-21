@@ -55,7 +55,8 @@ export async function GET(req: Request) {
   const endDate = searchParams.get('end_date');
   const customerId = searchParams.get('customer_id');
   const keyword = searchParams.get('keyword');
-  const sortBy = searchParams.get('sort_by') || 'created_at';
+  const includeReturned = searchParams.get('include_returned') === 'true';
+  const sortBy = searchParams.get('sort_by') || 'sale_date';
   const sortOrder = searchParams.get('sort_order') || 'desc';
 
   const where: any = {};
@@ -69,6 +70,11 @@ export async function GET(req: Request) {
       { customer: { is: { name: { contains: keyword } } } },
       { customer: { is: { phone: { contains: keyword } } } },
     ];
+  }
+  // By default, sales list excludes records that already have a return record.
+  // Pass include_returned=true for full history scenarios.
+  if (!includeReturned) {
+    where.saleReturns = { none: {} };
   }
 
   const direction = sortOrder === 'asc' ? 'asc' : 'desc';

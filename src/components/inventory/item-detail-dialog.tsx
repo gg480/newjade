@@ -120,6 +120,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
   };
 
   const images = item?.images || [];
+  const imageSrc = (img: any) => img?.url || img?.filename || '';
 
   return (
     <>
@@ -162,7 +163,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                         </div>
                       )}
                       <ImageWithLoading
-                        src={images[selectedImageIndex]?.url}
+                        src={imageSrc(images[selectedImageIndex])}
                         alt={`货品图片 ${selectedImageIndex + 1}`}
                         className="w-full h-full"
                       />
@@ -185,7 +186,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                             onClick={() => setSelectedImageIndex(idx)}
                           >
                             <ImageWithLoading
-                              src={img.url}
+                              src={imageSrc(img)}
                               alt={`缩略图 ${idx + 1}`}
                               className="w-full h-full"
                             />
@@ -338,7 +339,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
       {lightboxOpen && (
         <ImageLightbox
           key={`lightbox-${selectedImageIndex}`}
-          images={images.map((img: any) => ({ url: img.url, id: img.id, isCover: img.isCover }))}
+          images={images.map((img: any) => ({ url: imageSrc(img), id: img.id, isCover: img.isCover }))}
           initialIndex={selectedImageIndex}
           open={lightboxOpen}
           onClose={() => setLightboxOpen(false)}

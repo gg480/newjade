@@ -14,14 +14,16 @@ async function getBatchStats(batchId: number, batch: any) {
   }, 0);
   const profit = revenue - batch.totalCost;
   const paybackRate = batch.totalCost > 0 ? revenue / batch.totalCost : 0;
+  const hasQuantityMismatch = itemsCount !== batch.quantity;
 
   let status = 'new';
   if (soldCount === 0) status = 'new';
+  else if (hasQuantityMismatch) status = 'selling';
   else if (soldCount === batch.quantity) status = 'cleared';
   else if (paybackRate >= 1) status = 'paid_back';
   else status = 'selling';
 
-  return { itemsCount, soldCount, revenue, profit, paybackRate, status };
+  return { itemsCount, soldCount, revenue, profit, paybackRate, status, hasQuantityMismatch };
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {

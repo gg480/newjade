@@ -180,6 +180,7 @@ export default function JadeInventoryPage() {
   const [apiLoading, setApiLoading] = useState(false);
   const [storeName, setStoreName] = useState(() => {
     try {
+      if (typeof window === 'undefined') return '兴盛艺珠宝';
       const stored = localStorage.getItem('jade_system_config');
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -254,8 +255,15 @@ export default function JadeInventoryPage() {
   }, []);
 
   const handleTabChange = (tab: TabId) => {
+    setApiLoading(true);
     setActiveTab(tab);
   };
+
+  useEffect(() => {
+    if (!apiLoading) return;
+    const timer = setTimeout(() => setApiLoading(false), 450);
+    return () => clearTimeout(timer);
+  }, [apiLoading, activeTab]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -380,10 +388,12 @@ export default function JadeInventoryPage() {
   return (
     <>
       <div className="min-h-screen flex flex-col bg-background" id="app-root">
-      {/* Top Loading Bar */}
-      <div className="fixed top-0 left-0 right-0 z-[100] h-[2px] pointer-events-none">
-        <div className="loading-bar h-full w-full" />
-      </div>
+      {/* Top Loading Bar: only visible during short tab switch loading */}
+      {apiLoading && (
+        <div className="fixed top-0 left-0 right-0 z-[100] h-[2px] pointer-events-none">
+          <div className="loading-bar h-full w-full" />
+        </div>
+      )}
       <DesktopNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" loading={apiLoading} />
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 dark:bg-amber-600 text-white text-center text-sm py-1.5 px-4 animate-in slide-in-from-top-1 duration-200">

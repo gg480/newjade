@@ -19,6 +19,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [loading, setLoading] = useState(false);
   const [storeName, setStoreName] = useState(() => {
     try {
+      if (typeof window === 'undefined') return '兴盛艺珠宝';
       const stored = localStorage.getItem('jade_system_config');
       if (stored) {
         const parsed = JSON.parse(stored);

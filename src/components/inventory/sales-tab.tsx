@@ -78,7 +78,7 @@ function SalesTab() {
   });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ channel: '', startDate: '', endDate: '', keyword: '' });
-  const [sortBy, setSortBy] = useState('created_at');
+  const [sortBy, setSortBy] = useState('sale_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showBundle, setShowBundle] = useState(false);
   const [datePreset, setDatePreset] = useState('all');

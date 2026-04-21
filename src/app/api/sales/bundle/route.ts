@@ -34,9 +34,10 @@ async function generateBundleNo(): Promise<string> {
 export async function POST(req: Request) {
   const body = await req.json();
   const { itemIds, totalPrice, allocMethod, channel, saleDate, customerId, note, chainItems } = body;
+  const allowedAllocMethods = new Set(['by_ratio', 'chain_at_cost']);
   const parsedTotalPrice = parseFloat(totalPrice);
-  const parsedCustomerId = customerId ? parseInt(customerId) : null;
-  const parsedItemIds = itemIds.map((id: any) => parseInt(id));
+  const parsedCustomerId = customerId && customerId !== 'none' ? parseInt(customerId) : null;
+  const parsedItemIds = Array.isArray(itemIds) ? itemIds.map((id: any) => parseInt(id)) : [];
 
   if (!itemIds || itemIds.length < 2) {
     return NextResponse.json({ code: 400, data: null, message: '套装至少2件货品' }, { status: 400 });
@@ -47,6 +48,9 @@ export async function POST(req: Request) {
   if (parsedItemIds.some((id: number) => isNaN(id))) {
     return NextResponse.json({ code: 400, data: null, message: '货品ID无效' }, { status: 400 });
   }
+  if (!allowedAllocMethods.has(allocMethod)) {
+    return NextResponse.json({ code: 400, data: null, message: '不支持的套装分摊方式' }, { status: 400 });
+  }
   if (!channel) {
     return NextResponse.json({ code: 400, data: null, message: '请选择销售渠道' }, { status: 400 });
   }
@@ -55,7 +59,11 @@ export async function POST(req: Request) {
   }
 
   // Validate all items
-  const items = await db.item.findMany({ where: { id: { in: parsedItemIds } } });
+  const uniqueItemIds = Array.from(new Set(parsedItemIds));
+  const items = await db.item.findMany({ where: { id: { in: uniqueItemIds } } });
+  if (items.length !== uniqueItemIds.length) {
+    return NextResponse.json({ code: 400, data: null, message: '存在无效货品ID，请刷新后重试' }, { status: 400 });
+  }
   const notInStock = items.filter(i => i.status !== 'in_stock' || i.isDeleted);
   if (notInStock.length > 0) {
     return NextResponse.json({ code: 400, data: null, message: `以下货品不在库: ${notInStock.map(i => i.skuCode).join(', ')}` }, { status: 400 });
@@ -66,6 +74,9 @@ export async function POST(req: Request) {
 
   if (allocMethod === 'by_ratio') {
     const totalSelling = items.reduce((sum, i) => sum + i.sellingPrice, 0);
+    if (totalSelling <= 0) {
+      return NextResponse.json({ code: 400, data: null, message: '按比例分摊失败：货品售价合计必须大于0' }, { status: 400 });
+    }
     let allocated = 0;
     items.forEach((item, i) => {
       if (i === items.length - 1) {
@@ -78,7 +89,10 @@ export async function POST(req: Request) {
     });
   } else if (allocMethod === 'chain_at_cost') {
     // Chain items at selling_price, remainder to main item
-    const isChain = chainItems || parsedItemIds.map(() => false);
+    const isChain = Array.isArray(chainItems) ? chainItems : uniqueItemIds.map(() => false);
+    if (isChain.length !== items.length) {
+      return NextResponse.json({ code: 400, data: null, message: '链件标记数量与货品数量不一致' }, { status: 400 });
+    }
     let chainTotal = 0;
     items.forEach((item, i) => {
       if (isChain[i]) {
@@ -93,47 +107,54 @@ export async function POST(req: Request) {
       let allocated = 0;
       mainItemIndices.forEach((idx, j) => {
         if (j === mainItemIndices.length - 1) {
-          allocations[idx] = { itemId: items[idx].id, price: Math.round((mainTotal - allocated) * 100) / 100 };
+          allocations.push({ itemId: items[idx].id, price: Math.round((mainTotal - allocated) * 100) / 100 });
         } else {
           const price = Math.round((items[idx].sellingPrice / mainSelling) * mainTotal * 100) / 100;
           allocated += price;
-          allocations[idx] = { itemId: items[idx].id, price };
+          allocations.push({ itemId: items[idx].id, price });
         }
       });
     }
   }
 
+  if (allocations.length !== items.length) {
+    return NextResponse.json({ code: 400, data: null, message: '套装分摊失败：部分货品未分配价格' }, { status: 400 });
+  }
+
   // Create bundle sale + sale records + update items
   const bundleNo = await generateBundleNo();
   const saleNo = await generateSaleNo();
-
-  const bundle = await db.bundleSale.create({
-    data: {
-      bundleNo,
-      totalPrice: parsedTotalPrice,
-      allocMethod,
-      saleDate,
-      channel,
-      customerId: parsedCustomerId,
-      note,
-    },
-  });
-
-  for (const alloc of allocations) {
-    const seq = allocations.indexOf(alloc) + 1;
-    await db.saleRecord.create({
+  const result = await db.$transaction(async tx => {
+    const bundle = await tx.bundleSale.create({
       data: {
-        saleNo: `${saleNo.slice(0, -3)}${String(seq).padStart(3, '0')}`,
-        itemId: alloc.itemId,
-        actualPrice: alloc.price,
-        channel,
+        bundleNo,
+        totalPrice: parsedTotalPrice,
+        allocMethod,
         saleDate,
+        channel,
         customerId: parsedCustomerId,
-        bundleId: bundle.id,
+        note,
       },
     });
-    await db.item.update({ where: { id: alloc.itemId }, data: { status: 'sold' } });
-  }
 
-  return NextResponse.json({ code: 0, data: { bundle, allocations }, message: '套装销售完成' });
+    for (const [index, alloc] of allocations.entries()) {
+      const seq = index + 1;
+      await tx.saleRecord.create({
+        data: {
+          saleNo: `${saleNo.slice(0, -3)}${String(seq).padStart(3, '0')}`,
+          itemId: alloc.itemId,
+          actualPrice: alloc.price,
+          channel,
+          saleDate,
+          customerId: parsedCustomerId,
+          bundleId: bundle.id,
+        },
+      });
+      await tx.item.update({ where: { id: alloc.itemId }, data: { status: 'sold' } });
+    }
+
+    return bundle;
+  });
+
+  return NextResponse.json({ code: 0, data: { bundle: result, allocations }, message: '套装销售完成' });
 }

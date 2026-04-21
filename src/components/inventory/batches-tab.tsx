@@ -578,7 +578,17 @@ function BatchesTab() {
 
       {/* Dialogs */}
       <BatchCreateDialog open={showCreate} onOpenChange={setShowCreate} onSuccess={refresh} />
-      <BatchDetailDialog batchId={detailBatchId} open={detailBatchId != null} onOpenChange={o => { if (!o) setDetailBatchId(null); }} />
+      <BatchDetailDialog
+        batchId={detailBatchId}
+        open={detailBatchId != null}
+        onOpenChange={o => {
+          if (!o) {
+            setDetailBatchId(null);
+            // Detail dialog can create/edit batch items; refresh parent list on close.
+            refresh();
+          }
+        }}
+      />
       {/* Quick Add Item Dialog */}
       {quickAddBatch && (
         <ItemCreateDialog

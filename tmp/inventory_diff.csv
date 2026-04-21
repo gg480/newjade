@@ -1,0 +1,3 @@
+﻿product_id,source_qty,system_qty,source_cost_total,system_cost_total,source_value_total,system_value_total,qty_diff,cost_diff,value_diff,possible_reason,source_cost_unit,source_price_unit,system_cost_unit_set,system_price_unit_set,statuses
+0910-0420-053,0.0,1.0,0.0,1500.0,0.0,11980.0,1.0,1500.0,11980.0,多录数量,,,1500.0,11980.0,"{""in_stock"": 1}"
+0910-0420-056,0.0,1.0,0.0,3000.0,0.0,32000.0,1.0,3000.0,32000.0,多录数量,,,3000.0,32000.0,"{""in_stock"": 1}"

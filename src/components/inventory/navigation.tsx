@@ -163,6 +163,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false }: { ac
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [storeName, setStoreName] = useState(() => {
     try {
+      if (typeof window === 'undefined') return '兴盛艺珠宝';
       const stored = localStorage.getItem('jade_system_config');
       if (stored) {
         const parsed = JSON.parse(stored);

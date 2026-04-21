@@ -183,7 +183,9 @@ function SettingsTab() {
   const [cleanupLoading, setCleanupLoading] = useState<string | null>(null);
   const [cleanupConfirm, setCleanupConfirm] = useState<{ type: 'deleted' | 'logs'; open: boolean }>({ type: 'deleted', open: false });
 
-  // System config (synced to server SysConfig for store_name, others in localStorage)
+  // System config:
+  // - storeName / lowStockDays are server-source-of-truth (SysConfig)
+  // - other fields are local-only
   const STORAGE_KEY = 'jade_system_config';
   const defaultSettings = { storeName: '兴盛艺珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
   const [systemConfig, setSystemConfig] = useState(defaultSettings);
@@ -202,7 +204,12 @@ function SettingsTab() {
       }
       if (stored) {
         const parsed = JSON.parse(stored);
-        setSystemConfig({ ...defaultSettings, ...parsed });
+        setSystemConfig({
+          ...defaultSettings,
+          currencySymbol: parsed?.currencySymbol ?? defaultSettings.currencySymbol,
+          profitWarningThreshold: parsed?.profitWarningThreshold ?? defaultSettings.profitWarningThreshold,
+          defaultProfitRate: parsed?.defaultProfitRate ?? defaultSettings.defaultProfitRate,
+        });
       }
     } catch (e) { console.error('[SettingsTab]', e); /* use defaults */ }
     // Load last backup time from localStorage
@@ -296,6 +303,14 @@ function SettingsTab() {
 
   async function toggleMaterialActive(id: number, isActive: boolean) {
     try { await dictsApi.updateMaterial(id, { isActive: !isActive }); setMaterials(m => m.map(x => x.id === id ? { ...x, isActive: !isActive } : x)); toast.success(isActive ? '已停用' : '已启用'); } catch (e: any) { toast.error(e.message); }
+  }
+
+  function persistLocalSystemConfig(nextConfig: typeof defaultSettings) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      currencySymbol: nextConfig.currencySymbol,
+      profitWarningThreshold: nextConfig.profitWarningThreshold,
+      defaultProfitRate: nextConfig.defaultProfitRate,
+    }));
   }
 
   async function updateConfig(key: string, value: string) {
@@ -804,7 +819,7 @@ function SettingsTab() {
 
         <TabsContent value="suppliers" className="mt-4">
           <Card className="border-l-4 border-l-teal-400 hover:shadow-sm transition-shadow duration-200">
-            <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardTitle className="text-base flex items-center gap-2"><Factory className="h-4 w-4 text-teal-500" />供应商 ({suppliers.length})</CardTitle><Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs" onClick={() => { setShowCreateSupplier(true); setSupplierForm({ name: '', contact: '', notes: '' }); }}><Plus className="h-3 w-3 mr-1" />新增供应商</Button></div></CardHeader>
+            <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardTitle className="text-base flex items-center gap-2"><Factory className="h-4 w-4 text-teal-500" />供应商 ({suppliers.length})</CardTitle><Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs" onClick={() => { setShowCreateSupplier(true); setSupplierForm({ name: '', contact: '', phone: '', notes: '' }); }}><Plus className="h-3 w-3 mr-1" />新增供应商</Button></div></CardHeader>
             <CardContent>
               {/* Supplier Search */}
               <div className="mb-3">
@@ -880,14 +895,7 @@ function SettingsTab() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">店铺名称</Label>
-                      <Input value={systemConfig.storeName} onChange={e => setSystemConfig(c => ({ ...c, storeName: e.target.value }))} onBlur={() => {
-                        // Sync store name to server config
-                        const serverVal = configs.find(c => c.key === 'store_name')?.value;
-                        if (systemConfig.storeName !== serverVal) {
-                          updateConfig('store_name', systemConfig.storeName);
-                        }
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(systemConfig));
-                      }} className="h-8 text-sm" placeholder="兴盛艺珠宝" />
+                      <Input value={systemConfig.storeName} onChange={e => setSystemConfig(c => ({ ...c, storeName: e.target.value }))} className="h-8 text-sm" placeholder="兴盛艺珠宝" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">默认货币符号</Label>
@@ -911,7 +919,7 @@ function SettingsTab() {
                   </div>
                   <div className="flex items-center gap-2 pt-1">
                     <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-xs" onClick={async () => {
-                      localStorage.setItem(STORAGE_KEY, JSON.stringify(systemConfig));
+                      persistLocalSystemConfig(systemConfig);
                       // Sync store name and warning days to server
                       const storeNameVal = configs.find(c => c.key === 'store_name')?.value;
                       const warningDaysVal = configs.find(c => c.key === 'warning_days')?.value;
@@ -930,7 +938,9 @@ function SettingsTab() {
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => {
                       const defaults = { storeName: '兴盛艺珠宝', currencySymbol: '¥', lowStockDays: 90, profitWarningThreshold: 30, defaultProfitRate: 40 };
                       setSystemConfig(defaults);
-                      localStorage.removeItem(STORAGE_KEY);
+                      persistLocalSystemConfig(defaults);
+                      void updateConfig('store_name', defaults.storeName);
+                      void updateConfig('warning_days', String(defaults.lowStockDays));
                       toast.success('已恢复默认设置');
                     }}>
                       恢复默认
@@ -938,9 +948,11 @@ function SettingsTab() {
                   </div>
                 </div>
                 {/* Server-side configs — fully editable */}
-                {configs.map(c => {
+                {configs
+                .filter(c => !['store_name', 'warning_days'].includes(c.key))
+                .map(c => {
                   const editValue = editConfigs[c.key] ?? c.value;
-                  const isNumeric = ['operating_cost_rate', 'markup_rate', 'warning_days', 'aging_threshold_days'].includes(c.key);
+                  const isNumeric = ['operating_cost_rate', 'markup_rate', 'aging_threshold_days'].includes(c.key);
                   const isPassword = c.key === 'admin_password';
                   return (
                   <div key={c.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -962,7 +974,6 @@ function SettingsTab() {
                         className={isNumeric ? 'w-24 h-8 text-sm text-right' : 'w-40 h-8 text-sm'}
                         step={isNumeric ? 'any' : undefined}
                       />
-                      {c.key === 'warning_days' && <span className="text-sm text-muted-foreground">天</span>}
                       {c.key === 'operating_cost_rate' && <span className="text-sm text-muted-foreground whitespace-nowrap">({(parseFloat(editValue) * 100).toFixed(0)}%)</span>}
                       {c.key === 'markup_rate' && <span className="text-sm text-muted-foreground whitespace-nowrap">({(parseFloat(editValue) * 100).toFixed(0)}%)</span>}
                     </div>

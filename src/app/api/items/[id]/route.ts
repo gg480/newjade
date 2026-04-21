@@ -2,6 +2,16 @@ import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
 
+function isValidStatusTransition(from: string, to: string): boolean {
+  if (from === to) return true;
+  const allowed: Record<string, Set<string>> = {
+    in_stock: new Set(['sold', 'returned']),
+    sold: new Set(['returned']),
+    returned: new Set(['in_stock']),
+  };
+  return allowed[from]?.has(to) ?? false;
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const item = await db.item.findUnique({
@@ -34,6 +44,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     code: 0,
     data: {
       ...item,
+      images: (item.images || []).map((img: any) => ({
+        ...img,
+        url: img.filename,
+      })),
       purchaseDate: effectivePurchaseDate,
       materialName: item.material?.name,
       typeName: item.type?.name,
@@ -53,6 +67,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     // Get original item for logging
     const original = await db.item.findUnique({ where: { id: parseInt(id) } });
+    if (!original || original.isDeleted) {
+      return NextResponse.json({ code: 404, data: null, message: '未找到' }, { status: 404 });
+    }
+    if (data.status !== undefined && !isValidStatusTransition(original.status, String(data.status))) {
+      return NextResponse.json({
+        code: 400,
+        data: null,
+        message: `不允许的状态迁移: ${original.status} -> ${data.status}`,
+      }, { status: 400 });
+    }
 
     // Update tags if provided
     if (tagIds !== undefined) {

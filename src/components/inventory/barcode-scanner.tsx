@@ -102,17 +102,26 @@ function BarcodeScanner({ onScan, onClose, open }: BarcodeScannerProps) {
   }
 
   async function stopScanning() {
-    if (scannerRef.current) {
-      try {
-        const state = scannerRef.current.getState();
-        if (state === 2) { // SCANNING
-          await scannerRef.current.stop();
-        }
-        scannerRef.current.clear();
-      } catch (e) { console.error('[Scanner]', e);
-        // Ignore cleanup errors
+    const scanner = scannerRef.current;
+    if (!scanner) {
+      setIsScanning(false);
+      return;
+    }
+
+    // Clear ref first to prevent re-entrant stopScanning races.
+    scannerRef.current = null;
+    try {
+      const state = scanner.getState?.();
+      if (state === 2) { // SCANNING
+        await scanner.stop();
       }
-      scannerRef.current = null;
+    } catch (e) { console.error('[Scanner]', e);
+      // Ignore stop transition errors
+    }
+    try {
+      scanner.clear?.();
+    } catch (e) { console.error('[Scanner]', e);
+      // Ignore clear errors
     }
     setIsScanning(false);
   }

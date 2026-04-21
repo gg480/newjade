@@ -4,7 +4,14 @@ import path from 'path'
 
 // Resolve database path: DATA_DIR/db/custom.db or fallback to ./db/custom.db
 function resolveDatabaseUrl(): string {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  if (process.env.DATABASE_URL) {
+    const raw = process.env.DATABASE_URL.trim();
+    if (raw.startsWith('file:./') || raw.startsWith('file:../')) {
+      const rel = raw.slice('file:'.length);
+      return `file:${path.resolve(process.cwd(), rel)}`;
+    }
+    return raw;
+  }
 
   const dataDir = process.env.DATA_DIR;
   if (dataDir) {

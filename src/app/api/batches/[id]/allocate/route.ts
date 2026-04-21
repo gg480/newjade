@@ -15,11 +15,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     include: { spec: true },
   });
 
-  if (items.length < batch.quantity) {
+  if (items.length !== batch.quantity) {
     return NextResponse.json({
       code: 400,
       data: null,
-      message: `货品未录完，当前 ${items.length}/${batch.quantity} 件`,
+      message: `货品数量与批次不一致，当前 ${items.length}/${batch.quantity} 件`,
     }, { status: 400 });
   }
 
@@ -37,6 +37,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     allocatedCosts = items.map((_, i) => i === items.length - 1 ? perItem + remainder : perItem);
   } else if (batch.costAllocMethod === 'by_weight') {
     const weights = items.map(item => item.spec?.weight || 0);
+    if (weights.some(w => w <= 0)) {
+      return NextResponse.json({ code: 400, data: null, message: '按克重分摊：每件货品克重必须大于0' }, { status: 400 });
+    }
     const totalWeight = weights.reduce((a, b) => a + b, 0);
     if (totalWeight === 0) {
       return NextResponse.json({ code: 400, data: null, message: '按克重分摊：所有货品必须有克重' }, { status: 400 });
@@ -51,7 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return cost;
     });
   } else if (batch.costAllocMethod === 'by_price') {
-    const prices = items.map(item => item.sellingPrice);
+    const prices = items.map(item => item.sellingPrice || 0);
     const totalSelling = prices.reduce((a, b) => a + b, 0);
     if (totalSelling === 0) {
       return NextResponse.json({ code: 400, data: null, message: '按售价比例分摊：所有货品必须有售价' }, { status: 400 });
@@ -64,6 +67,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       sumAllocated += cost;
       return cost;
     });
+  } else {
+    return NextResponse.json({ code: 400, data: null, message: '不支持的分摊方式' }, { status: 400 });
   }
 
   // Apply allocation + pricing engine
@@ -78,10 +83,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         allocatedCost,
         floorPrice,
-        // Only auto-set selling_price if it equals the current floor (not manually adjusted)
-        ...(items[i].sellingPrice === items[i].floorPrice || !items[i].floorPrice
-          ? { sellingPrice: suggestedSellingPrice }
-          : {}),
+        // Keep manually entered selling prices unchanged.
       },
     });
     results.push({ skuCode: items[i].skuCode, allocatedCost, floorPrice, suggestedSellingPrice });

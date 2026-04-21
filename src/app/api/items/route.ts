@@ -165,6 +165,76 @@ async function generateSkuCode(materialId: number, typeId?: number): Promise<str
   return `${prefixFull}${String(seq).padStart(3, '0')}`;
 }
 
+async function allocateBatchCostsIfReady(batchId: number) {
+  const batch = await db.batch.findUnique({ where: { id: batchId } });
+  if (!batch) return;
+
+  const items = await db.item.findMany({
+    where: { batchId, isDeleted: false },
+    include: { spec: true },
+    orderBy: { id: 'asc' },
+  });
+
+  if (items.length !== batch.quantity || items.length === 0) {
+    return;
+  }
+
+  let allocatedCosts: number[] = [];
+
+  if (batch.costAllocMethod === 'equal') {
+    const perItem = Math.floor((batch.totalCost / batch.quantity) * 100) / 100;
+    const remainder = Math.round((batch.totalCost - perItem * batch.quantity) * 100) / 100;
+    allocatedCosts = items.map((_, i) => (i === items.length - 1 ? perItem + remainder : perItem));
+  } else if (batch.costAllocMethod === 'by_weight') {
+    const weights = items.map(item => item.spec?.weight || 0);
+    if (weights.some(w => w <= 0)) return;
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    if (totalWeight === 0) return;
+    let sumAllocated = 0;
+    allocatedCosts = items.map((item, i) => {
+      const w = item.spec?.weight || 0;
+      const cost = i === items.length - 1
+        ? Math.round((batch.totalCost - sumAllocated) * 100) / 100
+        : Math.round((w / totalWeight) * batch.totalCost * 100) / 100;
+      sumAllocated += cost;
+      return cost;
+    });
+  } else if (batch.costAllocMethod === 'by_price') {
+    const prices = items.map(item => item.sellingPrice || 0);
+    const totalSelling = prices.reduce((a, b) => a + b, 0);
+    if (totalSelling === 0) return;
+    let sumAllocated = 0;
+    allocatedCosts = items.map((item, i) => {
+      const currentSelling = item.sellingPrice || 0;
+      const cost = i === items.length - 1
+        ? Math.round((batch.totalCost - sumAllocated) * 100) / 100
+        : Math.round((currentSelling / totalSelling) * batch.totalCost * 100) / 100;
+      sumAllocated += cost;
+      return cost;
+    });
+  } else {
+    return;
+  }
+
+  const configs = await db.sysConfig.findMany();
+  const configMap = Object.fromEntries(configs.map(c => [c.key, parseFloat(c.value)]));
+  const operatingCostRate = configMap['operating_cost_rate'] || 0.05;
+  const markupRate = configMap['markup_rate'] || 0.30;
+
+  for (let i = 0; i < items.length; i++) {
+    const allocatedCost = allocatedCosts[i];
+    const floorPrice = Math.round(allocatedCost * (1 + operatingCostRate) * 100) / 100;
+    await db.item.update({
+      where: { id: items[i].id },
+      data: {
+        allocatedCost,
+        floorPrice,
+        // Keep manually entered selling prices unchanged.
+      },
+    });
+  }
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, notes, supplierId, purchaseDate, tagIds, spec } = body;
@@ -271,6 +341,11 @@ export async function POST(req: Request) {
       costPrice: costPrice ?? null,
       sellingPrice,
     });
+
+    // Auto-allocate full batch so by_price/by_weight are applied immediately
+    if (item.batchId) {
+      await allocateBatchCostsIfReady(item.batchId);
+    }
 
     return NextResponse.json({ code: 0, data: item, message: 'ok' });
   } catch (e: any) {

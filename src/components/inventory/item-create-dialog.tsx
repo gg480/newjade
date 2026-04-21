@@ -43,7 +43,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   });
 
   const [batchForm, setBatchForm] = useState({
-    batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '',
+    batchId: '', typeId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '',
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
     tagIds: [] as number[],
   });
@@ -352,6 +352,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         specFieldKeys.forEach(f => { if ((batchForm as any)[f]) spec[f] = (batchForm as any)[f]; });
         await itemsApi.createItem({
           batchId: Number(batchForm.batchId),
+          typeId: batchForm.typeId ? Number(batchForm.typeId) : undefined,
           sellingPrice: batchForm.sellingPrice,
           name: batchForm.name || undefined,
           counter: batchForm.counter ? Number(batchForm.counter) : undefined,
@@ -363,7 +364,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         toast.success('通货入库成功！');
       }
       setHighValueForm({ materialId: '', typeId: '', costPrice: 0, sellingPrice: 0, name: '', origin: '', counter: '', certNo: '', notes: '', supplierId: '', purchaseDate: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', tagIds: [] });
-      setBatchForm({ batchId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', tagIds: [] });
+      setBatchForm({ batchId: '', typeId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '', weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '', tagIds: [] });
       setMaterialCategory('');
       setMaterialSubType('');
       setBatchMaterialCategory('');
