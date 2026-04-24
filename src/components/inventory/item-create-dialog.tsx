@@ -25,6 +25,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   const [batches, setBatches] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [tagMismatch, setTagMismatch] = useState<{ mode: 'high_value' | 'batch'; invalidTagIds: number[]; invalidTagNames: string[] } | null>(null);
   const [pricingSuggestion, setPricingSuggestion] = useState<any>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, boolean>>({});
@@ -52,7 +53,6 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     if (open) {
       dictsApi.getMaterials().then(setMaterials).catch(() => {});
       dictsApi.getTypes().then(setTypes).catch(() => {});
-      dictsApi.getTags().then(setTags).catch(() => {});
       suppliersApi.getSuppliers().then((s: any) => setSuppliers(s?.items || s || [])).catch(() => {});
       batchesApi.getBatches({ size: 100 }).then((d: any) => setBatches(d?.items || [])).catch(() => {});
 
@@ -67,6 +67,25 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
       }
     }
   }, [open, defaultBatchId, defaultBatchInfo]);
+
+  const selectedBatch = useMemo(
+    () => batches.find((b: any) => String(b.id) === String(batchForm.batchId)),
+    [batches, batchForm.batchId],
+  );
+  const highValueMaterialId = highValueForm.materialId ? Number(highValueForm.materialId) : null;
+  const batchMaterialId = selectedBatch?.materialId ? Number(selectedBatch.materialId) : null;
+  const currentMaterialId = mode === 'high_value' ? highValueMaterialId : batchMaterialId;
+
+  useEffect(() => {
+    if (!open) return;
+    dictsApi.getTags(undefined, false, currentMaterialId || undefined).then((list: any[]) => {
+      setTags(list);
+    }).catch(() => {});
+  }, [open, currentMaterialId]);
+
+  useEffect(() => {
+    setTagMismatch(null);
+  }, [mode, currentMaterialId]);
 
   // 根据大类筛选材质（含子类）
   const filteredByCategory = materials.filter((m: any) => {
@@ -299,6 +318,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
 
   function toggleTag(tagId: number, form: typeof highValueForm, setForm: (f: any) => void) {
     const ids = form.tagIds.includes(tagId) ? form.tagIds.filter(id => id !== tagId) : [...form.tagIds, tagId];
+    setTagMismatch(null);
     setForm({ ...form, tagIds: ids });
   }
 
@@ -372,11 +392,24 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
       onOpenChange(false);
       onSuccess();
     } catch (e: any) {
+      if (e?.message?.includes('TAG_MATERIAL_MISMATCH')) {
+        const invalidTagIds = e?.details?.invalidTagIds || [];
+        const invalidTagNames = e?.details?.invalidTagNames || [];
+        setTagMismatch({ mode, invalidTagIds, invalidTagNames });
+        toast.error(invalidTagNames.length > 0 ? `标签与材质不匹配：${invalidTagNames.join('、')}` : '存在标签与材质不匹配');
+        return;
+      }
       toast.error(e.message || '入库失败');
     } finally {
       setSaving(false);
     }
   }
+
+  const activeTags = tags.filter((t: any) => t.isActive && t.groupName !== '器型风格');
+  const visibleTagIdSet = new Set(activeTags.map((t: any) => t.id));
+  const highValueInvalidSelected = highValueForm.tagIds.filter(id => !visibleTagIdSet.has(id));
+  const batchInvalidSelected = batchForm.tagIds.filter(id => !visibleTagIdSet.has(id));
+  const serverMismatchIds = tagMismatch && tagMismatch.mode === mode ? new Set(tagMismatch.invalidTagIds) : new Set<number>();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -504,9 +537,25 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
               <div className="space-y-1"><Label className="text-xs">采购日期</Label><Input type="date" value={highValueForm.purchaseDate} onChange={e => setHighValueForm(f => ({ ...f, purchaseDate: e.target.value }))} className="h-9" /></div>
               {renderSpecFields(highValueForm, (f: any) => setHighValueForm(f))}
               <div className="space-y-1"><Label className="text-xs">备注</Label><Textarea value={highValueForm.notes} onChange={e => setHighValueForm(f => ({ ...f, notes: e.target.value }))} placeholder="可选" className="h-16" /></div>
+              {highValueInvalidSelected.length > 0 && (
+                <div className="text-xs px-2 py-1.5 rounded border border-amber-300 bg-amber-50 text-amber-700 flex items-center justify-between">
+                  <span>{highValueInvalidSelected.length}个标签与当前材质不符</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs px-2"
+                    onClick={() => {
+                      setHighValueForm(f => ({ ...f, tagIds: f.tagIds.filter((id: number) => visibleTagIdSet.has(id)) }));
+                      setTagMismatch(null);
+                    }}
+                  >
+                    一键清理
+                  </Button>
+                </div>
+              )}
               {/* Tags - Grouped */}
               {tags.length > 0 && (() => {
-                const activeTags = tags.filter((t: any) => t.isActive);
                 const groups = activeTags.reduce((acc: any, tag: any) => {
                   const g = tag.groupName || '未分组';
                   if (!acc[g]) acc[g] = [];
@@ -525,7 +574,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                           {groups[group].map((tag: any) => (
                             <label key={tag.id} className="flex items-center gap-1 cursor-pointer">
                               <Checkbox checked={highValueForm.tagIds.includes(tag.id)} onCheckedChange={() => toggleTag(tag.id, highValueForm, (f: any) => setHighValueForm(f))} />
-                              <span className="text-xs">{tag.name}</span>
+                              <span className={`text-xs ${serverMismatchIds.has(tag.id) ? 'text-red-600 font-medium' : ''}`}>{tag.name}</span>
                             </label>
                           ))}
                         </div>
@@ -534,6 +583,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                   </div>
                 );
               })() }
+              <p className="text-[11px] text-muted-foreground">标签需在设置-字典管理中维护。</p>
             </>
           ) : (
             <>
@@ -592,9 +642,25 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
               </div>
               {renderSpecFields(batchForm, (f: any) => setBatchForm(f))}
               <div className="space-y-1"><Label className="text-xs">备注</Label><Textarea value={batchForm.notes} onChange={e => setBatchForm(f => ({ ...f, notes: e.target.value }))} placeholder="可选" className="h-16" /></div>
+              {batchInvalidSelected.length > 0 && (
+                <div className="text-xs px-2 py-1.5 rounded border border-amber-300 bg-amber-50 text-amber-700 flex items-center justify-between">
+                  <span>{batchInvalidSelected.length}个标签与当前材质不符</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs px-2"
+                    onClick={() => {
+                      setBatchForm(f => ({ ...f, tagIds: f.tagIds.filter((id: number) => visibleTagIdSet.has(id)) }));
+                      setTagMismatch(null);
+                    }}
+                  >
+                    一键清理
+                  </Button>
+                </div>
+              )}
               {/* Tags - Grouped */}
               {tags.length > 0 && (() => {
-                const activeTags = tags.filter((t: any) => t.isActive);
                 const groups = activeTags.reduce((acc: any, tag: any) => {
                   const g = tag.groupName || '未分组';
                   if (!acc[g]) acc[g] = [];
@@ -613,7 +679,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                           {groups[group].map((tag: any) => (
                             <label key={tag.id} className="flex items-center gap-1 cursor-pointer">
                               <Checkbox checked={batchForm.tagIds.includes(tag.id)} onCheckedChange={() => toggleTag(tag.id, batchForm, (f: any) => setBatchForm(f))} />
-                              <span className="text-xs">{tag.name}</span>
+                              <span className={`text-xs ${serverMismatchIds.has(tag.id) ? 'text-red-600 font-medium' : ''}`}>{tag.name}</span>
                             </label>
                           ))}
                         </div>
@@ -622,6 +688,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
                   </div>
                 );
               })() }
+              <p className="text-[11px] text-muted-foreground">标签需在设置-字典管理中维护。</p>
             </>
           )}
         </div>

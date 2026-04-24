@@ -1,6 +1,8 @@
+import { withApiLogging } from '@/lib/api/with-api-logging';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
+import { validateTagMaterialCompatibility } from '@/lib/tag-utils';
 
 function isValidStatusTransition(from: string, to: string): boolean {
   if (from === to) return true;
@@ -12,7 +14,9 @@ function isValidStatusTransition(from: string, to: string): boolean {
   return allowed[from]?.has(to) ?? false;
 }
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+type ItemParams = { params: Promise<{ id: string }> };
+
+async function itemByIdGet(req: Request, { params }: ItemParams) {
   const { id } = await params;
   const item = await db.item.findUnique({
     where: { id: parseInt(id) },
@@ -59,7 +63,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   });
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+async function itemByIdPut(req: Request, { params }: ItemParams) {
   const { id } = await params;
   const body = await req.json();
   const { tagIds, spec, ...data } = body;
@@ -78,11 +82,31 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }, { status: 400 });
     }
 
+    const parsedMaterialId = data.materialId != null ? parseInt(String(data.materialId), 10) : null;
+    const effectiveMaterialId = parsedMaterialId != null && !Number.isNaN(parsedMaterialId)
+      ? parsedMaterialId
+      : original.materialId;
+    if (tagIds !== undefined) {
+      const normalizedTagIds = Array.isArray(tagIds)
+        ? tagIds.map((tid: any) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
+        : [];
+      const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, effectiveMaterialId);
+      if (invalidTagData) {
+        return NextResponse.json(
+          { code: 400, data: invalidTagData, message: 'TAG_MATERIAL_MISMATCH' },
+          { status: 400 },
+        );
+      }
+    }
+
     // Update tags if provided
     if (tagIds !== undefined) {
       await db.itemTag.deleteMany({ where: { itemId: parseInt(id) } });
-      if (tagIds.length > 0) {
-        await db.itemTag.createMany({ data: tagIds.map((tid: number) => ({ itemId: parseInt(id), tagId: tid })) });
+      const normalizedTagIds = Array.isArray(tagIds)
+        ? tagIds.map((tid: any) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
+        : [];
+      if (normalizedTagIds.length > 0) {
+        await db.itemTag.createMany({ data: normalizedTagIds.map((tid: number) => ({ itemId: parseInt(id), tagId: tid })) });
       }
     }
 
@@ -150,7 +174,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+async function itemByIdDelete(req: Request, { params }: ItemParams) {
   const { id } = await params;
   const { searchParams } = new URL(req.url);
   const hardDelete = searchParams.get('hard') === 'true';
@@ -180,3 +204,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ code: 500, data: null, message: `删除失败: ${e.message}` }, { status: 500 });
   }
 }
+
+export const GET = withApiLogging('items/[id]:GET', itemByIdGet);
+export const PUT = withApiLogging('items/[id]:PUT', itemByIdPut);
+export const DELETE = withApiLogging('items/[id]:DELETE', itemByIdDelete);

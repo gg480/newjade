@@ -1,8 +1,10 @@
+import { withApiLogging } from '@/lib/api/with-api-logging';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { logAction } from '@/lib/log';
+import { validateTagMaterialCompatibility } from '@/lib/tag-utils';
 
-export async function GET(req: Request) {
+async function itemsListGet(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get('page') || '1');
   const size = parseInt(searchParams.get('size') || '20');
@@ -235,7 +237,7 @@ async function allocateBatchCostsIfReady(batchId: number) {
   }
 }
 
-export async function POST(req: Request) {
+async function itemsCreatePost(req: Request) {
   const body = await req.json();
   const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, notes, supplierId, purchaseDate, tagIds, spec } = body;
 
@@ -254,6 +256,16 @@ export async function POST(req: Request) {
     }
     if (!typeId) {
       return NextResponse.json({ code: 400, data: null, message: '请选择器型' }, { status: 400 });
+    }
+    const normalizedTagIds = Array.isArray(tagIds)
+      ? tagIds.map((id: any) => parseInt(id, 10)).filter((id: number) => !Number.isNaN(id))
+      : [];
+    const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, finalMaterialId);
+    if (invalidTagData) {
+      return NextResponse.json(
+        { code: 400, data: invalidTagData, message: 'TAG_MATERIAL_MISMATCH' },
+        { status: 400 },
+      );
     }
     // 高货模式(无batchId)才校验成本价必填；通货模式成本由批次分摊
     if (!batchId && (costPrice == null || costPrice === '' || isNaN(parseFloat(costPrice)))) {
@@ -323,8 +335,8 @@ export async function POST(req: Request) {
         supplierId: supplierId ? parseInt(supplierId) : null,
         purchaseDate: purchaseDate || null,
         status: 'in_stock',
-        ...(tagIds?.length ? {
-          tags: { connect: tagIds.map((id: any) => ({ id: parseInt(id) })) },
+        ...(normalizedTagIds.length ? {
+          tags: { connect: normalizedTagIds.map(id => ({ id })) },
         } : {}),
         ...(specData && Object.keys(specData).length > 0 ? {
           spec: { create: specData },
@@ -355,3 +367,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ code: 500, data: null, message: `创建失败: ${e.message}` }, { status: 500 });
   }
 }
+
+export const GET = withApiLogging('items:GET', itemsListGet);
+export const POST = withApiLogging('items:POST', itemsCreatePost);
