@@ -39,3 +39,6 @@ export const db =
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+
+// Alias export for compatibility with routes that import { prisma }
+export const prisma = db
