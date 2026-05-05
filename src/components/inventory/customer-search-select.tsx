@@ -60,6 +60,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
         <button
           role="combobox"
           aria-expanded={open}
+          aria-controls="customer-search-list"
           className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors hover:bg-accent/50 focus:outline-none focus:ring-1 focus:ring-ring"
         >
           {selectedCustomer ? (
@@ -73,7 +74,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[min(320px,calc(100vw-2rem))] p-0" align="start">
+      <PopoverContent className="w-[min(360px,calc(100vw-2rem))] p-0" align="start">
         <Command shouldFilter={false}>
           <div className="flex items-center border-b px-3">
             <User className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -84,7 +85,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
               className="flex-1"
             />
           </div>
-          <CommandList className="max-h-[200px]">
+          <CommandList id="customer-search-list" className="max-h-[200px]">
             {loading ? (
               <div className="py-6 text-center text-sm text-muted-foreground">搜索中...</div>
             ) : (

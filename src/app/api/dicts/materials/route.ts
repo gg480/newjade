@@ -1,35 +1,31 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { ConflictError } from '@/lib/errors';
+import * as materialService from '@/services/dict-materials.service';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const includeInactive = searchParams.get('include_inactive') === 'true';
-  const items = await db.dictMaterial.findMany({
-    where: includeInactive ? undefined : { isActive: true },
-    orderBy: { sortOrder: 'asc' },
-  });
+  const items = await materialService.listMaterials(includeInactive);
+
   return NextResponse.json({ code: 0, data: items, message: 'ok' });
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { name, category, subType, origin, costPerGram, sortOrder } = body;
+
   try {
-    const item = await db.dictMaterial.create({
-      data: {
-        name: name?.trim(),
-        category,
-        subType: subType?.trim() || null,
-        origin,
-        costPerGram,
-        sortOrder: sortOrder ?? 0,
-      },
-    });
+    const item = await materialService.createMaterial(body);
     return NextResponse.json({ code: 0, data: item, message: 'ok' });
-  } catch (e: any) {
-    if (e.message?.includes('Unique')) {
-      return NextResponse.json({ code: 400, data: null, message: '材质名称+子类已存在' }, { status: 400 });
+  } catch (e) {
+    if (e instanceof ConflictError) {
+      return NextResponse.json(
+        { code: e.code, data: null, message: e.message },
+        { status: e.statusCode },
+      );
     }
-    return NextResponse.json({ code: 500, data: null, message: '创建失败' }, { status: 500 });
+    return NextResponse.json(
+      { code: 500, data: null, message: '创建失败' },
+      { status: 500 },
+    );
   }
 }

@@ -10,11 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import {
   LayoutDashboard, Package, ShoppingCart, Layers, Users, Settings,
-  BarChart3, ScrollText, Keyboard,
+  BarChart3, ScrollText, Keyboard, LogOut,
 } from 'lucide-react';
 
 // ========== Mobile Bottom Navigation ==========
-function MobileNav({ activeTab, onTabChange, className }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string }) {
+function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string; onLogout?: () => void }) {
   const [pendingBatches, setPendingBatches] = useState(0);
   const [hasSalesToday, setHasSalesToday] = useState(false);
   const [tapAnim, setTapAnim] = useState<string | null>(null);
@@ -94,6 +94,17 @@ function MobileNav({ activeTab, onTabChange, className }: { activeTab: TabId; on
             </button>
           );
         })}
+        {/* 移动端登出按钮 */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="flex items-center justify-center h-10 w-10 ml-1 text-muted-foreground hover:text-red-500 active:scale-90 transition-all rounded-lg"
+            title="退出登录"
+            aria-label="退出登录"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -159,7 +170,7 @@ function ShortcutsHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 }
 
 // ========== Desktop Top Navigation ==========
-function DesktopNav({ activeTab, onTabChange, className, loading = false }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string; loading?: boolean }) {
+function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogout }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string; loading?: boolean; onLogout?: () => void }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [storeName, setStoreName] = useState(() => {
     try {
@@ -233,7 +244,11 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false }: { ac
               <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setShowShortcuts(true)} title="快捷键">
                 <Keyboard className="h-4 w-4" />
               </Button>
-
+              {onLogout && (
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500" onClick={onLogout} title="退出登录">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              )}
               <ThemeToggle />
             </div>
           </div>

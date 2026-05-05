@@ -1,65 +1,34 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { logAction } from '@/lib/log';
+import * as salesService from '@/services/sales.service';
+import { AppError } from '@/lib/errors';
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { saleId, refundAmount, returnReason, returnDate } = body;
-  const parsedSaleId = parseInt(saleId);
-  const parsedRefundAmount = refundAmount != null ? parseFloat(refundAmount) : undefined;
+  try {
+    const body = await req.json();
+    const { saleId, refundAmount, returnReason, returnDate } = body;
+    const parsedSaleId = parseInt(saleId);
+    const parsedRefundAmount = refundAmount != null ? parseFloat(refundAmount) : undefined;
 
-  if (!saleId || isNaN(parsedSaleId)) {
-    return NextResponse.json({ code: 400, data: null, message: '缺少 saleId' }, { status: 400 });
-  }
-  if (parsedRefundAmount !== undefined && isNaN(parsedRefundAmount)) {
-    return NextResponse.json({ code: 400, data: null, message: '退款金额无效' }, { status: 400 });
-  }
+    // 参数校验（route 层职责）
+    if (!saleId || isNaN(parsedSaleId)) {
+      return NextResponse.json({ code: 400, data: null, message: '缺少 saleId' }, { status: 400 });
+    }
+    if (parsedRefundAmount !== undefined && isNaN(parsedRefundAmount)) {
+      return NextResponse.json({ code: 400, data: null, message: '退款金额无效' }, { status: 400 });
+    }
 
-  // Validate sale exists
-  const sale = await db.saleRecord.findUnique({
-    where: { id: parsedSaleId },
-    include: { item: true },
-  });
-  if (!sale) {
-    return NextResponse.json({ code: 404, data: null, message: '销售记录不存在' }, { status: 404 });
-  }
-
-  // Check item status — should be sold
-  if (sale.item.status !== 'sold') {
-    return NextResponse.json(
-      { code: 400, data: null, message: `货品当前状态为「${sale.item.status}」，无法退货` },
-      { status: 400 },
-    );
-  }
-
-  const today = returnDate || new Date().toISOString().slice(0, 10);
-  const refund = parsedRefundAmount ?? sale.actualPrice;
-
-  // Create return record
-  const returnRecord = await db.saleReturn.create({
-    data: {
+    const returnRecord = await salesService.processReturn({
       saleId: parsedSaleId,
-      itemId: sale.itemId,
-      refundAmount: refund,
-      returnReason: returnReason || '客户退货',
-      returnDate: today,
-    },
-  });
+      refundAmount: parsedRefundAmount,
+      returnReason,
+      returnDate,
+    });
 
-  // Change item status back to in_stock
-  await db.item.update({
-    where: { id: sale.itemId },
-    data: { status: 'returned' },
-  });
-
-  // Log action
-  await logAction('return_sale', 'sale', parsedSaleId, {
-    saleNo: sale.saleNo,
-    itemSku: sale.item.skuCode,
-    refundAmount: refund,
-    returnReason: returnReason || '客户退货',
-    returnDate: today,
-  });
-
-  return NextResponse.json({ code: 0, data: returnRecord, message: '退货成功' });
+    return NextResponse.json({ code: 0, data: returnRecord, message: '退货成功' });
+  } catch (e: any) {
+    if (e instanceof AppError) {
+      return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
+    }
+    return NextResponse.json({ code: 500, data: null, message: `退货失败: ${e.message}` }, { status: 500 });
+  }
 }

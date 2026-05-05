@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
-import { Layers, Plus, Eye, Clock, CheckCircle, RotateCcw, ArrowUpRight, ArrowDownRight, TrendingUp, Search, Package, DollarSign, ShoppingCart } from 'lucide-react';
+import { Layers, Plus, Eye, Clock, CheckCircle, RotateCcw, ArrowUpRight, ArrowDownRight, TrendingUp, Search, Package, DollarSign, ShoppingCart, XCircle } from 'lucide-react';
 
 // ========== Batch Detail Dialog ==========
 function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | null; open: boolean; onOpenChange: (o: boolean) => void }) {

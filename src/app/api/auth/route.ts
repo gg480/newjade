@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcrypt';
 import { db } from '@/lib/db';
 import { createSession, validateToken, deleteSession } from '@/lib/auth';
 
@@ -7,7 +8,7 @@ const DEFAULT_PASSWORD = 'admin123';
 // In-memory rate limiting: max 5 failed attempts per 15 minutes per IP
 const loginAttempts = new Map<string, { count: number; firstAttemptTime: number }>();
 const MAX_ATTEMPTS = 5;
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
 function getClientIp(req: Request): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -18,8 +19,7 @@ function getClientIp(req: Request): string {
 function isRateLimited(ip: string): boolean {
   const record = loginAttempts.get(ip);
   if (!record) return false;
-  const elapsed = Date.now() - record.firstAttemptTime;
-  if (elapsed > RATE_LIMIT_WINDOW_MS) {
+  if (Date.now() - record.firstAttemptTime > RATE_LIMIT_WINDOW_MS) {
     loginAttempts.delete(ip);
     return false;
   }
@@ -40,19 +40,31 @@ function resetAttempts(ip: string): void {
   loginAttempts.delete(ip);
 }
 
-async function getAdminPassword(): Promise<string> {
-  try {
-    const config = await db.sysConfig.findUnique({ where: { key: 'admin_password' } });
-    return config?.value || DEFAULT_PASSWORD;
-  } catch {
-    return DEFAULT_PASSWORD;
-  }
+async function ensureAdminUser(passwordHash: string): Promise<void> {
+  await db.user.upsert({
+    where: { username: 'admin' },
+    create: { username: 'admin', passwordHash, mustChangePwd: false },
+    update: { passwordHash },
+  });
 }
 
-// POST /api/auth/login — authenticate with password
+async function getAdminPasswordHash(): Promise<string | null> {
+  const user = await db.user.findUnique({ where: { username: 'admin' } });
+  if (user?.passwordHash) return user.passwordHash;
+
+  const config = await db.sysConfig.findUnique({ where: { key: 'admin_password' } });
+  if (config?.value) {
+    const hash = bcrypt.hashSync(config.value, 10);
+    await ensureAdminUser(hash);
+    return hash;
+  }
+
+  return null;
+}
+
+// POST /api/auth — login with password
 export async function POST(req: Request) {
   try {
-    // Rate limiting check
     const clientIp = getClientIp(req);
     if (isRateLimited(clientIp)) {
       return NextResponse.json(
@@ -66,27 +78,96 @@ export async function POST(req: Request) {
       return NextResponse.json({ code: 400, data: null, message: '请输入密码' }, { status: 400 });
     }
 
-    const adminPassword = await getAdminPassword();
-    if (password !== adminPassword) {
+    const passwordHash = await getAdminPasswordHash();
+    let isValid = false;
+
+    if (passwordHash) {
+      isValid = bcrypt.compareSync(password, passwordHash);
+    } else {
+      isValid = password === DEFAULT_PASSWORD;
+      if (isValid) {
+        const hash = bcrypt.hashSync(DEFAULT_PASSWORD, 10);
+        await ensureAdminUser(hash);
+      }
+    }
+
+    if (!isValid) {
       recordFailedAttempt(clientIp);
       return NextResponse.json({ code: 401, data: null, message: '密码错误' }, { status: 401 });
     }
 
-    // Reset rate limit on successful login
     resetAttempts(clientIp);
 
     const token = await createSession();
     return NextResponse.json({
       code: 0,
-      data: { token, expiresIn: 604800 }, // 7 days in seconds
+      data: { token, expiresIn: 604800 },
       message: 'ok',
     });
-  } catch (e: any) {
-    return NextResponse.json({ code: 500, data: null, message: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '服务器错误';
+    return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
 
-// GET /api/auth/check — validate session
+// PUT /api/auth — change password (requires authentication)
+export async function PUT(req: Request) {
+  try {
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!token || !await validateToken(token)) {
+      return NextResponse.json(
+        { code: 401, data: null, message: '未登录或会话已过期' },
+        { status: 401 }
+      );
+    }
+
+    const { oldPassword, newPassword } = await req.json();
+    if (!oldPassword || !newPassword) {
+      return NextResponse.json(
+        { code: 400, data: null, message: '请输入旧密码和新密码' },
+        { status: 400 }
+      );
+    }
+
+    if (newPassword.length < 4) {
+      return NextResponse.json(
+        { code: 400, data: null, message: '新密码长度不能少于4位' },
+        { status: 400 }
+      );
+    }
+
+    const passwordHash = await getAdminPasswordHash();
+    if (!passwordHash) {
+      return NextResponse.json(
+        { code: 500, data: null, message: '系统未初始化密码，请先通过默认密码登录' },
+        { status: 500 }
+      );
+    }
+
+    const isOldPasswordValid = bcrypt.compareSync(oldPassword, passwordHash);
+    if (!isOldPasswordValid) {
+      return NextResponse.json(
+        { code: 401, data: null, message: '旧密码错误' },
+        { status: 401 }
+      );
+    }
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    await db.user.update({
+      where: { username: 'admin' },
+      data: { passwordHash: newHash, mustChangePwd: false },
+    });
+
+    return NextResponse.json({ code: 0, data: null, message: '密码修改成功' });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '服务器错误';
+    return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
+  }
+}
+
+// GET /api/auth — validate session
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization');
   const token = authHeader?.replace('Bearer ', '');
@@ -102,7 +183,7 @@ export async function GET(req: Request) {
   });
 }
 
-// DELETE /api/auth/logout — delete session
+// DELETE /api/auth — logout / delete session
 export async function DELETE(req: Request) {
   const authHeader = req.headers.get('authorization');
   const token = authHeader?.replace('Bearer ', '');

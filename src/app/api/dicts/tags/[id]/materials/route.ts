@@ -1,5 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { NotFoundError, ValidationError } from '@/lib/errors';
+import { updateTagMaterials } from '@/services/dicts-tags.service';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,45 +10,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const body = await req.json();
-  const isGlobal = Boolean(body?.isGlobal);
-  const materialIdsRaw = Array.isArray(body?.materialIds) ? body.materialIds : [];
-  const materialIds = Array.from(
-    new Set(
-      materialIdsRaw
-        .map((v: unknown) => parseInt(String(v), 10))
-        .filter((v: number) => !Number.isNaN(v)),
-    ),
-  );
 
-  const tag = await db.dictTag.findUnique({ where: { id: tagId }, select: { id: true } });
-  if (!tag) {
-    return NextResponse.json({ code: 404, data: null, message: '标签不存在' }, { status: 404 });
-  }
-
-  if (!isGlobal && materialIds.length === 0) {
-    return NextResponse.json(
-      { code: 400, message: 'NON_GLOBAL_TAG_REQUIRES_MATERIALS', data: { tagId } },
-      { status: 400 },
-    );
-  }
-
-  await db.$transaction(async tx => {
-    await tx.dictTag.update({
-      where: { id: tagId },
-      data: { isGlobal },
+  try {
+    const result = await updateTagMaterials(tagId, {
+      isGlobal: Boolean(body?.isGlobal),
+      materialIds: Array.isArray(body?.materialIds) ? body.materialIds : [],
     });
-    await tx.dictTagMaterial.deleteMany({ where: { tagId } });
-    if (!isGlobal) {
-      await tx.dictTagMaterial.createMany({
-        data: materialIds.map(materialId => ({ tagId, materialId })),
-        skipDuplicates: true,
-      });
-    }
-  });
 
-  return NextResponse.json({
-    code: 0,
-    message: 'ok',
-    data: { id: tagId, isGlobal, materialIds: isGlobal ? [] : materialIds },
-  });
+    return NextResponse.json({ code: 0, message: 'ok', data: result });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (e instanceof NotFoundError) {
+      return NextResponse.json({ code: 404, data: null, message: '标签不存在' }, { status: 404 });
+    }
+    if (e instanceof ValidationError) {
+      return NextResponse.json({
+        code: 400,
+        message: 'NON_GLOBAL_TAG_REQUIRES_MATERIALS',
+        data: { tagId },
+      }, { status: 400 });
+    }
+    return NextResponse.json({ code: 500, data: null, message }, { status: 500 });
+  }
 }

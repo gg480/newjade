@@ -1,65 +1,20 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-import { withApiLogging } from '@/lib/api/with-api-logging';
+import { getPriceChangeLogs } from '@/services/items-extra.service';
 
-async function getPriceChangeLogs(req: Request) {
+export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get('item_id') ? parseInt(searchParams.get('item_id')!) : undefined;
   const page = parseInt(searchParams.get('page') || '1');
   const size = parseInt(searchParams.get('size') || '20');
-  const startDate = searchParams.get('start_date');
-  const endDate = searchParams.get('end_date');
+  const startDate = searchParams.get('start_date') ?? undefined;
+  const endDate = searchParams.get('end_date') ?? undefined;
 
   try {
-    const where: any = {};
-    if (itemId) {
-      where.itemId = itemId;
-    }
-    if (startDate) {
-      where.createdAt = {
-        ...where.createdAt,
-        gte: new Date(startDate)
-      };
-    }
-    if (endDate) {
-      where.createdAt = {
-        ...where.createdAt,
-        lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-      };
-    }
+    const data = await getPriceChangeLogs({ itemId, page, size, startDate, endDate });
 
-    const [logs, total] = await Promise.all([
-      db.priceChangeLog.findMany({
-        where,
-        include: {
-          item: {
-            select: {
-              id: true,
-              skuCode: true,
-              name: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * size,
-        take: size
-      }),
-      db.priceChangeLog.count({ where })
-    ]);
-
-    return NextResponse.json({
-      code: 0,
-      data: {
-        logs,
-        total,
-        page,
-        size
-      },
-      message: 'ok'
-    });
-  } catch (e: any) {
-    return NextResponse.json({ code: 500, data: null, message: `获取调价记录失败: ${e.message}` }, { status: 500 });
+    return NextResponse.json({ code: 0, data, message: 'ok' });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ code: 500, data: null, message: `获取调价记录失败: ${message}` }, { status: 500 });
   }
 }
-
-export const GET = withApiLogging('items/price-logs:GET', getPriceChangeLogs);

@@ -4,18 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { itemsApi, dictsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge } from './shared';
-import { parseSpecFields, SPEC_FIELD_LABEL_MAP } from './settings-tab';
+import { parseSpecFields } from './settings-tab';
+import EditBasicFields from './item-edit/edit-basic-fields';
+import EditSpecFields from './item-edit/edit-spec-fields';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
-import { Pencil, Copy } from 'lucide-react';
+import { Copy } from 'lucide-react';
 
 // ========== Item Edit Dialog ==========
 function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: number | null; open: boolean; onOpenChange: (o: boolean) => void; onSuccess: () => void }) {
@@ -25,6 +22,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, boolean>>({});
+  const [itemMaterialId, setItemMaterialId] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: '', sellingPrice: 0, floorPrice: 0, counter: '', certNo: '', notes: '', origin: '',
     tagIds: [] as number[],
@@ -36,15 +34,25 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   useEffect(() => {
     if (open) {
       dictsApi.getTypes().then(setTypes).catch(() => {});
-      dictsApi.getTags().then(setTags).catch(() => {});
     }
   }, [open]);
+
+  // Fetch tags filtered by item's material
+  useEffect(() => {
+    if (!open) return;
+    if (itemMaterialId) {
+      dictsApi.getTags(undefined, false, itemMaterialId).then(setTags).catch(() => {});
+    } else {
+      dictsApi.getTags().then(setTags).catch(() => {});
+    }
+  }, [open, itemMaterialId]);
 
   useEffect(() => {
     if (open && itemId) {
       setLoading(true);
       itemsApi.getItem(itemId).then((data: any) => {
         setItem(data);
+        setItemMaterialId(data.materialId || null);
         const specObj: any = data.spec || {};
         setForm({
           name: data.name || '',
@@ -69,6 +77,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     } else {
       setItem(null);
       setOriginalForm(null);
+      setItemMaterialId(null);
     }
   }, [open, itemId]);
 
@@ -108,176 +117,6 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     return null;
   }
 
-  const BRACELET_SIZES = [50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72];
-  const RING_SIZES = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
-
-  function renderSizeSelect(field: string, sizes: number[]) {
-    const isCustom = customFields[field] || false;
-    const value = (form as any)[field] || '';
-    const label = SPEC_FIELD_LABEL_MAP[field] || field;
-    const isRequired = specFieldsObj[field]?.required ?? false;
-    const isOther = !sizes.includes(Number(value)) && value !== '';
-
-    if (isCustom) {
-      return (
-        <div key={field} className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">
-              {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-            </Label>
-            <button type="button" onClick={() => setCustomFields(p => ({ ...p, [field]: false }))} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-              <Pencil className="h-2.5 w-2.5" />预设选择
-            </button>
-          </div>
-          <Input
-            type="text"
-            value={value}
-            onChange={e => setForm({ ...form, [field]: e.target.value })}
-            className="h-9"
-            placeholder={`自定义${label}`}
-          />
-        </div>
-      );
-    }
-
-    return (
-      <div key={field} className="space-y-1">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">
-            {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-          </Label>
-          <button type="button" onClick={() => setCustomFields(p => ({ ...p, [field]: true }))} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-            <Pencil className="h-2.5 w-2.5" />自定义
-          </button>
-        </div>
-        <Select value={isOther ? '__other__' : value} onValueChange={v => {
-          if (v === '__other__') {
-            setCustomFields(p => ({ ...p, [field]: true }));
-          } else {
-            setForm({ ...form, [field]: v });
-          }
-        }}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder={`选择${label}`} />
-          </SelectTrigger>
-          <SelectContent>
-            {sizes.map(s => (
-              <SelectItem key={s} value={String(s)}>{s}</SelectItem>
-            ))}
-            <SelectItem value="__other__">其他（自定义）</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  }
-
-  function renderSmartSpecFields() {
-    if (specFieldKeys.length === 0) return null;
-
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        {specFieldKeys.map((field: string) => {
-          const isRequired = specFieldsObj[field]?.required ?? false;
-          const label = SPEC_FIELD_LABEL_MAP[field] || field;
-
-          if (field === 'braceletSize') {
-            return renderSizeSelect(field, BRACELET_SIZES);
-          }
-          if (field === 'ringSize') {
-            return renderSizeSelect(field, RING_SIZES);
-          }
-          if (field === 'weight' || field === 'metalWeight') {
-            return (
-              <div key={field} className="space-y-1">
-                <Label className="text-xs">
-                  {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={(form as any)[field] || ''}
-                    onChange={e => setForm({ ...form, [field]: e.target.value })}
-                    className="h-9 pr-8"
-                    placeholder={label}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">g</span>
-                </div>
-              </div>
-            );
-          }
-          if (field === 'size') {
-            return (
-              <div key={field} className="space-y-1">
-                <Label className="text-xs">
-                  {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-                </Label>
-                <Input
-                  type="text"
-                  value={(form as any)[field] || ''}
-                  onChange={e => setForm({ ...form, [field]: e.target.value })}
-                  className="h-9"
-                  placeholder="例: 35×25×8 mm"
-                />
-              </div>
-            );
-          }
-          if (field === 'beadCount') {
-            return (
-              <div key={field} className="space-y-1">
-                <Label className="text-xs">
-                  {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-                </Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={(form as any)[field] || ''}
-                  onChange={e => setForm({ ...form, [field]: e.target.value })}
-                  className="h-9"
-                  placeholder={label}
-                />
-              </div>
-            );
-          }
-          if (field === 'beadDiameter') {
-            return (
-              <div key={field} className="space-y-1">
-                <Label className="text-xs">
-                  {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    step="0.5"
-                    value={(form as any)[field] || ''}
-                    onChange={e => setForm({ ...form, [field]: e.target.value })}
-                    className="h-9 pr-10"
-                    placeholder={label}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">mm</span>
-                </div>
-              </div>
-            );
-          }
-          return (
-            <div key={field} className="space-y-1">
-              <Label className="text-xs">
-                {label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}
-              </Label>
-              <Input
-                type="text"
-                value={(form as any)[field] || ''}
-                onChange={e => setForm({ ...form, [field]: e.target.value })}
-                className="h-9"
-                placeholder={label}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
   // Check if a field has changed from original
   function isFieldChanged(field: string) {
     if (!originalForm) return false;
@@ -301,6 +140,15 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
 
   function isFormChanged() {
     return getChangedFieldsCount() > 0;
+  }
+
+  function onFieldChange(field: string, value: any) {
+    setForm(f => ({ ...f, [field]: value }));
+  }
+
+  function toggleTag(tagId: number) {
+    const ids = form.tagIds.includes(tagId) ? form.tagIds.filter(id => id !== tagId) : [...form.tagIds, tagId];
+    setForm(f => ({ ...f, tagIds: ids }));
   }
 
   async function handleSave() {
@@ -425,52 +273,23 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
             )}
 
             {/* Editable fields */}
-            <div className={`space-y-1 rounded-md ${isFieldChanged('name') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">名称{isFieldChanged('name') && <span className="text-amber-500 ml-1">●</span>}</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="h-9" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className={`space-y-1 rounded-md ${isFieldChanged('sellingPrice') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">售价{isFieldChanged('sellingPrice') && <span className="text-amber-500 ml-1">●</span>}</Label><Input type="number" value={form.sellingPrice || ''} onChange={e => setForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
-              <div className={`space-y-1 rounded-md ${isFieldChanged('floorPrice') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">底价{isFieldChanged('floorPrice') && <span className="text-amber-500 ml-1">●</span>}</Label><Input type="number" value={form.floorPrice || ''} onChange={e => setForm(f => ({ ...f, floorPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className={`space-y-1 rounded-md ${isFieldChanged('origin') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">产地{isFieldChanged('origin') && <span className="text-amber-500 ml-1">●</span>}</Label><Input value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value }))} className="h-9" /></div>
-              <div className={`space-y-1 rounded-md ${isFieldChanged('counter') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">柜台号 <span className="text-red-500">*</span>{isFieldChanged('counter') && <span className="text-amber-500 ml-1">●</span>}</Label><Input value={form.counter} onChange={e => setForm(f => ({ ...f, counter: e.target.value }))} className="h-9" /></div>
-            </div>
-            <div className={`space-y-1 rounded-md ${isFieldChanged('certNo') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">证书号{isFieldChanged('certNo') && <span className="text-amber-500 ml-1">●</span>}</Label><Input value={form.certNo} onChange={e => setForm(f => ({ ...f, certNo: e.target.value }))} className="h-9" /></div>
-
-            {/* Dynamic spec fields */}
-            {renderSmartSpecFields()}
-
-            <div className={`space-y-1 rounded-md ${isFieldChanged('notes') ? 'bg-amber-50 dark:bg-amber-950/20 p-1.5 -m-1.5' : ''}`}><Label className="text-xs">备注{isFieldChanged('notes') && <span className="text-amber-500 ml-1">●</span>}</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="可选" className="h-16" /></div>
-
-            {/* Tags - Grouped */}
-            {tags.length > 0 && (() => {
-              const activeTags = tags.filter((t: any) => t.isActive);
-              const groups = activeTags.reduce((acc: any, tag: any) => {
-                const g = tag.groupName || '未分组';
-                if (!acc[g]) acc[g] = [];
-                acc[g].push(tag);
-                return acc;
-              }, {});
-              const groupKeys = Object.keys(groups);
-              const singleGroup = groupKeys.length === 1 && groupKeys[0] === '未分组';
-              return (
-                <div className="space-y-2">
-                  <Label className="text-xs">标签</Label>
-                  {groupKeys.map(group => (
-                    <div key={group}>
-                      {!singleGroup && <p className="text-xs font-medium text-muted-foreground mb-1">{group}</p>}
-                      <div className="flex flex-wrap gap-2">
-                        {groups[group].map((tag: any) => (
-                          <label key={tag.id} className="flex items-center gap-1 cursor-pointer">
-                            <Checkbox checked={form.tagIds.includes(tag.id)} onCheckedChange={() => toggleTag(tag.id)} />
-                            <span className="text-xs">{tag.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            <EditBasicFields
+              form={form}
+              onChange={onFieldChange}
+              isFieldChanged={isFieldChanged}
+            />
+            {/* Dynamic spec fields + Tags */}
+            <EditSpecFields
+              form={form}
+              onChange={onFieldChange}
+              tags={tags}
+              item={item}
+              specFieldsObj={specFieldsObj}
+              specFieldKeys={specFieldKeys}
+              customFields={customFields}
+              setCustomFields={setCustomFields}
+              onTagToggle={toggleTag}
+            />
           </div>
         ) : (
           <div className="py-8 text-center text-muted-foreground">未找到货品信息</div>

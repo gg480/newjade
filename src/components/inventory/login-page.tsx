@@ -116,21 +116,21 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-100 via-teal-50 to-cyan-100 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-cyan-950/40 animate-gradient-bg" />
       
-      {/* Decorative floating jade shapes */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Decorative floating jade shapes — 移动端隐藏节省性能 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden md:block">
         <div className="jade-float-shape jade-shape-1 absolute top-[10%] left-[10%] w-16 h-16 rounded-full bg-emerald-200/40 dark:bg-emerald-700/20 backdrop-blur-sm" />
         <div className="jade-float-shape jade-shape-2 absolute top-[20%] right-[15%] w-12 h-12 rounded-2xl bg-teal-200/30 dark:bg-teal-700/20 backdrop-blur-sm" />
         <div className="jade-float-shape jade-shape-3 absolute bottom-[15%] left-[20%] w-20 h-20 rounded-3xl bg-cyan-200/30 dark:bg-cyan-700/20 backdrop-blur-sm" />
         <div className="jade-float-shape jade-shape-4 absolute bottom-[25%] right-[10%] w-10 h-10 rounded-full bg-emerald-300/30 dark:bg-emerald-600/20 backdrop-blur-sm" />
         <div className="jade-float-shape jade-shape-5 absolute top-[50%] left-[5%] w-8 h-8 rounded-xl bg-teal-300/20 dark:bg-teal-600/15 backdrop-blur-sm" />
         <div className="jade-float-shape jade-shape-6 absolute top-[40%] right-[8%] w-14 h-14 rounded-full bg-emerald-200/25 dark:bg-emerald-800/15 backdrop-blur-sm" />
-        {/* Decorative ring */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-emerald-200/30 dark:border-emerald-700/20" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-teal-200/20 dark:border-teal-700/10" />
+        {/* Decorative ring — 移动端隐藏 */}
+        <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-emerald-200/30 dark:border-emerald-700/20" />
+        <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-teal-200/20 dark:border-teal-700/10" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-sm">
+      <div className="relative z-10 w-full mx-4 max-w-sm">
         <Card className="shadow-2xl border-emerald-200/80 dark:border-emerald-800/50 backdrop-blur-sm bg-white/80 dark:bg-gray-900/80">
           <CardHeader className="text-center pb-2 pt-8">
             <div className="flex items-center justify-center gap-2 mb-3">

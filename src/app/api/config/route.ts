@@ -1,30 +1,22 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import * as configService from '@/services/config.service';
 
 export async function GET() {
-  const configs = await db.sysConfig.findMany();
-  return NextResponse.json({ code: 0, data: configs, message: 'ok' });
+  try {
+    const configs = await configService.getAllConfigs();
+    return NextResponse.json({ code: 0, data: configs, message: 'ok' });
+  } catch (e: any) {
+    return NextResponse.json({ code: 500, data: null, message: `查询配置失败: ${e.message || 'unknown error'}` }, { status: 500 });
+  }
 }
 
 export async function PUT(req: Request) {
-  const { key, value } = await req.json();
-  if (!key || value === undefined) {
-    return NextResponse.json({ code: 400, data: null, message: '缺少 key 或 value' }, { status: 400 });
-  }
   try {
-    const normalizedKey = String(key).trim();
-    const normalizedValue = String(value);
-    const config = await db.sysConfig.upsert({
-      where: { key: normalizedKey },
-      update: { value: normalizedValue },
-      create: {
-        key: normalizedKey,
-        value: normalizedValue,
-        description: normalizedKey,
-      },
-    });
+    const { key, value } = await req.json();
+    const config = await configService.updateConfig(key, value);
     return NextResponse.json({ code: 0, data: config, message: 'ok' });
   } catch (e: any) {
-    return NextResponse.json({ code: 500, data: null, message: `保存配置失败: ${e.message || 'unknown error'}` }, { status: 500 });
+    const status = e.statusCode || 500;
+    return NextResponse.json({ code: status, data: null, message: `保存配置失败: ${e.message || 'unknown error'}` }, { status });
   }
 }

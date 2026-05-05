@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Zap, FileText } from 'lucide-react';
+import { Zap, FileText, Plus } from 'lucide-react';
+import SupplierQuickAddDialog from './supplier-quick-add-dialog';
 
 // ========== Category abbreviation map ==========
 const CATEGORY_ABBR: Record<string, string> = {
@@ -29,6 +30,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   const [types, setTypes] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showSupplierAdd, setShowSupplierAdd] = useState(false);
   const [materialCategory, setMaterialCategory] = useState('');
   const [quickMode, setQuickMode] = useState(false);
   const [form, setForm] = useState({
@@ -169,6 +171,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   });
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -216,13 +219,27 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
             </div>
             <div className="space-y-1">
               <Label className="text-xs">供应商</Label>
-              <Select value={quickSupplierId || '_none'} onValueChange={v => setQuickSupplierId(v === '_none' ? '' : v)}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="选择供应商（可选）" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">无</SelectItem>
-                  {suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1">
+                <Select value={quickSupplierId || '_none'} onValueChange={v => setQuickSupplierId(v === '_none' ? '' : v)}>
+                  <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="选择供应商（可选）" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">无</SelectItem>
+                    {suppliers.length === 0 ? (
+                      <div className="px-2 py-3 text-center">
+                        <p className="text-xs text-muted-foreground mb-2">暂无供应商，请先新增</p>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSupplierAdd(true); }}>
+                          <Plus className="h-3 w-3 mr-1" />新增供应商
+                        </Button>
+                      </div>
+                    ) : (
+                      suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-9 w-9 p-0 flex-shrink-0" onClick={() => setShowSupplierAdd(true)} title="快速新增供应商">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -303,10 +320,26 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
                 </Select>
               </div>
               <div className="space-y-1"><Label className="text-xs">供应商</Label>
-                <Select value={form.supplierId} onValueChange={v => setForm(f => ({ ...f, supplierId: v }))}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="选择供应商" /></SelectTrigger>
-                  <SelectContent>{suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <div className="flex gap-1">
+                  <Select value={form.supplierId} onValueChange={v => setForm(f => ({ ...f, supplierId: v }))}>
+                    <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="选择供应商" /></SelectTrigger>
+                    <SelectContent>
+                      {suppliers.length === 0 ? (
+                        <div className="px-2 py-3 text-center">
+                          <p className="text-xs text-muted-foreground mb-2">暂无供应商，请先新增</p>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSupplierAdd(true); }}>
+                            <Plus className="h-3 w-3 mr-1" />新增供应商
+                          </Button>
+                        </div>
+                      ) : (
+                        suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" className="h-9 w-9 p-0 flex-shrink-0" onClick={() => setShowSupplierAdd(true)} title="快速新增供应商">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="space-y-1"><Label className="text-xs">采购日期</Label><Input type="date" value={form.purchaseDate} onChange={e => setForm(f => ({ ...f, purchaseDate: e.target.value }))} className="h-9" /></div>
@@ -325,6 +358,16 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <SupplierQuickAddDialog
+        open={showSupplierAdd}
+        onOpenChange={setShowSupplierAdd}
+        onCreated={(s) => {
+          suppliersApi.getSuppliers().then((res: unknown) => setSuppliers((res as { items?: unknown[] })?.items || res || [])).catch(() => {});
+          setForm(f => ({ ...f, supplierId: String(s.id) }));
+          setQuickSupplierId(String(s.id));
+        }}
+      />
+    </>
   );
 }
 

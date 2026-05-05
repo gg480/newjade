@@ -19,10 +19,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Users, Plus, Search, Pencil, Trash2, ChevronDown, ChevronUp, Crown, Sparkles, TrendingUp, Shield, ShieldCheck,
-  Phone, MessageCircle, MapPin, Calendar, ShoppingBag, BarChart3, Tag, X, Clock, FileDown, ArrowUpDown, FileText,
-  DollarSign as DollarSignIcon, ShoppingCart as ShoppingCartIcon, ArrowDownAZ, Diamond, Star,
+  Phone, MessageCircle, MapPin, Calendar, ShoppingBag, BarChart3, Tag, X, Clock, FileDown, FileText,
+  DollarSign as DollarSignIcon, ShoppingCart as ShoppingCartIcon, ArrowDownAZ, Diamond, Star, GitMerge,
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, Tooltip as RTooltip, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { CustomerMergeDialog } from './customer-merge-dialog';
+import { CustomersFilterBar } from './customers/customers-filter-bar';
+import { CustomersTable } from './customers/customers-table';
 
 // Tag color palette
 const TAG_COLORS = [
@@ -76,11 +79,12 @@ function MiniSpendingChart({ data }: { data: { month: string; amount: number }[]
 }
 
 // ========== Customer Profile Dialog ==========
-function CustomerProfileDialog({ customer, open, onClose, onEdit, onTagsUpdated }: {
+function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTagsUpdated }: {
   customer: any;
   open: boolean;
   onClose: () => void;
   onEdit: (c: any) => void;
+  onMerge?: () => void;
   onTagsUpdated: () => void;
 }) {
   const [detail, setDetail] = useState<any>(null);
@@ -394,6 +398,11 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onTagsUpdated 
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>关闭</Button>
+          {onMerge && (
+            <Button variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400" onClick={() => { onClose(); onMerge(); }}>
+              <GitMerge className="h-4 w-4 mr-1" />合并客户
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -421,6 +430,9 @@ function CustomersTab() {
   const [profileCustomer, setProfileCustomer] = useState<any>(null);
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState<any>(null);
   const [sortBy, setSortBy] = useState<string>('lastPurchaseDate');
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  // 合并对话框
+  const [mergeTarget, setMergeTarget] = useState<any>(null);
   const SORT_OPTIONS = [
     { value: 'lastPurchaseDate', label: '最近购买', icon: Clock, order: 'desc' },
     { value: 'totalSpent', label: '消费总额', icon: DollarSignIcon, order: 'desc' },
@@ -558,93 +570,23 @@ function CustomersTab() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Overview */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          <Card className="relative overflow-hidden border-l-4 border-l-emerald-500 hover:shadow-md hover:border-emerald-400 transition-all duration-200">
-            <CardContent className="p-4">
-              <div className="absolute -right-1 -bottom-1 opacity-10"><Users className="h-16 w-16 text-emerald-500" /></div>
-              <p className="text-sm text-muted-foreground">客户总数</p>
-              <p className="text-2xl font-bold">{stats.totalCustomers}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden border-l-4 border-l-sky-500 hover:shadow-md hover:border-sky-400 transition-all duration-200">
-            <CardContent className="p-4">
-              <div className="absolute -right-1 -bottom-1 opacity-10"><TrendingUp className="h-16 w-16 text-sky-500" /></div>
-              <p className="text-sm text-muted-foreground">总营收</p>
-              <p className="text-2xl font-bold text-emerald-600">{formatPrice(stats.totalSpending)}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden border-l-4 border-l-amber-500 hover:shadow-md hover:border-amber-400 transition-all duration-200">
-            <CardContent className="p-4">
-              <div className="absolute -right-1 -bottom-1 opacity-10"><BarChart3 className="h-16 w-16 text-amber-500" /></div>
-              <p className="text-sm text-muted-foreground">平均客单价</p>
-              <p className="text-2xl font-bold">{formatPrice(stats.avgOrderValue)}</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden border-l-4 border-l-teal-500 hover:shadow-md hover:border-teal-400 transition-all duration-200">
-            <CardContent className="p-4">
-              <div className="absolute -right-1 -bottom-1 opacity-10"><Sparkles className="h-16 w-16 text-teal-500" /></div>
-              <p className="text-sm text-muted-foreground">本月活跃</p>
-              <p className="text-2xl font-bold text-teal-600">{stats.newThisMonth}</p>
-              <p className="text-xs text-muted-foreground">近30天有消费</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Search + Filter */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input name="search" data-testid="customer-search" placeholder="搜索客户（姓名/电话/微信）" value={keyword} onChange={e => setKeyword(e.target.value)} className="w-64 h-9 pl-8" />
-          </div>
-          {/* Sort Dropdown */}
-          <Select value={sortBy} onValueChange={v => setSortBy(v)}>
-            <SelectTrigger className="h-9 w-[140px]">
-              <div className="flex items-center gap-1.5">
-                <SortIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map(opt => {
-                const OptIcon = opt.icon;
-                return (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    <div className="flex items-center gap-2">
-                      <OptIcon className="h-3.5 w-3.5" />
-                      <span>{opt.label}</span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-          {!loading && keyword && (
-            <span className="text-xs text-muted-foreground">找到 {pagination.total} 个客户</span>
-          )}
-          {allTags.length > 0 && (
-            <select
-              value={tagFilter}
-              onChange={e => { setTagFilter(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
-              className="h-9 text-sm border rounded-md px-2 bg-background"
-            >
-              <option value="">全部标签</option>
-              {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
-            </select>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={handleExportCSV} disabled={customers.length === 0}>
-            <FileDown className="h-3 w-3 mr-1" />导出CSV
-          </Button>
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowCreate(true)}>
-            <Plus className="h-3 w-3 mr-1" /> 新增客户
-          </Button>
-        </div>
-      </div>
+      <CustomersFilterBar
+        stats={stats}
+        keyword={keyword}
+        onKeywordChange={setKeyword}
+        loading={loading}
+        customers={customers}
+        showIncompleteOnly={showIncompleteOnly}
+        onToggleIncomplete={() => { setShowIncompleteOnly(!showIncompleteOnly); setPagination(p => ({ ...p, page: 1 })); }}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        allTags={allTags}
+        tagFilter={tagFilter}
+        onTagFilterChange={v => { setTagFilter(v); setPagination(p => ({ ...p, page: 1 })); }}
+        pagination={pagination}
+        onExportCSV={handleExportCSV}
+        onNewCustomer={() => setShowCreate(true)}
+      />
 
       {customers.length === 0 ? (
         keyword ? (
@@ -655,286 +597,20 @@ function CustomersTab() {
           <EmptyState icon={Users} title="暂无客户" desc="还没有添加任何客户，点击「新增客户」开始" />
         )
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in-0 duration-200">
-          {[...customers].sort((a, b) => {
-            const sort = SORT_OPTIONS.find(s => s.value === sortBy);
-            const order = sort?.order || 'desc';
-            let cmp = 0;
-            switch (sortBy) {
-              case 'lastPurchaseDate': cmp = ((a.lastPurchaseDate || '').localeCompare(b.lastPurchaseDate || '')); break;
-              case 'totalSpent': cmp = ((a.totalSpending || 0) - (b.totalSpending || 0)); break;
-              case 'orderCount': cmp = ((a.orderCount || 0) - (b.orderCount || 0)); break;
-              case 'name': cmp = ((a.name || '').localeCompare(b.name || '')); break;
-              default: cmp = 0;
-            }
-            return order === 'desc' ? -cmp : cmp;
-          }).map(c => {
-            const vip = getVipLevel(c.totalSpending || 0);
-            const VipIcon = vip.icon;
-            const customerTags = Array.isArray(c.tags) ? c.tags : [];
-            return (
-              <Card key={c.id} className="group/card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" onClick={() => setProfileCustomer(c)}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium">{c.name}</h3>
-                      <Badge variant="outline" className="text-xs">{c.customerCode}</Badge>
-                    </div>
-                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                      {/* Quick Actions: Phone call + WeChat copy */}
-                      {c.phone && (
-                        <a href={`tel:${c.phone}`} className="inline-flex items-center justify-center h-7 w-7 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors md:opacity-0 md:group-hover/card:opacity-100" title="拨打电话">
-                          <Phone className="h-3.5 w-3.5" />
-                        </a>
-                      )}
-                      {c.wechat && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-sky-600 md:opacity-0 md:group-hover/card:opacity-100" onClick={() => { navigator.clipboard.writeText(c.wechat).then(() => toast.success('微信号已复制到剪贴板')).catch(() => toast.error('复制失败')); }} title="复制微信号">
-                          <MessageCircle className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-amber-600" onClick={() => openEditDialog(c)} title="编辑客户"><Pencil className="h-3.5 w-3.5" /></Button>
-                      {(c.orderCount || 0) === 0 && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600" onClick={() => setDeleteCustomerConfirm(c)} title="删除客户"><Trash2 className="h-3.5 w-3.5" /></Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setExpandedCustomerId(expandedCustomerId === c.id ? null : c.id)}>
-                        {expandedCustomerId === c.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* VIP Badge + Total Spending */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className={`text-xs ${vip.color}`}>
-                      <VipIcon className="h-3 w-3 mr-1" />
-                      {vip.label}
-                    </Badge>
-                    <span className="text-sm font-medium text-emerald-600">{formatPrice(c.totalSpending || 0)}</span>
-                    <span className="text-xs text-muted-foreground">({c.orderCount || 0}单)</span>
-                  </div>
-
-                  {/* Tags */}
-                  {customerTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {customerTags.slice(0, 4).map((tag: string) => (
-                        <Badge key={tag} variant="outline" className={`text-[10px] h-4 ${getTagColor(tag)}`}>{tag}</Badge>
-                      ))}
-                      {customerTags.length > 4 && (
-                        <Badge variant="outline" className="text-[10px] h-4 text-muted-foreground">+{customerTags.length - 4}</Badge>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    {c.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" />{c.phone}</p>}
-                    {c.wechat && <p className="flex items-center gap-1.5"><MessageCircle className="h-3 w-3 shrink-0" />{c.wechat}</p>}
-                    {c.notes && <p className="flex items-center gap-1.5 truncate"><FileText className="h-3 w-3 shrink-0" />{c.notes}</p>}
-                  </div>
-
-                  {/* VIP Progress Bar */}
-                  {(c.totalSpending || 0) > 0 && (() => {
-                    const spend = c.totalSpending || 0;
-                    const currentVip = getVipLevel(spend);
-                    const isMaxLevel = currentVip.max === Infinity;
-                    const progress = isMaxLevel ? 100 : ((spend - currentVip.min) / (currentVip.max - currentVip.min)) * 100;
-                    const barColor = spend >= 50000 ? '#8b5cf6' : spend >= 20000 ? '#f59e0b' : spend >= 5000 ? '#94a3b8' : '#9ca3af';
-                    const levelColor = spend >= 50000 ? 'text-violet-500' : spend >= 20000 ? 'text-amber-500' : spend >= 5000 ? 'text-slate-400' : 'text-gray-500';
-                    const nextLevelName = isMaxLevel ? '' : spend >= 20000 ? '钻石' : spend >= 5000 ? '金卡' : '银卡';
-                    const nextMin = currentVip.max === Infinity ? spend : currentVip.max;
-
-                    // Spending reward thresholds
-                    const rewardTiers = [
-                      { threshold: 1000, label: '银卡', icon: Shield, color: 'text-gray-500', iconBg: 'bg-gray-100 dark:bg-gray-800' },
-                      { threshold: 5000, label: '金卡', icon: Crown, color: 'text-amber-500', iconBg: 'bg-amber-100 dark:bg-amber-900/30' },
-                      { threshold: 20000, label: '钻石卡', icon: Diamond, color: 'text-sky-500', iconBg: 'bg-sky-100 dark:bg-sky-900/30' },
-                      { threshold: 100000, label: '黑钻卡', icon: Star, color: 'text-purple-500', iconBg: 'bg-purple-100 dark:bg-purple-900/30' },
-                    ];
-                    const nextReward = rewardTiers.find(t => spend < t.threshold);
-                    const currentRewardTier = rewardTiers.filter(t => spend >= t.threshold).pop();
-                    const nextRewardMin = nextReward ? nextReward.threshold : 0;
-                    const prevRewardMin = currentRewardTier ? currentRewardTier.threshold : 0;
-                    const rewardProgress = nextReward ? ((spend - prevRewardMin) / (nextRewardMin - prevRewardMin)) * 100 : 100;
-
-                    return (
-                      <div className="mt-2 pt-1">
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" style={{ height: '3px' }}>
-                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: barColor }} />
-                        </div>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className={`text-[10px] ${levelColor} font-medium`}>{currentVip.label}</span>
-                          {nextLevelName && progress < 100 && (
-                            <span className="text-[10px] text-muted-foreground">距{nextLevelName} ¥{nextMin - spend}</span>
-                          )}
-                        </div>
-
-                        {/* 消费奖励 Section */}
-                        {spend > 0 && (() => {
-                          const RewardIcon = nextReward ? nextReward.icon : (currentRewardTier ? currentRewardTier.icon : Shield);
-                          const rewardColor = nextReward ? nextReward.color : (currentRewardTier ? currentRewardTier.color : 'text-gray-500');
-                          const rewardBg = nextReward ? nextReward.iconBg : (currentRewardTier ? currentRewardTier.iconBg : 'bg-gray-100 dark:bg-gray-800');
-                          return (
-                            <div className="mt-1.5 pt-1 border-t border-dashed border-border/50">
-                              {nextReward ? (
-                                <>
-                                  <div className="flex items-center justify-between text-[10px]">
-                                    <span className="flex items-center gap-1 text-muted-foreground">
-                                      距离
-                                      <span className={`font-medium ${rewardColor} flex items-center gap-0.5`}>
-                                        <RewardIcon className="h-3 w-3" />{nextReward.label}
-                                      </span>
-                                    </span>
-                                    <span className="text-muted-foreground">还差 <span className="font-medium text-foreground">¥{nextRewardMin - spend}</span></span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1" style={{ height: '2px' }}>
-                                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(rewardProgress, 100)}%`, backgroundColor: rewardColor === 'text-gray-500' ? '#9ca3af' : rewardColor === 'text-amber-500' ? '#f59e0b' : rewardColor === 'text-sky-500' ? '#0ea5e9' : '#8b5cf6' }} />
-                                  </div>
-                                </>
-                              ) : (
-                                <span className="text-[10px] flex items-center gap-1 text-purple-500 font-medium">
-                                  <Star className="h-3 w-3" />黑钻卡 — 最高等级
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Expanded Detail */}
-                  {expandedCustomerId === c.id && (
-                    <div className="mt-3 pt-3 border-t border-border" onClick={e => e.stopPropagation()}>
-                      {detailLoading ? (
-                        <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-20" /></div>
-                      ) : customerDetail ? (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <p className="text-muted-foreground text-xs">总消费</p>
-                              <p className="font-bold text-emerald-600">
-                                {customerDetail.purchaseStats
-                                  ? formatPrice(customerDetail.purchaseStats.totalSpending)
-                                  : customerDetail.saleRecords
-                                    ? formatPrice(customerDetail.saleRecords.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0))
-                                    : '¥0.00'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground text-xs">购买次数</p>
-                              <p className="font-bold">{customerDetail.purchaseStats?.orderCount || customerDetail.saleRecords?.length || 0} 次</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground text-xs">最近购买</p>
-                              <p className="font-medium">{customerDetail.purchaseStats?.lastPurchaseDate || (customerDetail.saleRecords?.length > 0
-                                ? customerDetail.saleRecords.sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())[0]?.saleDate
-                                : '无')}</p>
-                            </div>
-                          </div>
-                          {customerDetail.saleRecords && customerDetail.saleRecords.length > 0 && (
-                            <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-                              <p className="text-xs font-medium text-muted-foreground">购买记录</p>
-                              {customerDetail.saleRecords.slice(0, 10).map((sr: any) => (
-                                <div key={sr.id} className="flex items-center justify-between text-xs p-1.5 bg-muted/50 rounded hover:bg-muted/80 transition-colors gap-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-mono shrink-0">{sr.item?.skuCode || sr.saleNo}</span>
-                                    <Badge variant="outline" className="text-[10px] h-4 shrink-0">{sr.channel === 'store' ? '门店' : '微信'}</Badge>
-                                    {sr.item?.batchCode && (
-                                      <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">{sr.item.batchCode}</Badge>
-                                    )}
-                                  </div>
-                                  <span className="font-medium text-emerald-600 shrink-0">{formatPrice(sr.actualPrice)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* Purchase Summary */}
-                          {customerDetail.saleRecords && customerDetail.saleRecords.length > 0 && (() => {
-                            const sales = customerDetail.saleRecords;
-                            const sorted = [...sales].sort((a: any, b: any) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
-                            const firstDate = sorted[0]?.saleDate || '无';
-                            const lastDate = sorted[sorted.length - 1]?.saleDate || '无';
-                            const totalSpending = sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0);
-                            const avgOrder = totalSpending / sales.length;
-                            // Find most purchased item type
-                            const typeCount: Record<string, { count: number; name: string }> = {};
-                            sales.forEach((sr: any) => {
-                              const typeName = sr.item?.material?.name || '其他';
-                              if (!typeCount[typeName]) typeCount[typeName] = { count: 0, name: typeName };
-                              typeCount[typeName].count++;
-                            });
-                            const topType = Object.values(typeCount).sort((a, b) => b.count - a.count)[0];
-                            return (
-                              <div className="mt-2 pt-2 border-t border-border space-y-2">
-                                <p className="text-xs font-medium text-muted-foreground">购买摘要</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <div className="flex items-center gap-1.5 text-xs p-1.5 bg-muted/50 rounded">
-                                    <Calendar className="h-3 w-3 text-sky-500 shrink-0" />
-                                    <span className="text-muted-foreground">首次购买</span>
-                                    <span className="font-medium ml-auto">{firstDate}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs p-1.5 bg-muted/50 rounded">
-                                    <Calendar className="h-3 w-3 text-emerald-500 shrink-0" />
-                                    <span className="text-muted-foreground">最近购买</span>
-                                    <span className="font-medium ml-auto">{lastDate}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs p-1.5 bg-muted/50 rounded">
-                                    <BarChart3 className="h-3 w-3 text-amber-500 shrink-0" />
-                                    <span className="text-muted-foreground">平均客单价</span>
-                                    <span className="font-medium text-emerald-600 ml-auto">{formatPrice(avgOrder)}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs p-1.5 bg-muted/50 rounded">
-                                    <ShoppingBag className="h-3 w-3 text-purple-500 shrink-0" />
-                                    <span className="text-muted-foreground">偏好材质</span>
-                                    <span className="font-medium ml-auto">{topType?.name || '-'} ({topType?.count || 0}次)</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">无法加载详情</p>
-                      )}
-                      {/* Mini Purchase History Chart */}
-                      {customerDetail.monthlySpending && customerDetail.monthlySpending.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">近6月消费趋势</p>
-                          <MiniSpendingChart data={(customerDetail.monthlySpending || []).slice(-6)} />
-                        </div>
-                      )}
-                      {/* Sparkline: Recent purchase amounts */}
-                      {customerDetail.saleRecords && customerDetail.saleRecords.length >= 2 && (() => {
-                        const recentSales = [...customerDetail.saleRecords]
-                          .sort((a: any, b: any) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime())
-                          .slice(-6)
-                          .map((sr: any) => ({ date: sr.saleDate?.slice(5) || '', amount: sr.actualPrice || 0 }));
-                        return (
-                          <div className="mt-2">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">近期消费金额</p>
-                            <div className="h-20">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={recentSales} margin={{ left: 0, right: 0, top: 2, bottom: 2 }}>
-                                  <defs>
-                                    <linearGradient id={`spark-${c.id}`} x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
-                                      <stop offset="95%" stopColor="#059669" stopOpacity={0} />
-                                    </linearGradient>
-                                  </defs>
-                                  <XAxis dataKey="date" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-                                  <Tooltip formatter={(v: number) => formatPrice(v)} />
-                                  <Area type="monotone" dataKey="amount" stroke="#059669" fill={`url(#spark-${c.id})`} strokeWidth={1.5} dot={false} />
-                                </AreaChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <CustomersTable
+          customers={customers}
+          keyword={keyword}
+          showIncompleteOnly={showIncompleteOnly}
+          sortBy={sortBy}
+          expandedCustomerId={expandedCustomerId}
+          onToggleExpand={setExpandedCustomerId}
+          customerDetail={customerDetail}
+          detailLoading={detailLoading}
+          onProfileClick={setProfileCustomer}
+          onEdit={openEditDialog}
+          onDelete={setDeleteCustomerConfirm}
+          onRefresh={refresh}
+        />
       )}
 
       {/* Pagination */}
@@ -1003,7 +679,23 @@ function CustomersTab() {
         open={profileCustomer !== null}
         onClose={() => setProfileCustomer(null)}
         onEdit={c => { setProfileCustomer(null); openEditDialog(c); }}
+        onMerge={() => {
+          const target = profileCustomer;
+          setProfileCustomer(null);
+          // 延迟打开避免 Dialog 嵌套冲突
+          setTimeout(() => setMergeTarget(target), 100);
+        }}
         onTagsUpdated={refresh}
+      />
+      {/* Customer Merge Dialog */}
+      <CustomerMergeDialog
+        open={mergeTarget !== null}
+        onOpenChange={(open) => { if (!open) setMergeTarget(null); }}
+        targetCustomer={mergeTarget}
+        onMerged={() => {
+          setMergeTarget(null);
+          refresh();
+        }}
       />
     </div>
   );

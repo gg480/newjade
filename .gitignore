@@ -65,3 +65,8 @@ db/custom.db
 prisma/*.db
 prisma/*.sqlite
 prisma/*.sqlite3
+
+# project meta
+.trae/
+test-results/
+tests/screenshots/

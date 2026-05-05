@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getRestockRecommendations } from '@/services/restock.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,54 +9,16 @@ export async function GET(request: NextRequest) {
     const minConfidence = searchParams.get('minConfidence');
     const limit = searchParams.get('limit') || '20';
 
-    const where: any = {};
-    if (materialId) {
-      where.item = {
-        materialId: parseInt(materialId),
-      };
-    }
-    if (typeId) {
-      where.item = {
-        ...where.item,
-        typeId: parseInt(typeId),
-      };
-    }
-    if (minConfidence) {
-      where.confidence = {
-        gte: parseFloat(minConfidence),
-      };
-    }
-
-    const recommendations = await prisma.restockRecommendation.findMany({
-      where,
-      include: {
-        item: {
-          include: {
-            material: true,
-            type: true,
-          },
-        },
-      },
-      orderBy: {
-        confidence: 'desc',
-      },
-      take: parseInt(limit),
+    const recommendations = await getRestockRecommendations({
+      materialId: materialId ? parseInt(materialId) : undefined,
+      typeId: typeId ? parseInt(typeId) : undefined,
+      minConfidence: minConfidence ? parseFloat(minConfidence) : undefined,
+      limit: parseInt(limit),
     });
 
-    return NextResponse.json({
-      code: 0,
-      data: recommendations,
-      message: 'ok',
-    });
+    return NextResponse.json({ code: 0, data: recommendations, message: 'ok' });
   } catch (error) {
     console.error('Error getting restock recommendations:', error);
-    return NextResponse.json(
-      {
-        code: 500,
-        data: null,
-        message: '获取入货建议失败',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 500, data: null, message: '获取入货建议失败' }, { status: 500 });
   }
 }

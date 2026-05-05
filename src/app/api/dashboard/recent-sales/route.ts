@@ -1,48 +1,10 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { getRecentSales } from '@/services/dashboard.service';
 
 export async function GET() {
   try {
-    const sales = await db.saleRecord.findMany({
-      take: 5,
-      orderBy: [
-        { saleDate: 'desc' },
-        { id: 'desc' },
-      ],
-      include: {
-        item: {
-          select: {
-            name: true,
-            skuCode: true,
-            material: { select: { name: true } },
-          },
-        },
-        customer: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    const result = sales.map(sale => ({
-      id: sale.id,
-      item: sale.item ? {
-        name: sale.item.name || sale.item.skuCode,
-        skuCode: sale.item.skuCode,
-        materialName: sale.item.material?.name || null,
-      } : null,
-      customerName: sale.customer?.name || '散客',
-      actualPrice: sale.actualPrice,
-      channel: sale.channel,
-      saleDate: sale.saleDate,
-    }));
-
-    return NextResponse.json({
-      code: 0,
-      data: result,
-      message: 'ok',
-    });
+    const data = await getRecentSales();
+    return NextResponse.json({ code: 0, data, message: 'ok' });
   } catch (error) {
     console.error('Recent sales API error:', error);
     return NextResponse.json({

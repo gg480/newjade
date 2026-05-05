@@ -33,9 +33,11 @@ model DictMaterial {
   sortOrder    Int       @default(0) @map("sort_order")
   isActive     Boolean   @default(true) @map("is_active")
 
-  batches      Batch[]
-  items        Item[]
-  metalPrices  MetalPrice[]
+  batches         Batch[]
+  items           Item[]
+  metalPrices     MetalPrice[]
+  tagMaterials    DictTagMaterial[]
+  seasonalFactors SeasonalFactor[]
 
   @@unique([name, subType])
   @@map("dict_material")
@@ -65,11 +67,27 @@ model DictTag {
   name      String  @unique
   groupName String? @map("group_name")
   isActive  Boolean @default(true) @map("is_active")
+  isGlobal  Boolean @default(false) @map("is_global")
 
-  items     Item[]   @relation("ItemTags")
-  itemTags  ItemTag[]
+  items         Item[]            @relation("ItemTags")
+  itemTags      ItemTag[]
+  tagMaterials  DictTagMaterial[]
 
   @@map("dict_tag")
+}
+
+// ──────────────────────────────────────────────
+// 4b. dict_tag_material — 标签材质关联（非全局标签限定适用材质）
+// ──────────────────────────────────────────────
+model DictTagMaterial {
+  tagId      Int          @map("tag_id")
+  materialId Int          @map("material_id")
+
+  tag        DictTag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  material   DictMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([tagId, materialId])
+  @@map("dict_tag_material")
 }
 
 // ──────────────────────────────────────────────
@@ -168,8 +186,12 @@ model Item {
   images        ItemImage[]
   tags          DictTag[]    @relation("ItemTags")
   itemTags      ItemTag[]
-  saleRecords   SaleRecord[]
-  saleReturns   SaleReturn[]
+  saleRecords     SaleRecord[]
+  saleReturns     SaleReturn[]
+  promotionItems       PromotionItem[]
+  priceChangeLogs      PriceChangeLog[]
+  stocktakingDetails   StocktakingDetail[]
+  restockRecommendation RestockRecommendation?
 
   @@index([status])
   @@index([materialId])
@@ -301,7 +323,52 @@ model User {
 }
 
 // ──────────────────────────────────────────────
-// 16. sale_returns — 销售退货记录
+// 16. price_range — 价格带字典（用于 dashboard 价格区间分布）
+// ──────────────────────────────────────────────
+model PriceRange {
+  id        Int      @id @default(autoincrement())
+  name      String   // 如 "0-1000", "1000-5000"
+  minPrice  Float?   @map("min_price")
+  maxPrice  Float?   @map("max_price")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  @@map("price_range")
+}
+
+// ──────────────────────────────────────────────
+// 17. customer_segment — 客户分组字典
+// ──────────────────────────────────────────────
+model CustomerSegment {
+  id           Int      @id @default(autoincrement())
+  name         String
+  discountRate Float?   @map("discount_rate")
+  description  String?
+  isActive     Boolean  @default(true) @map("is_active")
+
+  @@map("customer_segment")
+}
+
+// ──────────────────────────────────────────────
+// 18. product_category — 商品分类（支持层级）
+// ──────────────────────────────────────────────
+model ProductCategory {
+  id        Int              @id @default(autoincrement())
+  name      String
+  parentId  Int?             @map("parent_id")
+  level     Int              @default(1)
+  path      String           @default("")
+  sortOrder Int              @default(0) @map("sort_order")
+  isActive  Boolean          @default(true) @map("is_active")
+
+  parent    ProductCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  ProductCategory[] @relation("CategoryHierarchy")
+
+  @@map("product_category")
+}
+
+// ──────────────────────────────────────────────
+// 19. sale_returns — 销售退货记录
 // ──────────────────────────────────────────────
 model SaleReturn {
   id            Int      @id @default(autoincrement())
@@ -319,7 +386,7 @@ model SaleReturn {
 }
 
 // ──────────────────────────────────────────────
-// 17. operation_log — 操作日志
+// 20. operation_log — 操作日志
 // ──────────────────────────────────────────────
 model OperationLog {
   id          Int      @id @default(autoincrement())
@@ -337,7 +404,23 @@ model OperationLog {
 }
 
 // ──────────────────────────────────────────────
-// 18. session — 登录会话（持久化到数据库）
+// 21. notification — 通知与报表
+// ──────────────────────────────────────────────
+model Notification {
+  id        Int      @id @default(autoincrement())
+  type      String   // weekly_report, monthly_report, overdue, batch_incomplete, low_margin, today_summary
+  title     String
+  content   String   // JSON 格式的报表数据或描述
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([type])
+  @@index([createdAt])
+  @@map("notification")
+}
+
+// ──────────────────────────────────────────────
+// 22. session — 登录会话（持久化到数据库）
 // ──────────────────────────────────────────────
 model Session {
   id        String   @id @default(cuid())
@@ -349,4 +432,152 @@ model Session {
   @@index([token])
   @@index([expiresAt])
   @@map("session")
+}
+
+// ──────────────────────────────────────────────
+// 23. promotions — 促销活动
+// ──────────────────────────────────────────────
+model Promotion {
+  id            Int      @id @default(autoincrement())
+  name          String
+  type          String   // discount / 满减 / 赠品 / 套餐
+  discountValue Float?   @map("discount_value")
+  condition     Float?   // 满减门槛
+  startDate     String   @map("start_date")   // YYYY-MM-DD
+  endDate       String   @map("end_date")     // YYYY-MM-DD
+  recurrence    String   @default("none")     // none / daily / weekly / monthly / quarterly
+  status        String   @default("draft")    // draft / active / ended
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  items         PromotionItem[]
+  effects       PromotionEffect[]
+
+  @@map("promotions")
+}
+
+// ──────────────────────────────────────────────
+// 24. promotion_items — 促销关联货品
+// ──────────────────────────────────────────────
+model PromotionItem {
+  id          Int @id @default(autoincrement())
+  promotionId Int @map("promotion_id")
+  itemId      Int @map("item_id")
+
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, itemId])
+  @@map("promotion_items")
+}
+
+// ──────────────────────────────────────────────
+// 25. promotion_effects — 促销效果预测
+// ──────────────────────────────────────────────
+model PromotionEffect {
+  id                     Int      @id @default(autoincrement())
+  promotionId            Int      @map("promotion_id")
+  predictedSalesGrowth   Float    @map("predicted_sales_growth")
+  predictedProfitChange  Float    @map("predicted_profit_change")
+  confidence             Float
+  calculatedAt           DateTime @default(now()) @map("calculated_at")
+
+  promotion              Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@map("promotion_effects")
+}
+
+// ──────────────────────────────────────────────
+// 26. stocktaking — 盘点计划主表
+// ──────────────────────────────────────────────
+model Stocktaking {
+  id        Int      @id @default(autoincrement())
+  type      String   // full / partial
+  status    String   @default("pending") // pending / in_progress / completed
+  startDate String   @map("start_date") // YYYY-MM-DD
+  endDate   String?  @map("end_date")   // YYYY-MM-DD
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  details   StocktakingDetail[]
+
+  @@map("stocktaking")
+}
+
+// ──────────────────────────────────────────────
+// 27. stocktaking_detail — 盘点明细
+// ──────────────────────────────────────────────
+model StocktakingDetail {
+  id             Int         @id @default(autoincrement())
+  stocktakingId  Int         @map("stocktaking_id")
+  itemId         Int         @map("item_id")
+  systemQty      Int         @default(1) @map("system_qty")
+  actualQty      Int         @default(0) @map("actual_qty")
+  variance       Int         @default(-1)
+  notes          String?
+
+  stocktaking    Stocktaking @relation(fields: [stocktakingId], references: [id], onDelete: Cascade)
+  item           Item        @relation(fields: [itemId], references: [id])
+
+  @@index([stocktakingId])
+  @@map("stocktaking_detail")
+}
+
+// ──────────────────────────────────────────────
+// 28. seasonal_factor — 季节性因子
+// ──────────────────────────────────────────────
+model SeasonalFactor {
+  id         Int          @id @default(autoincrement())
+  materialId Int          @map("material_id")
+  month      Int          // 1-12
+  factor     Float
+
+  material   DictMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, month])
+  @@map("seasonal_factor")
+}
+
+// ──────────────────────────────────────────────
+// 29. restock_recommendation — 入货建议
+// ──────────────────────────────────────────────
+model RestockRecommendation {
+  id                  Int      @id @default(autoincrement())
+  itemId              Int      @unique @map("item_id")
+  currentStock        Int      @map("current_stock")
+  safetyStock         Int      @map("safety_stock")
+  recentSalesVelocity Float    @map("recent_sales_velocity")
+  salesRank           Int      @map("sales_rank")
+  growthRate          Float    @map("growth_rate")
+  seasonalFactor      Float    @map("seasonal_factor")
+  recommendedQty      Int      @map("recommended_qty")
+  estimatedCost       Float    @map("estimated_cost")
+  estimatedSalesCycle Int      @map("estimated_sales_cycle")
+  confidence          Float
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  item                Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("restock_recommendation")
+}
+
+// ──────────────────────────────────────────────
+// 30. price_change_log — 调价记录
+// ──────────────────────────────────────────────
+model PriceChangeLog {
+  id             Int      @id @default(autoincrement())
+  itemId         Int      @map("item_id")
+  oldPrice       Float    @map("old_price")
+  newPrice       Float    @map("new_price")
+  adjustmentType String   @map("adjustment_type") // percentage / fixed
+  operator       String   @default("admin")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  item           Item     @relation(fields: [itemId], references: [id])
+
+  @@index([itemId])
+  @@index([createdAt])
+  @@map("price_change_log")
 }

@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import * as logsService from '@/services/logs.service';
 
 export async function DELETE() {
   try {
@@ -7,13 +7,7 @@ export async function DELETE() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // Count how many will be deleted
-    const count = await db.operationLog.count({
-      where: {
-        createdAt: {
-          lt: thirtyDaysAgo,
-        },
-      },
-    });
+    const count = await logsService.countOldLogs(thirtyDaysAgo);
 
     if (count === 0) {
       return NextResponse.json({
@@ -23,18 +17,12 @@ export async function DELETE() {
       });
     }
 
-    const result = await db.operationLog.deleteMany({
-      where: {
-        createdAt: {
-          lt: thirtyDaysAgo,
-        },
-      },
-    });
+    const result = await logsService.cleanupOldLogs(thirtyDaysAgo);
 
     return NextResponse.json({
       code: 0,
-      data: { deleted: result.count },
-      message: `已清除 ${result.count} 条30天前的操作日志`,
+      data: { deleted: result.deleted },
+      message: `已清除 ${result.deleted} 条30天前的操作日志`,
     });
   } catch (error) {
     console.error('Cleanup old logs error:', error);
@@ -51,13 +39,8 @@ export async function GET() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const count = await db.operationLog.count({
-      where: {
-        createdAt: {
-          lt: thirtyDaysAgo,
-        },
-      },
-    });
+    const count = await logsService.countOldLogs(thirtyDaysAgo);
+
     return NextResponse.json({
       code: 0,
       data: { count },

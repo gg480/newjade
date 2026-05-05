@@ -1,29 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db as prisma } from '@/lib/db';
+import * as dictsService from '@/services/dicts.service';
 
 // GET /api/dicts/price-ranges - 获取价格带列表
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const priceRanges = await prisma.priceRange.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-    });
-
-    return NextResponse.json({
-      code: 0,
-      data: priceRanges,
-      message: 'ok',
-    });
+    const priceRanges = await dictsService.listPriceRanges();
+    return NextResponse.json({ code: 0, data: priceRanges, message: 'ok' });
   } catch (error) {
     console.error('获取价格带列表失败:', error);
-    return NextResponse.json(
-      {
-        code: 500,
-        data: null,
-        message: '获取价格带列表失败',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 500, data: null, message: '获取价格带列表失败' }, { status: 500 });
   }
 }
 
@@ -32,30 +17,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, minPrice, maxPrice, sortOrder } = body;
-
-    const priceRange = await prisma.priceRange.create({
-      data: {
-        name,
-        minPrice,
-        maxPrice,
-        sortOrder: sortOrder || 0,
-      },
-    });
-
-    return NextResponse.json({
-      code: 0,
-      data: priceRange,
-      message: '创建价格带成功',
-    });
+    const priceRange = await dictsService.createPriceRange({ name, minPrice, maxPrice, sortOrder });
+    return NextResponse.json({ code: 0, data: priceRange, message: '创建价格带成功' });
   } catch (error) {
     console.error('创建价格带失败:', error);
-    return NextResponse.json(
-      {
-        code: 500,
-        data: null,
-        message: '创建价格带失败',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 500, data: null, message: '创建价格带失败' }, { status: 500 });
   }
 }

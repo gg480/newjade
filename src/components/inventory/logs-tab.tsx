@@ -249,7 +249,7 @@ function LogsTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-end gap-3">
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground">操作类型</span>
               <Select value={actionFilter || '_all'} onValueChange={v => setActionFilter(v === '_all' ? '' : v)}>

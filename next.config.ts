@@ -3,6 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  allowedDevOrigins: ["192.168.31.80"],
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -1,5 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { lookupItemBySku } from '@/services/items-extra.service';
+import { NotFoundError, ConflictError, ValidationError } from '@/lib/errors';
 
 // Lookup item by SKU code (for scan-to-sell)
 export async function GET(req: Request) {
@@ -10,53 +11,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ code: 400, data: null, message: '请提供SKU码' }, { status: 400 });
   }
 
-  const item = await db.item.findFirst({
-    where: {
-      skuCode: sku,
-      isDeleted: false,
-    },
-    include: {
-      material: true,
-      type: true,
-      spec: true,
-    },
-  });
-
-  if (!item) {
-    return NextResponse.json({ code: 404, data: null, message: '未找到该货品' }, { status: 404 });
+  try {
+    const data = await lookupItemBySku(sku);
+    return NextResponse.json({ code: 0, data, message: 'ok' });
+  } catch (e: unknown) {
+    if (e instanceof NotFoundError) {
+      return NextResponse.json({ code: 404, data: null, message: e.message }, { status: 404 });
+    }
+    if (e instanceof ConflictError) {
+      return NextResponse.json({ code: 409, data: { skuCode: sku, status: '' }, message: e.message }, { status: 409 });
+    }
+    const message = e instanceof Error ? e.message : '查询失败';
+    return NextResponse.json({ code: 500, data: null, message }, { status: 500 });
   }
-
-  // Sales lookup only allows in-stock items to enter sell flow.
-  if (item.status !== 'in_stock') {
-    return NextResponse.json(
-      {
-        code: 409,
-        data: {
-          skuCode: item.skuCode,
-          status: item.status,
-        },
-        message: `货品 ${item.skuCode} 当前状态为「${item.status === 'sold' ? '已售' : item.status === 'returned' ? '已退' : item.status}」，无法出库`,
-      },
-      { status: 409 },
-    );
-  }
-
-  return NextResponse.json({
-    code: 0,
-    data: {
-      id: item.id,
-      skuCode: item.skuCode,
-      name: item.name,
-      materialName: item.material?.name,
-      typeName: item.type?.name,
-      costPrice: item.costPrice,
-      allocatedCost: item.allocatedCost,
-      sellingPrice: item.sellingPrice,
-      floorPrice: item.floorPrice,
-      status: item.status,
-      counter: item.counter,
-      weight: item.spec?.weight,
-    },
-    message: 'ok',
-  });
 }

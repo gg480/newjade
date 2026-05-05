@@ -1,29 +1,118 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { itemsApi, batchesApi, dashboardApi } from '@/lib/api';
+import { notificationsApi } from '@/lib/api';
 import { useAppStore, TabId } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Bell, AlertTriangle, Package, TrendingDown, Clock, ShoppingCart,
-  CheckCircle2, ExternalLink, Eye,
+  Bell, AlertTriangle, Package, TrendingDown, ShoppingCart,
+  CheckCircle2, Eye, ChartBar, TrendingUp,
 } from 'lucide-react';
+import ReportDetailDialog from './report-detail-dialog';
 
-interface Notification {
-  id: string;
-  type: 'overdue' | 'batch_incomplete' | 'low_margin' | 'today_summary';
+// ============================================================
+// 类型定义
+// ============================================================
+
+/** 后端返回的通知原始结构 */
+interface NotificationItem {
+  id: number;
+  type: 'weekly_report' | 'monthly_report' | 'overdue' | 'batch_incomplete' | 'low_margin' | 'today_summary';
   title: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+/** 前端渲染用的通知对象 */
+interface DisplayNotification {
+  item: NotificationItem;
+  typeMeta: TypeMeta;
   description: string;
+}
+
+/** 每种通知类型的图标/颜色/跳转目标 */
+interface TypeMeta {
   icon: React.ReactNode;
   color: string;
   dotColor: string;
-  tab: TabId;
-  timestamp: string;
+  tab: TabId | null; // null 表示报表类型，点击打开弹窗而非跳转Tab
 }
 
-// Relative time helper
+// ============================================================
+// 类型 → 元数据映射
+// ============================================================
+
+function getTypeMeta(type: NotificationItem['type']): TypeMeta {
+  switch (type) {
+    case 'weekly_report':
+      return {
+        icon: <ChartBar className="h-4 w-4" />,
+        color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30',
+        dotColor: 'bg-blue-500',
+        tab: null,
+      };
+    case 'monthly_report':
+      return {
+        icon: <TrendingUp className="h-4 w-4" />,
+        color: 'text-purple-600 bg-purple-50 dark:bg-purple-950/30',
+        dotColor: 'bg-purple-500',
+        tab: null,
+      };
+    case 'overdue':
+      return {
+        icon: <AlertTriangle className="h-4 w-4" />,
+        color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30',
+        dotColor: 'bg-amber-500',
+        tab: 'inventory',
+      };
+    case 'batch_incomplete':
+      return {
+        icon: <Package className="h-4 w-4" />,
+        color: 'text-red-600 bg-red-50 dark:bg-red-950/30',
+        dotColor: 'bg-red-500',
+        tab: 'batches',
+      };
+    case 'low_margin':
+      return {
+        icon: <TrendingDown className="h-4 w-4" />,
+        color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+        dotColor: 'bg-orange-500',
+        tab: 'inventory',
+      };
+    case 'today_summary':
+      return {
+        icon: <ShoppingCart className="h-4 w-4" />,
+        color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30',
+        dotColor: 'bg-emerald-500',
+        tab: 'dashboard',
+      };
+  }
+}
+
+// ============================================================
+// 工具函数
+// ============================================================
+
+/** 从通知 content JSON 中提取展示文本 */
+function extractDescription(item: NotificationItem): string {
+  try {
+    const content = JSON.parse(item.content);
+    if (content.description) return content.description;
+    // 报表类型从 summary 构造描述
+    if (item.type === 'weekly_report' || item.type === 'monthly_report') {
+      const s = content.summary;
+      if (s) {
+        return `销售额 ¥${(s.revenue ?? 0).toLocaleString()}，利润 ¥${(s.profit ?? 0).toLocaleString()}，销量 ${s.soldCount ?? 0} 件`;
+      }
+    }
+  } catch { /* content 可能不是有效 JSON */ }
+  return '';
+}
+
+/** 相对时间格式化 */
 function formatRelativeTime(dateStr: string): string {
   if (!dateStr) return '';
   const now = Date.now();
@@ -41,104 +130,44 @@ function formatRelativeTime(dateStr: string): string {
   return `${Math.floor(diffDay / 30)}个月前`;
 }
 
+const MAX_VISIBLE = 5;
+
+// ============================================================
+// 组件
+// ============================================================
+
 export default function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<NotificationItem | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { setActiveTab } = useAppStore();
 
+  // ========== 数据加载 ==========
+
   const loadNotifications = useCallback(async () => {
-    const notifs: Notification[] = [];
-
     try {
-      // 1. Overdue inventory
-      const summary = await dashboardApi.getSummary();
-      const agingData = await dashboardApi.getStockAging();
-
-      if (agingData?.overdue && agingData.overdue > 0) {
-        notifs.push({
-          id: 'overdue',
-          type: 'overdue',
-          title: '压货预警',
-          description: `${agingData.overdue} 件货品库存超过90天，建议尽快处理`,
-          icon: <AlertTriangle className="h-4 w-4" />,
-          color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30',
-          dotColor: 'bg-amber-500',
-          tab: 'inventory',
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      // 2. Batch incomplete
-      const batchesData = await batchesApi.getBatches({ page: 1, size: 1000 });
-      const incompleteBatches = (batchesData.items || []).filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0));
-      if (incompleteBatches.length > 0) {
-        notifs.push({
-          id: 'batch_incomplete',
-          type: 'batch_incomplete',
-          title: '批次待录入',
-          description: `${incompleteBatches.length} 个批次尚未录满，共 ${incompleteBatches.reduce((s: number, b: any) => s + ((b.quantity || 0) - (b.itemsCount || 0)), 0)} 件待录入`,
-          icon: <Package className="h-4 w-4" />,
-          color: 'text-red-600 bg-red-50 dark:bg-red-950/30',
-          dotColor: 'bg-red-500',
-          tab: 'batches',
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      // 3. Low margin items
-      const allItems = await itemsApi.getItems({ page: 1, size: 200, status: 'in_stock' });
-      const lowMarginItems = (allItems.items || []).filter((i: any) => {
-        const cost = i.allocatedCost || i.estimatedCost || i.costPrice || 0;
-        const price = i.sellingPrice || 0;
-        return cost > 0 && price > 0 && (price - cost) / price < 0.3;
-      });
-      if (lowMarginItems.length > 0) {
-        notifs.push({
-          id: 'low_margin',
-          type: 'low_margin',
-          title: '低毛利预警',
-          description: `${lowMarginItems.length} 件在库货品毛利率低于30%，建议调整定价`,
-          icon: <TrendingDown className="h-4 w-4" />,
-          color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
-          dotColor: 'bg-orange-500',
-          tab: 'inventory',
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      // 4. Today's summary
-      const today = new Date().toISOString().slice(0, 10);
-      const todaySales = await dashboardApi.getSummary({ start_date: today, end_date: today });
-      if (todaySales && (todaySales.totalSales > 0 || todaySales.totalRevenue > 0)) {
-        notifs.push({
-          id: 'today_summary',
-          type: 'today_summary',
-          title: '今日销售',
-          description: `已售 ${todaySales.totalSales || 0} 件，营收 ¥${((todaySales.totalRevenue || 0)).toFixed(0)}`,
-          icon: <ShoppingCart className="h-4 w-4" />,
-          color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30',
-          dotColor: 'bg-emerald-500',
-          tab: 'dashboard',
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (e) { console.error('[Bell]', e);
-      // Silently fail - notifications are non-critical
+      setError(null);
+      const data = await notificationsApi.getNotifications({ page: 1, size: 20 });
+      setItems(data.items || []);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '加载通知失败';
+      setError(msg);
+      console.error('[NotificationBell] 加载失败:', e);
     }
-
-    setNotifications(notifs);
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async API fetch, setState in callback is acceptable
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 异步API获取，setState在回调中可接受
     loadNotifications();
     const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  // Click outside to close
+  // ========== 点击外部关闭 ==========
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -151,25 +180,75 @@ export default function NotificationBell() {
     }
   }, [open]);
 
-  const unreadCount = notifications.filter(n => !dismissed.has(n.id)).length;
-  const MAX_VISIBLE = 5;
+  // ========== 已读/未读 ==========
 
-  function dismissAll() {
-    setDismissed(new Set(notifications.map(n => n.id)));
+  const unreadCount = items.filter(n => !n.isRead).length;
+  const allRead = unreadCount === 0;
+
+  /** 标记全部已读 */
+  async function handleMarkAllRead() {
+    try {
+      await notificationsApi.markAllAsRead();
+      setItems(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (e) {
+      console.error('[NotificationBell] 全部已读失败:', e);
+    }
   }
 
-  function handleViewDetail(notif: Notification) {
-    setActiveTab(notif.tab);
+  /** 标记单条已读 */
+  async function markSingleRead(id: number) {
+    try {
+      await notificationsApi.markAsRead(id);
+      setItems(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) {
+      console.error(`[NotificationBell] 标记已读失败 id=${id}:`, e);
+    }
+  }
+
+  // ========== 交互处理 ==========
+
+  function handleItemClick(item: NotificationItem) {
+    const meta = getTypeMeta(item.type);
+
+    // 标记已读
+    if (!item.isRead) {
+      markSingleRead(item.id);
+    }
+
+    // 周报/月报 → 打开报表弹窗
+    if (item.type === 'weekly_report' || item.type === 'monthly_report') {
+      setSelectedReport(item);
+      setReportDialogOpen(true);
+      setOpen(false);
+      return;
+    }
+
+    // 其他类型 → 跳转对应 Tab
+    if (meta.tab) {
+      setActiveTab(meta.tab);
+    }
     setOpen(false);
   }
 
+  // ========== 构建渲染数据 ==========
+
+  const displayItems: DisplayNotification[] = items.slice(0, MAX_VISIBLE).map(item => ({
+    item,
+    typeMeta: getTypeMeta(item.type),
+    description: extractDescription(item),
+  }));
+
+  // ========== 渲染 ==========
+
   return (
     <div className="relative" ref={dropdownRef}>
+      {/* 铃铛按钮 */}
       <Button
         variant="ghost"
         size="sm"
         className="relative h-9 w-9 p-0"
         onClick={() => { setOpen(!open); }}
+        title={error ? `通知加载失败: ${error}` : '通知提醒'}
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
@@ -177,12 +256,16 @@ export default function NotificationBell() {
             {unreadCount}
           </span>
         )}
+        {/* 错误指示 */}
+        {error && (
+          <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-card" />
+        )}
       </Button>
 
-      {/* Dropdown Panel */}
+      {/* 下拉面板 */}
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border rounded-xl shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
-          {/* Header */}
+          {/* 头部 */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -193,12 +276,12 @@ export default function NotificationBell() {
                 </Badge>
               )}
             </h4>
-            {unreadCount > 0 && (
+            {!allRead && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                onClick={dismissAll}
+                onClick={handleMarkAllRead}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 全部已读
@@ -206,9 +289,9 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Notifications List */}
+          {/* 通知列表 */}
           <ScrollArea className="max-h-80">
-            {unreadCount === 0 && notifications.length === 0 ? (
+            {displayItems.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-emerald-400" />
                 <p className="text-sm font-medium">暂无新通知</p>
@@ -216,41 +299,42 @@ export default function NotificationBell() {
               </div>
             ) : (
               <div className="divide-y">
-                {notifications.slice(0, MAX_VISIBLE).map(notif => (
+                {displayItems.map(({ item, typeMeta, description }) => (
                   <div
-                    key={notif.id}
-                    className={`px-4 py-3 transition-colors hover:bg-muted/50 ${dismissed.has(notif.id) ? 'opacity-40' : ''}`}
+                    key={item.id}
+                    className={`px-4 py-3 transition-colors hover:bg-muted/50 cursor-pointer ${item.isRead ? 'opacity-50' : ''}`}
+                    onClick={() => handleItemClick(item)}
                   >
                     <div className="flex items-start gap-3">
-                      {/* Icon with color dot */}
+                      {/* 图标 + 颜色标记 */}
                       <div className="relative shrink-0">
-                        <div className={`rounded-lg p-1.5 ${notif.color}`}>
-                          {notif.icon}
+                        <div className={`rounded-lg p-1.5 ${typeMeta.color}`}>
+                          {typeMeta.icon}
                         </div>
-                        {!dismissed.has(notif.id) && (
-                          <div className={`absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ${notif.dotColor} ring-2 ring-card`} />
+                        {!item.isRead && (
+                          <div className={`absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ${typeMeta.dotColor} ring-2 ring-card`} />
                         )}
                       </div>
-                      {/* Content */}
+                      {/* 内容 */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium truncate">{notif.title}</p>
+                          <p className="text-sm font-medium truncate">{item.title}</p>
                           <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                            {formatRelativeTime(notif.timestamp)}
+                            {formatRelativeTime(item.createdAt)}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {notif.description}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-xs text-muted-foreground hover:text-foreground px-0 mt-1"
-                          onClick={() => handleViewDetail(notif)}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          查看详情
-                        </Button>
+                        {description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                            {description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1 mt-1">
+                          {item.type === 'weekly_report' || item.type === 'monthly_report' ? (
+                            <span className="text-[10px] text-blue-500 font-medium">查看报表</span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">查看详情</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -259,25 +343,23 @@ export default function NotificationBell() {
             )}
           </ScrollArea>
 
-          {/* Footer with "查看全部" */}
-          {notifications.length > MAX_VISIBLE && (
-            <div className="border-t px-4 py-2 bg-muted/30">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setActiveTab('dashboard');
-                  setOpen(false);
-                }}
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                查看全部 {notifications.length} 条通知
-              </Button>
+          {/* 底部：总条数提示 */}
+          {items.length > MAX_VISIBLE && (
+            <div className="border-t px-4 py-2 bg-muted/30 text-center">
+              <span className="text-xs text-muted-foreground">
+                共 {items.length} 条通知
+              </span>
             </div>
           )}
         </div>
       )}
+
+      {/* 报表详情弹窗 */}
+      <ReportDetailDialog
+        open={reportDialogOpen}
+        onClose={() => { setReportDialogOpen(false); setSelectedReport(null); }}
+        notification={selectedReport}
+      />
     </div>
   );
 }

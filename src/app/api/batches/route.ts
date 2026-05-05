@@ -1,31 +1,6 @@
-import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
-
-// Helper: compute batch stats
-async function getBatchStats(batchId: number, batch: any) {
-  const items = await db.item.findMany({
-    where: { batchId, isDeleted: false },
-    include: { saleRecords: true },
-  });
-  const itemsCount = items.length;
-  const soldItems = items.filter(i => i.status === 'sold');
-  const soldCount = soldItems.length;
-  const revenue = soldItems.reduce((sum, item) => {
-    return sum + item.saleRecords.reduce((s, sr) => s + sr.actualPrice, 0);
-  }, 0);
-  const profit = revenue - batch.totalCost;
-  const paybackRate = batch.totalCost > 0 ? revenue / batch.totalCost : 0;
-  const hasQuantityMismatch = itemsCount !== batch.quantity;
-
-  let status = 'new';
-  if (soldCount === 0) status = 'new';
-  else if (hasQuantityMismatch) status = 'selling';
-  else if (soldCount === batch.quantity) status = 'cleared';
-  else if (paybackRate >= 1) status = 'paid_back';
-  else status = 'selling';
-
-  return { itemsCount, soldCount, revenue, profit, paybackRate, status, hasQuantityMismatch };
-}
+import { AppError } from '@/lib/errors';
+import * as batchesService from '@/services/batches.service';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -33,87 +8,37 @@ export async function GET(req: Request) {
   const size = parseInt(searchParams.get('size') || '20');
   const materialId = searchParams.get('material_id');
 
-  const where: any = {};
-  if (materialId) where.materialId = parseInt(materialId);
-
-  const total = await db.batch.count({ where });
-  const batches = await db.batch.findMany({
-    where,
-    include: { material: true, type: true, supplier: true },
-    orderBy: { createdAt: 'desc' },
-    skip: (page - 1) * size,
-    take: size,
-  });
-
-  const itemsWithStats = await Promise.all(
-    batches.map(async (b) => {
-      const stats = await getBatchStats(b.id, b);
-      return {
-        ...b,
-        materialName: b.material?.name,
-        typeName: b.type?.name,
-        supplierName: b.supplier?.name,
-        ...stats,
-      };
-    })
-  );
-
-  return NextResponse.json({
-    code: 0,
-    data: {
-      items: itemsWithStats,
-      pagination: { total, page, size, pages: Math.ceil(total / size) },
-    },
-    message: 'ok',
-  });
+  try {
+    const data = await batchesService.getBatches({ page, size, materialId });
+    return NextResponse.json({ code: 0, data, message: 'ok' });
+  } catch (e) {
+    if (e instanceof AppError) {
+      return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
+    }
+    return NextResponse.json({ code: 500, data: null, message: '获取失败' }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
   const { batchCode, materialId, typeId, quantity, totalCost, costAllocMethod, supplierId, purchaseDate, notes } = body;
-  const parsedMaterialId = parseInt(materialId);
-  const parsedTypeId = parseInt(typeId);
-  const parsedQuantity = parseInt(quantity);
-  const parsedTotalCost = parseFloat(totalCost);
-  const parsedSupplierId = supplierId ? parseInt(supplierId) : null;
-
-  if (!batchCode) {
-    return NextResponse.json({ code: 400, data: null, message: '请输入批次编号' }, { status: 400 });
-  }
-  if (/[^\x00-\x7F]/.test(batchCode)) {
-    return NextResponse.json({ code: 400, data: null, message: '批次编号不允许包含中文字符' }, { status: 400 });
-  }
-  if (isNaN(parsedMaterialId)) {
-    return NextResponse.json({ code: 400, data: null, message: '请选择材质' }, { status: 400 });
-  }
-  if (isNaN(parsedTypeId)) {
-    return NextResponse.json({ code: 400, data: null, message: '请选择器型' }, { status: 400 });
-  }
-  if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
-    return NextResponse.json({ code: 400, data: null, message: '请输入有效的数量' }, { status: 400 });
-  }
-  if (isNaN(parsedTotalCost) || parsedTotalCost <= 0) {
-    return NextResponse.json({ code: 400, data: null, message: '请输入有效的总成本' }, { status: 400 });
-  }
 
   try {
-    const batch = await db.batch.create({
-      data: {
-        batchCode,
-        materialId: parsedMaterialId,
-        typeId: parsedTypeId,
-        quantity: parsedQuantity,
-        totalCost: parsedTotalCost,
-        costAllocMethod,
-        supplierId: parsedSupplierId,
-        purchaseDate,
-        notes,
-      },
+    const batch = await batchesService.createBatch({
+      batchCode: batchCode || null,
+      materialId: parseInt(materialId),
+      typeId: typeId ? parseInt(typeId) : null,
+      quantity: parseInt(quantity),
+      totalCost: parseFloat(totalCost),
+      costAllocMethod,
+      supplierId: supplierId ? parseInt(supplierId) : null,
+      purchaseDate,
+      notes,
     });
     return NextResponse.json({ code: 0, data: batch, message: 'ok' });
-  } catch (e: any) {
-    if (e.message?.includes('Unique')) {
-      return NextResponse.json({ code: 400, data: null, message: '批次编号已存在' }, { status: 400 });
+  } catch (e) {
+    if (e instanceof AppError) {
+      return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
     return NextResponse.json({ code: 500, data: null, message: '创建失败' }, { status: 500 });
   }

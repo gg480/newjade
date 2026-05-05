@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db as prisma } from '@/lib/db';
+import * as dictsService from '@/services/dicts.service';
+import { NotFoundError } from '@/lib/errors';
 
 // GET /api/dicts/price-ranges/[id] - 获取单个价格带详情
 export async function GET(
@@ -8,38 +9,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const priceRange = await prisma.priceRange.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!priceRange) {
-      return NextResponse.json(
-        {
-          code: 404,
-          data: null,
-          message: '价格带不存在',
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        code: 0,
-        data: priceRange,
-        message: 'ok',
-      }
-    );
+    const priceRange = await dictsService.getPriceRangeById(parseInt(id));
+    return NextResponse.json({ code: 0, data: priceRange, message: 'ok' });
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ code: 404, data: null, message: '价格带不存在' }, { status: 404 });
+    }
     console.error('获取价格带详情失败:', error);
-    return NextResponse.json(
-      {
-        code: 500,
-        data: null,
-        message: '获取价格带详情失败',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 500, data: null, message: '获取价格带详情失败' }, { status: 500 });
   }
 }
 
@@ -51,36 +28,14 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, minPrice, maxPrice, sortOrder, isActive } = body;
-
-    const priceRange = await prisma.priceRange.update({
-      where: { id: parseInt(id) },
-      data: {
-        name,
-        minPrice,
-        maxPrice,
-        sortOrder,
-        isActive,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        code: 0,
-        data: priceRange,
-        message: '更新价格带成功',
-      }
-    );
+    const priceRange = await dictsService.updatePriceRange(parseInt(id), body);
+    return NextResponse.json({ code: 0, data: priceRange, message: '更新价格带成功' });
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ code: 404, data: null, message: '价格带不存在' }, { status: 404 });
+    }
     console.error('更新价格带失败:', error);
-    return NextResponse.json(
-      {
-        code: 500,
-        data: null,
-        message: '更新价格带失败',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 500, data: null, message: '更新价格带失败' }, { status: 500 });
   }
 }
 
@@ -91,26 +46,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await prisma.priceRange.delete({
-      where: { id: parseInt(id) },
-    });
-
-    return NextResponse.json(
-      {
-        code: 0,
-        data: null,
-        message: '删除价格带成功',
-      }
-    );
+    await dictsService.deletePriceRange(parseInt(id));
+    return NextResponse.json({ code: 0, data: null, message: '删除价格带成功' });
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ code: 404, data: null, message: '价格带不存在' }, { status: 404 });
+    }
     console.error('删除价格带失败:', error);
-    return NextResponse.json(
-      {
-        code: 500,
-        data: null,
-        message: '删除价格带失败',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ code: 500, data: null, message: '删除价格带失败' }, { status: 500 });
   }
 }

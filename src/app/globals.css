@@ -268,6 +268,19 @@ button, a, [role="button"], [role="tab"], [role="option"], label[for] {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ========== 标签打印 @page 精确尺寸 ========== */
+/* 默认标签规格：60×40mm（最常用） */
+@page {
+  size: 60mm 40mm;
+  margin: 1.5mm;
+}
+
+/* 备选标签规格：50×30mm */
+@page label-50x30 {
+  size: 50mm 30mm;
+  margin: 1.5mm;
+}
+
 /* ========== Print Styles ========== */
 @media print {
   /* Hide navigation, stats bar, buttons, floating elements */
@@ -285,4 +298,24 @@ button, a, [role="button"], [role="tab"], [role="option"], label[for] {
 
   /* Hide overlays and modals backdrop */
   [data-radix-popper-content-wrapper] { position: static !important; }
+
+  /* 隐藏 Dialog 半透明遮罩 */
+  [data-slot="dialog-overlay"] { display: none !important; }
+
+  /* Dialog 内容在打印时变为静态文档流布局 */
+  [data-slot="dialog-content"] {
+    position: static !important;
+    transform: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 批量标签卡片边框在打印时变为实线 */
+  .batch-label-card {
+    border-style: solid !important;
+    border-color: #000 !important;
+    break-inside: avoid;
+  }
 }

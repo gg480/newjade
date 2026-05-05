@@ -8,6 +8,7 @@ import SalesTab from '@/components/inventory/sales-tab';
 import BatchesTab from '@/components/inventory/batches-tab';
 import CustomersTab from '@/components/inventory/customers-tab';
 import LogsTab from '@/components/inventory/logs-tab';
+import LoginPage from '@/components/inventory/login-page';
 
 const DashboardTab = dynamic(
   () => import('@/components/inventory/dashboard-tab').catch(() => {
@@ -62,7 +63,6 @@ function QuickStatsBar() {
       }
       if (salesData.status === 'fulfilled') {
         setTodaySales(salesData.value.pagination?.total || 0);
-        // Use aggregate revenue from pagination if available, otherwise sum items
         const sales = salesData.value.items || [];
         setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
       }
@@ -71,12 +71,10 @@ function QuickStatsBar() {
         setPendingBatches(batches.filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)).length);
       }
     } catch (e) { console.error('[Page]', e);
-      // Silently fail
     }
   };
 
   useEffect(() => {
-    // Delay initial load to avoid competing with dashboard for connection pool
     const timer = setTimeout(loadStats, 3000);
     const interval = setInterval(loadStats, 30000);
     return () => { clearTimeout(timer); clearInterval(interval); };
@@ -134,12 +132,10 @@ function MobileQuickStats({ className }: { className?: string }) {
         setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
       }
     } catch (e) { console.error('[Page]', e);
-      // Silently fail
     }
   };
 
   useEffect(() => {
-    // Delay initial load to avoid competing with dashboard for connection pool
     const timer = setTimeout(loadStats, 3000);
     const interval = setInterval(loadStats, 30000);
     return () => { clearTimeout(timer); clearInterval(interval); };
@@ -178,6 +174,7 @@ export default function JadeInventoryPage() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState('');
   const [apiLoading, setApiLoading] = useState(false);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [storeName, setStoreName] = useState(() => {
     try {
       if (typeof window === 'undefined') return '兴盛艺珠宝';
@@ -189,6 +186,45 @@ export default function JadeInventoryPage() {
     } catch (e) { console.error('[Page]', e);}
     return '兴盛艺珠宝';
   });
+
+  // 登录状态检查
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      fetch('/api/auth', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.code === 0) {
+            setAuthenticated(true);
+          } else {
+            localStorage.removeItem('auth_token');
+            setAuthenticated(false);
+          }
+        })
+        .catch(() => {
+          setAuthenticated(false);
+        });
+    } else {
+      queueMicrotask(() => setAuthenticated(false));
+    }
+  }, []);
+
+  const handleLogin = (token: string) => {
+    localStorage.setItem('auth_token', token);
+    setAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    fetch('/api/auth', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
+    }).finally(() => {
+      localStorage.removeItem('auth_token');
+      setAuthenticated(false);
+    });
+  };
 
   // MOUNT DIAGNOSTIC
   useEffect(() => {
@@ -288,7 +324,6 @@ export default function JadeInventoryPage() {
       // Escape: close any open dialog/panel
       if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        // Dispatch custom event for child components to listen to
         window.dispatchEvent(new CustomEvent('escape-press'));
         return;
       }
@@ -298,7 +333,6 @@ export default function JadeInventoryPage() {
         e.preventDefault();
         if (activeTab === 'inventory') {
           setActiveTab('inventory');
-          // Dispatch event for inventory tab to listen
           window.dispatchEvent(new CustomEvent('shortcut-new-item'));
         }
         return;
@@ -327,7 +361,6 @@ export default function JadeInventoryPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setActiveTab('inventory');
-        // Focus search input after a brief delay for tab to render
         const focusSearch = () => {
           const selectors = [
             'input[placeholder*="SKU"]',
@@ -385,6 +418,21 @@ export default function JadeInventoryPage() {
     }
   };
 
+  // 登录状态检查中
+  if (authenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
+  // 未登录 — 显示登录页
+  if (!authenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  // 已登录 — 显示工作区
   return (
     <>
       <div className="min-h-screen flex flex-col bg-background" id="app-root">
@@ -394,7 +442,7 @@ export default function JadeInventoryPage() {
           <div className="loading-bar h-full w-full" />
         </div>
       )}
-      <DesktopNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" loading={apiLoading} />
+      <DesktopNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" loading={apiLoading} onLogout={handleLogout} />
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 dark:bg-amber-600 text-white text-center text-sm py-1.5 px-4 animate-in slide-in-from-top-1 duration-200">
           <div className="flex items-center justify-center gap-2">
@@ -410,7 +458,7 @@ export default function JadeInventoryPage() {
           </ErrorBoundary>
         </div>
       </main>
-      <MobileNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" />
+      <MobileNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" onLogout={handleLogout} />
       <MobileQuickStats className="no-print" />
       <footer className="no-print mt-auto hidden md:block border-t border-border bg-card py-3">
         <div className="container mx-auto px-4 flex items-center justify-between text-sm">
