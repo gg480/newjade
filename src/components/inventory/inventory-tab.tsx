@@ -75,10 +75,12 @@ function InventoryTab() {
     totalMarketValue: 0,
   });
   const [materials, setMaterials] = useState<any[]>([]);
+  const [types, setTypes] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
   const [allBatches, setAllBatches] = useState<any[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ materialCategory: '', materialId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' });
+  const [filters, setFilters] = useState({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' });
   const [searchField, setSearchField] = useState('all');
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(['in_stock']));
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -156,7 +158,27 @@ function InventoryTab() {
   const [lightboxImages, setLightboxImages] = useState<{ id: number; url: string; isCover?: boolean }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  useEffect(() => { dictsApi.getMaterials().then(setMaterials).catch(() => {}); }, []);
+  useEffect(() => {
+    dictsApi.getMaterials().then(setMaterials).catch(() => {});
+    loadTypes();
+    loadTags();
+  }, []);
+  const loadTypes = async (materialId?: number) => {
+    try {
+      const data = await dictsApi.getTypes(false, materialId);
+      setTypes(data);
+    } catch (error) {
+      console.error('加载器型失败:', error);
+    }
+  };
+  const loadTags = async (materialId?: number) => {
+    try {
+      const data = await dictsApi.getTags(undefined, false, materialId);
+      setTags(data);
+    } catch (error) {
+      console.error('加载标签失败:', error);
+    }
+  };
   useEffect(() => { customersApi.getCustomers().then((d: any) => setCustomers(d?.items || d || [])).catch(() => {}); }, []);
   useEffect(() => { batchesApi.getBatches({ page: 1, size: 1000 }).then(d => setAllBatches(d.items || [])).catch(() => {}); }, []);
 
@@ -222,8 +244,14 @@ function InventoryTab() {
     if (filters.purchaseEndDate) {
       result = result.filter(i => (i.purchaseDate || '') <= filters.purchaseEndDate);
     }
+    if (filters.typeId) {
+      result = result.filter(i => String(i.typeId) === filters.typeId);
+    }
+    if (filters.tagId) {
+      result = result.filter(i => i.tags?.some((t: any) => String(t.id) === filters.tagId));
+    }
     return result;
-  }, [items, activeStatuses, filters.minPrice, filters.maxPrice, filters.purchaseStartDate, filters.purchaseEndDate]);
+  }, [items, activeStatuses, filters.minPrice, filters.maxPrice, filters.purchaseStartDate, filters.purchaseEndDate, filters.typeId, filters.tagId]);
 
   // Client-side sort for table display
   const sortedItems = useMemo(() => {
@@ -277,7 +305,7 @@ function InventoryTab() {
   // Reset to first page when server-side query conditions change.
   useEffect(() => {
     setPagination(prev => prev.page === 1 ? prev : { ...prev, page: 1 });
-  }, [activeStatuses, filters.materialId, filters.keyword, searchField, filters.counter, filters.batchId, sortBy, sortOrder]);
+  }, [activeStatuses, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, sortBy, sortOrder]);
 
   // Auto-load items on mount and when deps change
   useEffect(() => {
@@ -288,6 +316,8 @@ function InventoryTab() {
       try {
         const params: any = { page: pagination.page, size: pagination.size };
         if (filters.materialId) params.material_id = filters.materialId;
+        if (filters.typeId) params.type_id = filters.typeId;
+        if (filters.tagId) params.tag_id = filters.tagId;
         if (activeStatuses.size === 1) params.status = Array.from(activeStatuses)[0];
         if (filters.keyword) {
           params.keyword = filters.keyword;
@@ -312,10 +342,10 @@ function InventoryTab() {
     };
     loadData();
     return () => { cancelled = true; };
-  }, [pagination.page, pagination.size, refreshKey, activeStatuses, filters.materialId, filters.keyword, searchField, filters.counter, filters.batchId, sortBy, sortOrder]);
+  }, [pagination.page, pagination.size, refreshKey, activeStatuses, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, sortBy, sortOrder]);
 
   // Clear selection when page/filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [pagination.page, filters, activeStatuses, sortBy, sortOrder]);
+  useEffect(() => { setSelectedIds(new Set()); }, [pagination.page, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, filters.status, activeStatuses, sortBy, sortOrder]);
 
   // Selection handlers
   function toggleSelect(id: number) {
@@ -767,12 +797,16 @@ function InventoryTab() {
         onSearchFieldChange={setSearchField}
         materials={materials}
         filteredMaterials={filteredMaterials}
+        types={types}
+        tags={tags}
+        onLoadTypes={loadTypes}
+        onLoadTags={loadTags}
         allBatches={allBatches}
         allCounters={allCounters}
         showMoreFilters={showMoreFilters}
         onToggleMoreFilters={() => setShowMoreFilters(!showMoreFilters)}
         onSearch={() => { setPagination(p => ({ ...p, page: 1 })); refresh(); }}
-        onResetFilters={() => { setFilters({ materialCategory: '', materialId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' }); setActiveStatuses(new Set(['in_stock'])); }}
+        onResetFilters={() => { setFilters({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' }); setActiveStatuses(new Set(['in_stock'])); }}
         sortBy={sortBy}
         onSortByChange={setSortBy}
         sortOrder={sortOrder}

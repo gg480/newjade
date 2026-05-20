@@ -21,6 +21,7 @@ import type {
   CreateSaleBody, UpdateSaleBody, CreateBundleSaleBody, ReturnSaleBody,
   MergeCustomerBody, UpdateMetalPriceBody, RepriceBody, PricingBody,
   BatchPriceBody, UpdateConfigBody, ChangePasswordBody, ImportOptions,
+  CurrentUser, UserInfo, RoleInfo,
 } from './api.types';
 
 const BASE = '/api';
@@ -72,8 +73,8 @@ export const dictsApi = {
   deleteMaterial: (id: number) =>
     request<null>(`/dicts/materials/${id}`, { method: 'DELETE' }),
 
-  getTypes: (includeInactive = false) =>
-    request<DictType[]>(`/dicts/types?include_inactive=${includeInactive}`),
+  getTypes: (includeInactive = false, materialId?: number) =>
+    request<DictType[]>(`/dicts/types?include_inactive=${includeInactive}${materialId ? `&material_id=${materialId}` : ''}`),
   createType: (data: CreateDictTypeBody) =>
     request<DictType>('/dicts/types', { method: 'POST', body: JSON.stringify(data) }),
   updateType: (id: number, data: Partial<CreateDictTypeBody>) =>
@@ -340,6 +341,20 @@ export const importApi = {
   downloadTemplate: (type: 'items' | 'sales') => `${BASE}/import/template?type=${type}`,
 };
 
+// ========== Restock ==========
+export const restockApi = {
+  getRecommendations: (params?: Record<string, string | number | boolean | undefined | null>) => {
+    const qs = params ? buildQueryString(params) : '';
+    return request<any[]>(`/restock/recommendations${qs}`);
+  },
+  generateRecommendations: (data: Record<string, unknown>) =>
+    request<any[]>('/restock/generate', { method: 'POST', body: JSON.stringify(data) }),
+  getSeasonalFactors: (params?: Record<string, string | number | boolean | undefined | null>) => {
+    const qs = params ? buildQueryString(params) : '';
+    return request<any[]>(`/restock/seasonal${qs}`);
+  },
+};
+
 // ========== Batch Price ==========
 export const itemsApiEnhanced = {
   batchPriceAdjust: async (data: BatchPriceBody) => {
@@ -352,14 +367,48 @@ export const itemsApiEnhanced = {
 
 // ========== Auth ==========
 export const authApi = {
-  login: (password: string) =>
-    request<AuthToken>('/auth', { method: 'POST', body: JSON.stringify({ password }) }),
+  login: (username: string, password: string) =>
+    request<{ token: string; expiresIn: number; user: CurrentUser }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   validateSession: () =>
     request<AuthSession>('/auth', { method: 'GET' }),
   logout: () =>
-    request<null>('/auth', { method: 'DELETE' }),
+    request<null>('/auth/logout', { method: 'POST' }),
+  getMe: () =>
+    request<CurrentUser>('/auth/me'),
   changePassword: (oldPassword: string, newPassword: string) =>
-    request<null>('/auth', { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword } satisfies ChangePasswordBody) }),
+    request<null>('/auth/password', { method: 'PUT', body: JSON.stringify({ oldPassword, newPassword } satisfies ChangePasswordBody) }),
+};
+
+// ========== Users ==========
+export const usersApi = {
+  list: (params?: Record<string, string | number | boolean | undefined | null>) => {
+    const qs = params ? buildQueryString(params) : '';
+    return request<{ items: UserInfo[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(`/users${qs}`);
+  },
+  create: (data: { username: string; password: string; displayName: string; roleId: number }) =>
+    request<UserInfo>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: { displayName?: string; roleId?: number; isActive?: boolean }) =>
+    request<UserInfo>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: number) =>
+    request<null>(`/users/${id}`, { method: 'DELETE' }),
+  updateRole: (id: number, roleId: number) =>
+    request<null>(`/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ roleId }) }),
+  resetPassword: (id: number, newPassword: string) =>
+    request<null>(`/users/${id}/reset-password`, { method: 'PUT', body: JSON.stringify({ newPassword }) }),
+};
+
+// ========== Roles ==========
+export const rolesApi = {
+  list: () =>
+    request<{ items: RoleInfo[] }>('/roles'),
+  create: (data: { name: string; description?: string; permissions: string[] }) =>
+    request<RoleInfo>('/roles', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: { name?: string; description?: string; permissions?: string[] }) =>
+    request<RoleInfo>(`/roles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: number) =>
+    request<null>(`/roles/${id}`, { method: 'DELETE' }),
+  getDetail: (id: number) =>
+    request<RoleInfo>(`/roles/${id}`),
 };
 
 // ========== Notifications ==========

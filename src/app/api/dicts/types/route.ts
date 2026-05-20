@@ -4,8 +4,12 @@ import * as dictsService from '@/services/dicts.service';
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const includeInactive = searchParams.get('include_inactive') === 'true';
+  const materialId = searchParams.get('material_id');
   try {
-    const items = await dictsService.listTypes({ includeInactive });
+    const items = await dictsService.listTypes({
+      includeInactive,
+      materialId: materialId ? Number(materialId) : undefined,
+    });
     return NextResponse.json({ code: 0, data: items, message: 'ok' });
   } catch (e) {
     console.error('器型查询失败:', e);

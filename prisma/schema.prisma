@@ -312,14 +312,38 @@ model MetalPrice {
 // 15. users — 管理员用户
 // ──────────────────────────────────────────────
 model User {
-  id              Int      @id @default(autoincrement())
-  username        String   @unique
-  passwordHash    String   @map("password_hash")
-  mustChangePwd   Boolean  @default(true) @map("must_change_pwd")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement())
+  username        String    @unique
+  displayName     String?   @map("display_name")
+  passwordHash    String    @map("password_hash")
+  mustChangePwd   Boolean   @default(true) @map("must_change_pwd")
+  isActive        Boolean   @default(true) @map("is_active")
+  lastLoginAt     DateTime? @map("last_login_at")
+  roleId          Int?      @map("role_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  role            Role?     @relation(fields: [roleId], references: [id])
+  sessions        Session[]
 
   @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// 15a. roles — 角色与权限
+// ──────────────────────────────────────────────
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  permissions String   @default("[]")  // JSON 数组：["tab:dashboard","action:export",...]
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+
+  @@map("roles")
 }
 
 // ──────────────────────────────────────────────
@@ -425,9 +449,11 @@ model Notification {
 model Session {
   id        String   @id @default(cuid())
   token     String   @unique
-  userId    String   @default("admin")
+  userId    Int?     @map("user_id")
   createdAt DateTime @default(now())
   expiresAt DateTime
+
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@index([token])
   @@index([expiresAt])

@@ -12,23 +12,26 @@ import {
   Search, FileDown, FileSpreadsheet, Plus, CheckSquare, ArrowDown, ArrowUp,
   CircleDot, SlidersHorizontal, ChevronDown, ChevronUp, X,
 } from 'lucide-react';
-import { MATERIAL_CATEGORIES } from '../settings-tab';
+import { MATERIAL_CATEGORIES } from '@/lib/constants';
+import MaterialTypeTagFilter from '@/components/inventory/shared/material-type-tag-filter';
 
 // ========== Active Filter Tags Component ==========
 interface ActiveFilterTagsProps {
   filters: {
-    materialCategory: string; materialId: string; status: string; keyword: string;
+    materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string;
     counter: string; batchId: string; minPrice: string; maxPrice: string;
     purchaseStartDate: string; purchaseEndDate: string;
   };
   materials: any[];
+  types: any[];
+  tagsData: any[];
   allBatches: any[];
   allCounters: number[];
   onClearAll: () => void;
   onClear: (key: string) => void;
 }
 
-function ActiveFilterTags({ filters, materials, allBatches, allCounters, onClearAll, onClear }: ActiveFilterTagsProps) {
+function ActiveFilterTags({ filters, materials, types, tagsData, allBatches, allCounters, onClearAll, onClear }: ActiveFilterTagsProps) {
   const tags: { key: string; label: string }[] = [];
   if (filters.keyword) tags.push({ key: 'keyword', label: `关键词: ${filters.keyword}` });
   if (filters.materialCategory) {
@@ -38,6 +41,14 @@ function ActiveFilterTags({ filters, materials, allBatches, allCounters, onClear
   if (filters.materialId) {
     const mat = materials.find((m: any) => String(m.id) === filters.materialId);
     tags.push({ key: 'materialId', label: mat?.name || filters.materialId });
+  }
+  if (filters.typeId) {
+    const typ = types.find((t: any) => String(t.id) === filters.typeId);
+    tags.push({ key: 'typeId', label: `器型: ${typ?.name || filters.typeId}` });
+  }
+  if (filters.tagId) {
+    const tag = tagsData.find((t: any) => String(t.id) === filters.tagId);
+    tags.push({ key: 'tagId', label: `标签: ${tag?.name || filters.tagId}` });
   }
   if (filters.counter) tags.push({ key: 'counter', label: `${filters.counter}号柜` });
   if (filters.batchId) {
@@ -85,7 +96,7 @@ interface FilterBarProps {
 
   // Filters
   filters: {
-    materialCategory: string; materialId: string; status: string; keyword: string;
+    materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string;
     counter: string; batchId: string; minPrice: string; maxPrice: string;
     purchaseStartDate: string; purchaseEndDate: string;
   };
@@ -96,6 +107,10 @@ interface FilterBarProps {
   // Dropdown data
   materials: any[];
   filteredMaterials: any[];
+  types: any[];
+  tags: any[];
+  onLoadTypes: (materialId?: number) => void;
+  onLoadTags: (materialId?: number) => void;
   allBatches: any[];
   allCounters: number[];
 
@@ -134,7 +149,8 @@ export default function InventoryFilterBar({
   activeStatuses, onToggleStatusFilter, statusCounts,
   filters, onFiltersChange,
   searchField, onSearchFieldChange,
-  materials, filteredMaterials, allBatches, allCounters,
+  materials, filteredMaterials, types, tags, onLoadTypes, onLoadTags,
+  allBatches, allCounters,
   showMoreFilters, onToggleMoreFilters,
   onSearch, onResetFilters,
   sortBy, onSortByChange, sortOrder, onSortOrderToggle, sortFieldLabels,
@@ -175,7 +191,28 @@ export default function InventoryFilterBar({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3">
+        {/* MaterialTypeTagFilter Cascade - Row 1 (full width) */}
+        <div className="mb-3">
+          <MaterialTypeTagFilter
+            materialId={filters.materialId || 'all'}
+            typeId={filters.typeId || 'all'}
+            tagId={filters.tagId || 'all'}
+            onMaterialChange={(v) => {
+              const val = v === 'all' ? '' : v;
+              onFiltersChange(f => ({ ...f, materialId: val, materialCategory: '', typeId: '', tagId: '' }));
+            }}
+            onTypeChange={(v) => onFiltersChange(f => ({ ...f, typeId: v === 'all' ? '' : v }))}
+            onTagChange={(v) => onFiltersChange(f => ({ ...f, tagId: v === 'all' ? '' : v }))}
+            materials={materials}
+            types={types}
+            tags={tags}
+            onLoadTypes={onLoadTypes}
+            onLoadTags={onLoadTags}
+            compact
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
           {/* Keyword Search */}
           <div className="space-y-1 relative">
             <Label className="text-xs">关键词</Label>
@@ -212,33 +249,6 @@ export default function InventoryFilterBar({
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Material Category */}
-          <div className="space-y-1">
-            <Label className="text-xs">材质大类</Label>
-            <Select value={filters.materialCategory || '_all'} onValueChange={v => {
-              const cat = v === '_all' ? '' : v;
-              onFiltersChange(f => ({ ...f, materialCategory: cat, materialId: '' }));
-            }}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="全部大类" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_all">全部大类</SelectItem>
-                {MATERIAL_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Material */}
-          <div className="space-y-1">
-            <Label className="text-xs">材质</Label>
-            <Select value={filters.materialId || 'all'} onValueChange={v => onFiltersChange(f => ({ ...f, materialId: v === 'all' ? '' : v }))}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="全部材质" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部材质</SelectItem>
-                {filteredMaterials.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Status */}
@@ -320,7 +330,7 @@ export default function InventoryFilterBar({
         )}
 
         {/* Active filter tags */}
-        <ActiveFilterTags filters={filters} materials={materials} allBatches={allBatches} allCounters={allCounters} onClearAll={onResetFilters} onClear={onClearFilter} />
+        <ActiveFilterTags filters={filters} materials={materials} types={types} tagsData={tags} allBatches={allBatches} allCounters={allCounters} onClearAll={onResetFilters} onClear={onClearFilter} />
 
         {/* Toolbar */}
         <div className="flex items-center justify-between mt-3">

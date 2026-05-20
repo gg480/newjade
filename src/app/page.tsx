@@ -31,6 +31,27 @@ const SettingsTab = dynamic(
   }),
   { ssr: false, loading: () => <LoadingSkeleton /> }
 );
+const PromotionsTab = dynamic(
+  () => import('@/components/inventory/promotions-tab').catch(() => {
+    console.error('Promotions tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">促销活动加载失败</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
+const RestockTab = dynamic(
+  () => import('@/components/inventory/restock-tab').catch(() => {
+    console.error('Restock tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">入货建议加载失败</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
+const StocktakingTab = dynamic(
+  () => import('@/components/inventory/stocktaking-tab').catch(() => {
+    console.error('Stocktaking tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">库存盘点加载失败</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
 import { MobileNav, DesktopNav, ShortcutsHelpDialog } from '@/components/inventory/navigation';
 import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff } from 'lucide-react';
 import { itemsApi, salesApi, batchesApi } from '@/lib/api';
@@ -168,13 +189,12 @@ function MobileQuickStats({ className }: { className?: string }) {
 
 // ========== Main Page ==========
 export default function JadeInventoryPage() {
-  const { activeTab, setActiveTab } = useAppStore();
+  const { activeTab, setActiveTab, isAuthenticated, isAuthLoading, checkSession, setAuth, clearAuth, logout } = useAppStore();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof window !== 'undefined' ? navigator.onLine : true);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState('');
   const [apiLoading, setApiLoading] = useState(false);
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [storeName, setStoreName] = useState(() => {
     try {
       if (typeof window === 'undefined') return '兴盛艺珠宝';
@@ -187,43 +207,31 @@ export default function JadeInventoryPage() {
     return '兴盛艺珠宝';
   });
 
-  // 登录状态检查
+  // 登录状态检查 — 使用 store 的 checkSession
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      fetch('/api/auth', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.code === 0) {
-            setAuthenticated(true);
-          } else {
-            localStorage.removeItem('auth_token');
-            setAuthenticated(false);
-          }
-        })
-        .catch(() => {
-          setAuthenticated(false);
-        });
-    } else {
-      queueMicrotask(() => setAuthenticated(false));
-    }
-  }, []);
+    checkSession();
+  }, [checkSession]);
 
   const handleLogin = (token: string) => {
     localStorage.setItem('auth_token', token);
-    setAuthenticated(true);
+    // 登录成功后再调用 /auth/me 获取用户信息
+    fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.code === 0 && data.data) {
+          setAuth(data.data);
+        }
+      })
+      .catch(() => {
+        // 如果 /auth/me 失败，先标记已认证让用户进入工作区
+        localStorage.removeItem('auth_token');
+      });
   };
 
   const handleLogout = () => {
-    fetch('/api/auth', {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
-    }).finally(() => {
-      localStorage.removeItem('auth_token');
-      setAuthenticated(false);
-    });
+    logout();
   };
 
   // MOUNT DIAGNOSTIC
@@ -256,6 +264,9 @@ export default function JadeInventoryPage() {
       customers: `客户管理 - ${storeName}进销存`,
       logs: `操作日志 - ${storeName}进销存`,
       settings: `系统设置 - ${storeName}进销存`,
+      promotions: `促销活动 - ${storeName}进销存`,
+      restock: `入货建议 - ${storeName}进销存`,
+      stocktaking: `库存盘点 - ${storeName}进销存`,
     };
     document.title = titleMap[activeTab] || `${storeName}进销存管理系统`;
     return () => { document.title = '兴盛艺珠宝进销存管理系统'; };
@@ -305,7 +316,7 @@ export default function JadeInventoryPage() {
   useEffect(() => {
     const tabMap: Record<string, TabId> = {
       '1': 'dashboard', '2': 'inventory', '3': 'sales',
-      '4': 'batches', '5': 'customers', '6': 'settings', '7': 'logs',
+      '4': 'batches', '5': 'customers', '6': 'promotions', '7': 'settings', '8': 'logs',
     };
 
     function handleKeyDown(e: KeyboardEvent) {
@@ -414,12 +425,15 @@ export default function JadeInventoryPage() {
       case 'customers': return <CustomersTab />;
       case 'logs': return <LogsTab />;
       case 'settings': return <SettingsTab />;
+      case 'promotions': return <PromotionsTab />;
+      case 'restock': return <RestockTab />;
+      case 'stocktaking': return <StocktakingTab />;
       default: return <DashboardTab />;
     }
   };
 
   // 登录状态检查中
-  if (authenticated === null) {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <LoadingSkeleton />
@@ -428,7 +442,7 @@ export default function JadeInventoryPage() {
   }
 
   // 未登录 — 显示登录页
-  if (!authenticated) {
+  if (!isAuthenticated) {
     return <LoginPage onLogin={handleLogin} />;
   }
 

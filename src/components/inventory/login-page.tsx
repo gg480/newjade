@@ -14,6 +14,7 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -49,7 +50,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (token) {
-      fetch('/api/auth', {
+      fetch('/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` },
       })
         .then(res => res.json())
@@ -72,6 +73,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!username.trim()) {
+      toast.error('请输入用户名');
+      return;
+    }
     if (!password.trim()) {
       toast.error('请输入密码');
       return;
@@ -79,16 +84,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: password.trim() }),
+        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
       });
       const data = await res.json();
 
       if (data.code === 0 && data.data?.token) {
         localStorage.setItem('auth_token', data.data.token);
-        toast.success('登录成功');
+        toast.success(`欢迎回来，${data.data.user?.displayName || username}`);
         onLogin(data.data.token);
       } else {
         toast.error(data.message || '登录失败');
@@ -146,7 +151,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <CardContent className="pb-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">管理密码</Label>
+                <Label htmlFor="username" className="text-sm font-medium">用户名</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="输入用户名"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="h-11"
+                  autoFocus
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">密码</Label>
                 <div className="relative">
                   <Input
                     id="password"

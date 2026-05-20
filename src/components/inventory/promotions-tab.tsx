@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
-import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton } from './shared';
+import { EmptyState, LoadingSkeleton } from './shared';
 import PromotionCreateDialog from './promotion-create-dialog';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,9 +16,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
-  CalendarDays, Tag, Target, MoreHorizontal, Plus, Search, Eye,
-  Pencil, Trash2, Play, Pause, X, ChevronDown, ChevronUp, SlidersHorizontal,
-  Clock, DollarSign, BarChart3,
+  Target, Tag, MoreHorizontal, Plus, Search, Eye,
+  Pencil, Trash2, Play, Pause, X, ChevronDown, ChevronUp,
+  BarChart3,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -429,7 +429,7 @@ function PromotionsTab() {
       {/* 促销活动表格 */}
       {promotions.length === 0 ? (
         <EmptyState 
-          icon={<Target className="h-12 w-12 text-muted-foreground" />}
+          icon={Target}
           title="暂无促销活动"
           description="点击上方「新建促销」按钮创建第一个促销活动"
           action={<Button onClick={() => setShowCreate(true)}>新建促销</Button>}

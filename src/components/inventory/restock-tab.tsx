@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import MaterialTypeTagFilter from './shared/material-type-tag-filter';
 import { ArrowUpRight, RefreshCw, TrendingUp, Shield, Calendar, DollarSign, Clock, BarChart3 } from 'lucide-react';
 
 const RestockTab: React.FC = () => {
@@ -28,27 +29,47 @@ const RestockTab: React.FC = () => {
   const [budget, setBudget] = useState<string>('');
   const [limit, setLimit] = useState<string>('20');
   const [types, setTypes] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
   const [priceRanges, setPriceRanges] = useState<any[]>([]);
 
-  // 加载材质列表
+  // 加载材质列表 + 已有入货建议
   useEffect(() => {
     loadMaterials();
+    loadRecommendations();
+    loadTypes();
+    loadTags();
   }, []);
 
   const loadMaterials = async () => {
     try {
-      const [materialsData, typesData, priceRangesData] = await Promise.all([
+      const [materialsData, priceRangesData] = await Promise.all([
         dictsApi.getMaterials(),
-        dictsApi.getTypes(),
         fetch('/api/dicts/price-ranges').then(res => res.json())
       ]);
       setMaterials(materialsData);
-      setTypes(typesData);
       if (priceRangesData.code === 0) {
         setPriceRanges(priceRangesData.data);
       }
     } catch (error) {
       console.error('加载数据失败:', error);
+    }
+  };
+
+  const loadTypes = async (materialId?: number) => {
+    try {
+      const data = await dictsApi.getTypes(false, materialId);
+      setTypes(data);
+    } catch (error) {
+      console.error('加载器型失败:', error);
+    }
+  };
+
+  const loadTags = async (materialId?: number) => {
+    try {
+      const data = await dictsApi.getTags(undefined, false, materialId);
+      setTags(data);
+    } catch (error) {
+      console.error('加载标签失败:', error);
     }
   };
 
@@ -63,18 +84,6 @@ const RestockTab: React.FC = () => {
       }
       if (selectedType) {
         params.typeId = selectedType;
-      }
-      if (selectedPriceRange) {
-        params.priceRangeId = selectedPriceRange;
-      }
-      if (selectedAgeRange) {
-        params.ageRange = selectedAgeRange;
-      }
-      if (selectedTurnover) {
-        params.turnover = selectedTurnover;
-      }
-      if (selectedHeat) {
-        params.heat = selectedHeat;
       }
       const data = await restockApi.getRecommendations(params);
       setRecommendations(data);
@@ -146,38 +155,24 @@ const RestockTab: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="material">材质</Label>
-              <Select value={selectedMaterial} onValueChange={setSelectedMaterial}>
-                <SelectTrigger id="material">
-                  <SelectValue placeholder="选择材质" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">全部材质</SelectItem>
-                  {materials.map((material) => (
-                    <SelectItem key={material.id} value={material.id.toString()}>
-                      {material.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* 材质/器型 级联筛选（占满第一行） */}
+            <div className="lg:col-span-3">
+              <MaterialTypeTagFilter
+                materialId={selectedMaterial}
+                typeId={selectedType}
+                tagId={undefined}
+                onMaterialChange={setSelectedMaterial}
+                onTypeChange={setSelectedType}
+                showTag={false}
+                materials={materials}
+                types={types}
+                tags={tags}
+                onLoadTypes={loadTypes}
+                onLoadTags={loadTags}
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="type">器型</Label>
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger id="type">
-                  <SelectValue placeholder="选择器型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">全部器型</SelectItem>
-                  {types.map((type) => (
-                    <SelectItem key={type.id} value={type.id.toString()}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {/* 价格带 */}
             <div className="space-y-2">
               <Label htmlFor="priceRange">价格带</Label>
               <Select value={selectedPriceRange} onValueChange={setSelectedPriceRange}>
@@ -185,7 +180,7 @@ const RestockTab: React.FC = () => {
                   <SelectValue placeholder="选择价格带" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全部价格带</SelectItem>
+                  <SelectItem value="all">全部价格带</SelectItem>
                   {priceRanges.map((range) => (
                     <SelectItem key={range.id} value={range.id.toString()}>
                       {range.name}
@@ -194,6 +189,8 @@ const RestockTab: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 库龄 */}
             <div className="space-y-2">
               <Label htmlFor="ageRange">库龄</Label>
               <Select value={selectedAgeRange} onValueChange={setSelectedAgeRange}>
@@ -201,7 +198,7 @@ const RestockTab: React.FC = () => {
                   <SelectValue placeholder="选择库龄" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全部库龄</SelectItem>
+                  <SelectItem value="all">全部库龄</SelectItem>
                   <SelectItem value="0-30">0-30天</SelectItem>
                   <SelectItem value="31-90">31-90天</SelectItem>
                   <SelectItem value="91-180">91-180天</SelectItem>
@@ -209,6 +206,8 @@ const RestockTab: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 周转率 */}
             <div className="space-y-2">
               <Label htmlFor="turnover">周转率</Label>
               <Select value={selectedTurnover} onValueChange={setSelectedTurnover}>
@@ -216,13 +215,15 @@ const RestockTab: React.FC = () => {
                   <SelectValue placeholder="选择周转率" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全部周转率</SelectItem>
+                  <SelectItem value="all">全部周转率</SelectItem>
                   <SelectItem value="high">高周转</SelectItem>
                   <SelectItem value="medium">中周转</SelectItem>
                   <SelectItem value="low">低周转</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 销售热度 */}
             <div className="space-y-2">
               <Label htmlFor="heat">销售热度</Label>
               <Select value={selectedHeat} onValueChange={setSelectedHeat}>
@@ -230,13 +231,15 @@ const RestockTab: React.FC = () => {
                   <SelectValue placeholder="选择销售热度" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全部热度</SelectItem>
+                  <SelectItem value="all">全部热度</SelectItem>
                   <SelectItem value="hot">畅销</SelectItem>
                   <SelectItem value="normal">平销</SelectItem>
                   <SelectItem value="cold">滞销</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 预算 */}
             <div className="space-y-2">
               <Label htmlFor="budget">预算 (元)</Label>
               <Input
@@ -247,6 +250,8 @@ const RestockTab: React.FC = () => {
                 onChange={(e) => setBudget(e.target.value)}
               />
             </div>
+
+            {/* 建议数量 */}
             <div className="space-y-2">
               <Label htmlFor="limit">建议数量</Label>
               <Input

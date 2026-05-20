@@ -1,4 +1,4 @@
-// Database-backed session-based auth for single-user NAS app
+// Database-backed session-based auth for multi-user support
 // Sessions persist across server restarts via SQLite
 
 import { db } from '@/lib/db';
@@ -23,13 +23,18 @@ export async function cleanExpiredSessions(): Promise<void> {
         expiresAt: { lt: new Date() },
       },
     });
-  } catch (e) { console.error('[Auth]', e);
+  } catch (e) {
+    console.error('[Auth]', e);
     // Silently fail - not critical
   }
 }
 
-/** Create a new session, returns the token */
-export async function createSession(): Promise<string> {
+/**
+ * Create a new session for a specific user
+ * @param userId - User ID to associate with the session
+ * @returns The generated token string
+ */
+export async function createSession(userId: number): Promise<string> {
   // Clean expired sessions first
   await cleanExpiredSessions();
 
@@ -40,7 +45,7 @@ export async function createSession(): Promise<string> {
   await db.session.create({
     data: {
       token,
-      userId: 'admin',
+      userId,
       expiresAt,
     },
   });
@@ -48,27 +53,83 @@ export async function createSession(): Promise<string> {
   return token;
 }
 
-/** Validate a token, returns true if valid */
-export async function validateToken(token: string): Promise<boolean> {
-  if (!token) return false;
+export interface TokenValidationResult {
+  valid: boolean;
+  userId?: number;
+}
+
+/**
+ * Validate a token, return validation result with user info
+ * @param token - The session token to validate
+ * @returns TokenValidationResult with valid flag and userId if valid
+ */
+export async function validateToken(token: string): Promise<TokenValidationResult> {
+  if (!token) return { valid: false };
 
   try {
     const session = await db.session.findUnique({
       where: { token },
     });
 
-    if (!session) return false;
+    if (!session) return { valid: false };
 
     // Check expiration
     if (new Date() > session.expiresAt) {
       // Delete expired session
       await db.session.delete({ where: { token } }).catch(() => {});
-      return false;
+      return { valid: false };
     }
 
-    return true;
-  } catch (e) { console.error('[Auth]', e);
-    return false;
+    // Check if userId is set
+    if (session.userId == null) return { valid: false };
+
+    const uid: number = session.userId;
+
+    // Check if user is still active
+    const user = await db.user.findUnique({ where: { id: uid } });
+    if (!user || !user.isActive) {
+      await db.session.delete({ where: { token } }).catch(() => {});
+      return { valid: false };
+    }
+
+    return { valid: true, userId: uid };
+  } catch (e) {
+    console.error('[Auth]', e);
+    return { valid: false };
+  }
+}
+
+/**
+ * Parse permissions JSON string to array
+ * @param permissionsStr - JSON string of permissions array
+ * @returns Array of permission strings
+ */
+export function parsePermissions(permissionsStr: string): string[] {
+  try {
+    const parsed = JSON.parse(permissionsStr);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get user permissions by user ID
+ * @param userId - User ID to look up
+ * @returns Array of permission strings
+ */
+export async function getPermissions(userId: number): Promise<string[]> {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user || !user.role) return [];
+
+    return parsePermissions(user.role.permissions);
+  } catch {
+    return [];
   }
 }
 
@@ -78,7 +139,19 @@ export async function deleteSession(token: string): Promise<void> {
     await db.session.delete({
       where: { token },
     });
-  } catch (e) { console.error('[Auth]', e);
+  } catch (e) {
+    console.error('[Auth]', e);
     // Session may not exist, that's fine
   }
+}
+
+/**
+ * Check if a user has a specific permission
+ * @param userId - User ID
+ * @param permission - Permission key to check
+ * @returns boolean
+ */
+export async function hasPermission(userId: number, permission: string): Promise<boolean> {
+  const permissions = await getPermissions(userId);
+  return permissions.includes(permission);
 }

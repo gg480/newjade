@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { dictsApi, suppliersApi, batchesApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { MATERIAL_CATEGORIES } from './settings-tab';
+import { MATERIAL_CATEGORIES } from '@/lib/constants';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

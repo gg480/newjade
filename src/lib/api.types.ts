@@ -572,6 +572,38 @@ export interface AuthSession {
   user: string;
 }
 
+// ========== 用户与角色 ==========
+
+export interface CurrentUser {
+  id: number;
+  username: string;
+  displayName: string;
+  roleName: string;
+  permissions: string[];
+  mustChangePwd: boolean;
+}
+
+export interface UserInfo {
+  id: number;
+  username: string;
+  displayName: string;
+  roleId: number;
+  roleName: string;
+  isActive: boolean;
+  mustChangePwd: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface RoleInfo {
+  id: number;
+  name: string;
+  description: string | null;
+  permissions: string[];
+  isSystem: boolean;
+  userCount: number;
+}
+
 // ========== 备份 ==========
 
 export interface BackupResult {

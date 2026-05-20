@@ -334,7 +334,7 @@ const StocktakingTab: React.FC = () => {
     switch (type) {
       case 'regular':
         return <Badge variant="default">定期盘点</Badge>;
-      case 'spot_check':
+      case 'random':
         return <Badge variant="secondary">抽查盘点</Badge>;
       default:
         return <Badge variant="default">{type}</Badge>;

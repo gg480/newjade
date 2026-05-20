@@ -8,7 +8,61 @@ const prisma = new PrismaClient();
  * - NODE_ENV=production → 仅初始化基础配置（材质/器型/标签/系统配置/贵金属市价）
  * - NODE_ENV=development 或未设置 → 初始化基础配置 + 演示数据（供应商/批次/货品/客户/销售记录）
  */
-async function seedBase() {
+// ─── 权限常量（与 role.service.ts 保持一致） ──────────────────
+
+const ADMIN_PERMISSIONS = [
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
+  'tab:customers', 'tab:settings', 'tab:logs', 'tab:promotions',
+  'tab:restock', 'tab:stocktaking',
+  'action:user_manage', 'action:role_manage', 'action:export',
+  'action:delete_item', 'action:price_adjust',
+];
+
+const MANAGER_PERMISSIONS = [
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
+  'tab:customers', 'tab:logs', 'tab:promotions', 'tab:restock',
+  'tab:stocktaking',
+  'action:export', 'action:delete_item', 'action:price_adjust',
+];
+
+const STAFF_PERMISSIONS = [
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:customers',
+];
+
+async function seedRoles() {
+  console.log('🌱 初始化预置角色...');
+
+  const presetRoles = [
+    { name: 'admin', description: '系统管理员，拥有全部权限', permissions: ADMIN_PERMISSIONS, isSystem: true },
+    { name: 'manager', description: '经理，可管理大部分业务', permissions: MANAGER_PERMISSIONS, isSystem: true },
+    { name: 'staff', description: '普通员工，仅可浏览查看', permissions: STAFF_PERMISSIONS, isSystem: true },
+  ];
+
+  const roleIds: Record<string, number> = {};
+
+  for (const r of presetRoles) {
+    const role = await prisma.role.upsert({
+      where: { name: r.name },
+      update: {
+        description: r.description,
+        permissions: JSON.stringify(r.permissions),
+        isSystem: r.isSystem,
+      },
+      create: {
+        name: r.name,
+        description: r.description,
+        permissions: JSON.stringify(r.permissions),
+        isSystem: r.isSystem,
+      },
+    });
+    roleIds[r.name] = role.id;
+  }
+
+  console.log(`✅ 预置角色已插入/更新 (${presetRoles.length}个)`);
+  return roleIds;
+}
+
+async function seedBase(adminRoleId: number) {
   console.log('🌱 初始化基础配置数据...');
 
   // 1. 系统配置
@@ -28,14 +82,26 @@ async function seedBase() {
   }
   console.log('✅ 系统配置已插入/更新 (5条)');
 
-  // 管理员用户 — bcrypt 哈希存储默认密码
+  // 管理员用户 — bcrypt 哈希存储默认密码，关联 admin 角色
   const defaultPasswordHash = bcrypt.hashSync('admin123', 10);
   await prisma.user.upsert({
     where: { username: 'admin' },
-    create: { username: 'admin', passwordHash: defaultPasswordHash, mustChangePwd: false },
-    update: { passwordHash: defaultPasswordHash },
+    create: {
+      username: 'admin',
+      passwordHash: defaultPasswordHash,
+      mustChangePwd: false,
+      displayName: '系统管理员',
+      roleId: adminRoleId,
+      isActive: true,
+    },
+    update: {
+      passwordHash: defaultPasswordHash,
+      roleId: adminRoleId,
+      displayName: '系统管理员',
+      isActive: true,
+    },
   });
-  console.log('✅ 管理员用户已创建');
+  console.log('✅ 管理员用户已创建（关联 admin 角色）');
 
   // 2. 材质 (36种)
   const materials = [
@@ -441,28 +507,65 @@ async function seedDemo() {
   const customer3 = await prisma.customer.upsert({ where: { customerCode: 'C003' }, update: {}, create: { customerCode: 'C003', name: '王小姐', phone: '13900001003', notes: '年轻客户，喜欢水晶' } });
   console.log('✅ 示例客户已插入/更新 (3条)');
 
-  // 10. 示例销售记录
-  const today = new Date().toISOString().split('T')[0];
-  const soldItems = await prisma.item.findMany({ where: { status: 'in_stock' }, take: 3 });
-  for (let i = 0; i < Math.min(soldItems.length, 3); i++) {
-    const item = soldItems[i];
-    await prisma.item.update({ where: { id: item.id }, data: { status: 'sold' } });
-    await prisma.saleRecord.create({
-      data: {
-        saleNo: `SALE-2026-${String(i + 1).padStart(4, '0')}`,
-        itemId: item.id,
-        actualPrice: item.sellingPrice * (0.9 + Math.random() * 0.1),
-        channel: i % 2 === 0 ? 'store' : 'wechat',
-        saleDate: today,
-        customerId: i === 0 ? customer1.id : i === 1 ? customer2.id : customer3.id,
-      },
-    });
+  // 10. 示例销售记录（用于入货建议算法训练）
+  // 先清理旧的关联数据，恢复已售商品状态
+  await prisma.saleReturn.deleteMany({});
+  await prisma.saleRecord.deleteMany({});
+  await prisma.restockRecommendation.deleteMany({});
+  await prisma.stocktakingDetail.deleteMany({});
+  await prisma.stocktaking.deleteMany({});
+  await prisma.priceChangeLog.deleteMany({});
+  await prisma.promotionItem.deleteMany({});
+  await prisma.promotion.deleteMany({});
+  await prisma.itemTag.deleteMany({});
+  await prisma.itemImage.deleteMany({});
+  await prisma.item.updateMany({ where: { status: { not: 'in_stock' } }, data: { status: 'in_stock' } });
+  console.log('✅ 已清理旧业务数据，商品状态已恢复');
+
+  const allInStockItems = await prisma.item.findMany({ where: { status: 'in_stock' } });
+  const channels = ['store', 'wechat', 'xiaohongshu', 'douyin'];
+  const saleRecords: { saleNo: string; itemId: number; actualPrice: number; channel: string; saleDate: string; customerId: number }[] = [];
+
+  const materialItemGroups = new Map<number, typeof allInStockItems[0][]>();
+  for (const item of allInStockItems) {
+    const list = materialItemGroups.get(item.materialId) || [];
+    list.push(item);
+    materialItemGroups.set(item.materialId, list);
   }
-  console.log('✅ 示例销售记录已插入 (3条)');
+
+  // 为每种材质生成按销量比例分布的销售记录
+  let saleIndex = 0;
+  for (const [, groupItems] of materialItemGroups) {
+    const countPerGroup = Math.min(groupItems.length * 3, 20);
+    for (let i = 0; i < countPerGroup; i++) {
+      saleIndex++;
+      const item = groupItems[i % groupItems.length];
+      const daysAgo = Math.floor(Math.random() * 85) + 1;
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      const saleDate = d.toISOString().split('T')[0];
+      const customerId = [customer1.id, customer2.id, customer3.id][i % 3];
+      saleRecords.push({
+        saleNo: `SALE-2026-${String(saleIndex).padStart(4, '0')}`,
+        itemId: item.id,
+        actualPrice: item.sellingPrice * (0.85 + Math.random() * 0.15),
+        channel: channels[i % channels.length],
+        saleDate,
+        customerId,
+      });
+    }
+  }
+
+  await prisma.saleRecord.createMany({ data: saleRecords });
+  console.log(`✅ 示例销售记录已生成 (${saleRecords.length}条)`);
 }
 
 async function main() {
-  await seedBase();
+  // 先创建预置角色
+  const roleIds = await seedRoles();
+
+  // 传递 admin 角色 ID 给 seedBase
+  await seedBase(roleIds['admin']);
 
   // 仅在非生产环境插入演示数据
   if (process.env.NODE_ENV !== 'production') {

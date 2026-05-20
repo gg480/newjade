@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, itemsApi, salesApi, batchesApi, customersApi } from '@/lib/api';
+import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import { toast } from 'sonner';
 import { formatPrice, EmptyState, LoadingSkeleton } from './shared';
 
@@ -34,15 +35,8 @@ import SettingsConfigPanel from './settings/settings-config-panel';
 import SettingsBackupPanel from './settings/settings-backup-panel';
 import SettingsImportCsvPanel from './settings/settings-import-csv-panel';
 import SettingsImportDataPanel from './settings/settings-import-data-panel';
-
-// ========== 材质大类选项 ==========
-const MATERIAL_CATEGORIES = [
-  { value: '玉', label: '玉' },
-  { value: '贵金属', label: '贵金属' },
-  { value: '水晶', label: '水晶' },
-  { value: '文玩', label: '文玩' },
-  { value: '其他', label: '其他' },
-];
+import UsersPanel from './settings/users-panel';
+import RolesPanel from './settings/roles-panel';
 
 // ========== 规格字段定义 ==========
 const SPEC_FIELD_OPTIONS = [
@@ -662,13 +656,15 @@ function SettingsTab() {
       </Card>
 
       <Tabs value={subTab} onValueChange={setSubTab}>
-        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-4 sm:grid-cols-8 w-full">
           <TabsTrigger value="dicts">字典管理</TabsTrigger>
           <TabsTrigger value="metal">贵金属市价</TabsTrigger>
           <TabsTrigger value="suppliers">供应商</TabsTrigger>
           <TabsTrigger value="config">系统配置</TabsTrigger>
           <TabsTrigger value="backup">数据备份</TabsTrigger>
           <TabsTrigger value="import">数据导入</TabsTrigger>
+          <TabsTrigger value="users">用户管理</TabsTrigger>
+          <TabsTrigger value="roles">角色管理</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dicts" className="mt-4">
@@ -770,6 +766,13 @@ function SettingsTab() {
             onImport={handleImport}
             downloadTemplateUrl={importApi.downloadTemplate(importType)}
           />
+        </TabsContent>
+
+        <TabsContent value="users" className="mt-4">
+          <UsersPanel />
+        </TabsContent>
+        <TabsContent value="roles" className="mt-4">
+          <RolesPanel />
         </TabsContent>
       </Tabs>
 

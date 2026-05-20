@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Search, CheckSquare, X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
-import { MATERIAL_CATEGORIES } from './settings-tab';
+import { MATERIAL_CATEGORIES } from '@/lib/constants';
 
 // API 函数
 async function getItems(params: any) {
@@ -173,14 +173,12 @@ function PromotionItemSelect({
     name: '名称',
   };
 
-  // 计算商品的辅助指标
+  // 商品的辅助指标（暂无数据时显示 -）
   function calculateItemMetrics(item: any) {
-    // 简化版的辅助指标计算
-    // 实际项目中应该从API获取更准确的数据
     return {
-      salesVolume: Math.floor(Math.random() * 100), // 历史销量
-      stockLevel: item.status === 'in_stock' ? '充足' : '缺货', // 库存水平
-      turnoverRate: (Math.random() * 100).toFixed(2), // 库存周转率
+      salesVolume: 0,
+      stockLevel: item.status === 'in_stock' ? '充足' : '缺货',
+      turnoverRate: 0,
     };
   }
 

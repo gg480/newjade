@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { TabId } from '@/lib/store';
+import React, { useState, useEffect, useCallback } from 'react';
+import { TabId, NavGroup, useAppStore } from '@/lib/store';
 import ThemeToggle from './theme-toggle';
 import NotificationBell from './notification-bell';
 
@@ -9,15 +9,68 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
-  LayoutDashboard, Package, ShoppingCart, Layers, Users, Settings,
-  BarChart3, ScrollText, Keyboard, LogOut,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Package, ShoppingCart, Settings,
+  BarChart3, Keyboard, LogOut, ChevronDown,
 } from 'lucide-react';
+
+// ========== Navigation Groups (二级菜单架构) ==========
+const NAV_GROUPS: NavGroup[] = [
+  { id: 'dashboard', label: '看板', icon: BarChart3, children: [] },
+  { id: 'inventory', label: '库存', icon: Package, children: [
+    { id: 'inventory' as TabId, label: '货品管理' },
+    { id: 'batches' as TabId, label: '批次管理' },
+    { id: 'stocktaking' as TabId, label: '库存盘点' },
+    { id: 'restock' as TabId, label: '入货建议' },
+  ]},
+  { id: 'sales', label: '销售', icon: ShoppingCart, children: [
+    { id: 'sales' as TabId, label: '销售记录' },
+    { id: 'customers' as TabId, label: '客户管理' },
+    { id: 'promotions' as TabId, label: '促销活动' },
+  ]},
+  { id: 'settings', label: '系统设置', icon: Settings, children: [
+    { id: 'settings' as TabId, label: '系统设置' },
+    { id: 'logs' as TabId, label: '操作日志' },
+  ]},
+];
+
+function filterNavGroups(groups: NavGroup[], permissions: string[]): NavGroup[] {
+  return groups
+    .map(group => {
+      if (group.id === 'dashboard') {
+        return permissions.includes('tab:dashboard') ? group : null;
+      }
+      // 过滤子菜单项
+      const filteredChildren = group.children.filter(child =>
+        permissions.includes(`tab:${child.id}`)
+      );
+      // 如果顶级菜单本身没有子菜单权限检查，但至少保留一个子菜单
+      if (filteredChildren.length === 0) return null;
+      return { ...group, children: filteredChildren };
+    })
+    .filter(Boolean) as NavGroup[];
+}
+
+function useFilteredNavGroups(): NavGroup[] {
+  const permissions = useAppStore(s => s.currentUser?.permissions || []);
+  return filterNavGroups(NAV_GROUPS, permissions);
+}
+
+function getGroupId(tabId: TabId): string {
+  if (tabId === 'dashboard') return 'dashboard';
+  if (['inventory', 'batches', 'stocktaking', 'restock'].includes(tabId)) return 'inventory';
+  if (['sales', 'customers', 'promotions'].includes(tabId)) return 'sales';
+  return 'settings';
+}
 
 // ========== Mobile Bottom Navigation ==========
 function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab: TabId; onTabChange: (t: TabId) => void; className?: string; onLogout?: () => void }) {
   const [pendingBatches, setPendingBatches] = useState(0);
   const [hasSalesToday, setHasSalesToday] = useState(false);
   const [tapAnim, setTapAnim] = useState<string | null>(null);
+  const navGroups = useFilteredNavGroups();
 
   useEffect(() => {
     let cancelled = false;
@@ -46,52 +99,82 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
     return () => { cancelled = true; clearTimeout(timer); clearInterval(interval); };
   }, []);
 
-  const tabs: { id: TabId; label: string; icon: React.ElementType; title: string }[] = [
-    { id: 'dashboard', label: '看板', icon: BarChart3, title: '利润看板 - 销售统计和数据分析' },
-    { id: 'inventory', label: '库存', icon: Package, title: '库存管理 - 货品入库、出库和查询' },
-    { id: 'sales', label: '销售', icon: ShoppingCart, title: '销售记录 - 销售数据和分析' },
-    { id: 'batches', label: '批次', icon: Layers, title: '批次管理 - 批量采购和录入' },
-    { id: 'customers', label: '客户', icon: Users, title: '客户管理 - 客户信息和VIP体系' },
-    { id: 'logs', label: '日志', icon: ScrollText, title: '操作日志 - 系统操作记录查询' },
-    { id: 'settings', label: '设置', icon: Settings, title: '系统设置 - 配置和数据管理' },
-  ];
+  const activeGroupId = getGroupId(activeTab);
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 md:hidden bg-background/95 backdrop-blur-sm border-t border-border shadow-lg pb-safe z-50 ${className || ''}`}>
       <div className="flex items-center h-14">
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          const isTapping = tapAnim === tab.id;
+        {navGroups.map(group => {
+          const Icon = group.icon;
+          const isActiveGroup = activeGroupId === group.id;
+          const isTapping = tapAnim === group.id;
+
+          // Dashboard: direct button
+          if (group.id === 'dashboard') {
+            return (
+              <button key={group.id} onClick={() => {
+                setTapAnim(group.id);
+                setTimeout(() => setTapAnim(null), 100);
+                onTabChange('dashboard');
+              }}
+                className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${isActiveGroup ? 'text-emerald-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
+                aria-current={isActiveGroup ? 'page' : undefined}
+              >
+                <div className={`relative transition-transform duration-150 ${isActiveGroup ? 'scale-110' : ''} ${isTapping ? 'scale-90' : ''}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span>{group.label}</span>
+                {isActiveGroup && (
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-500 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                )}
+              </button>
+            );
+          }
+
+          // Other groups: DropdownMenu (mobile: side="top")
           return (
-            <button key={tab.id} onClick={() => {
-              // Haptic-like feedback: scale down then up
-              setTapAnim(tab.id);
-              setTimeout(() => setTapAnim(null), 100);
-              onTabChange(tab.id);
-            }}
-              title={tab.title}
-              className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${active ? 'text-emerald-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
-              aria-current={active ? 'page' : undefined}
-            >
-              <div className={`relative transition-transform duration-150 ${active ? 'scale-110' : ''} ${isTapping ? 'scale-90' : ''}`}>
-                <Icon className="h-5 w-5" />
-                {/* Batches pending badge (red, with count) */}
-                {tab.id === 'batches' && pendingBatches > 0 && (
-                  <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
-                    {pendingBatches > 99 ? '99+' : pendingBatches}
-                  </span>
-                )}
-                {/* Sales today dot (just a red dot, no count) */}
-                {tab.id === 'sales' && hasSalesToday && !active && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
-                )}
-              </div>
-              <span>{tab.label}</span>
-              {active && (
-                <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-500 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
-              )}
-            </button>
+            <DropdownMenu key={group.id}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${isActiveGroup ? 'text-emerald-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
+                  aria-current={isActiveGroup ? 'page' : undefined}
+                >
+                  <div className={`relative transition-transform duration-150 ${isActiveGroup ? 'scale-110' : ''}`}>
+                    <Icon className="h-5 w-5" />
+                    {/* Batches pending badge */}
+                    {group.id === 'inventory' && pendingBatches > 0 && (
+                      <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
+                        {pendingBatches > 99 ? '99+' : pendingBatches}
+                      </span>
+                    )}
+                    {/* Sales today dot */}
+                    {group.id === 'sales' && hasSalesToday && !isActiveGroup && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                    )}
+                  </div>
+                  <span>{group.label}</span>
+                  {isActiveGroup && (
+                    <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-500 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="center" className="max-h-64 overflow-y-auto">
+                {group.children.map(child => (
+                  <DropdownMenuItem key={child.id} onClick={() => {
+                    setTapAnim(group.id);
+                    setTimeout(() => setTapAnim(null), 100);
+                    onTabChange(child.id);
+                  }}
+                    className={`cursor-pointer ${activeTab === child.id ? 'text-emerald-600 font-medium' : ''}`}
+                  >
+                    {child.label}
+                    {activeTab === child.id && (
+                      <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           );
         })}
         {/* 移动端登出按钮 */}
@@ -119,17 +202,18 @@ function ShortcutsHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     { keys: 'Enter', description: '在搜索框内触发搜索' },
     { keys: 'Esc', description: '关闭对话框/面板' },
     { keys: '?', description: '显示快捷键帮助' },
-    { keys: '1-7', description: '切换标签页 (看板/库存/销售/批次/客户/设置/日志)' },
+    { keys: '1-8', description: '切换标签页 (看板/货品/销售/批次/客户/促销/设置/日志)' },
   ];
 
   const tabShortcuts = [
     { key: '1', tab: '看板' },
-    { key: '2', tab: '库存' },
-    { key: '3', tab: '销售' },
-    { key: '4', tab: '批次' },
-    { key: '5', tab: '客户' },
-    { key: '6', tab: '设置' },
-    { key: '7', tab: '日志' },
+    { key: '2', tab: '货品管理' },
+    { key: '3', tab: '销售记录' },
+    { key: '4', tab: '批次管理' },
+    { key: '5', tab: '客户管理' },
+    { key: '6', tab: '促销活动' },
+    { key: '7', tab: '系统设置' },
+    { key: '8', tab: '操作日志' },
   ];
 
   return (
@@ -183,6 +267,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
     } catch (e) { console.error('[Nav]', e);}
     return '兴盛艺珠宝';
   });
+  const navGroups = useFilteredNavGroups();
 
   useEffect(() => {
     // Sync store name from server config
@@ -199,15 +284,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
     return () => { mounted = false; };
   }, []);
 
-  const tabs: { id: TabId; label: string; icon: React.ElementType; title: string; shortcut?: string }[] = [
-    { id: 'dashboard', label: '利润看板', icon: LayoutDashboard, title: '利润看板 - 销售统计和数据分析', shortcut: 'Alt+1' },
-    { id: 'inventory', label: '库存管理', icon: Package, title: '库存管理 - 货品入库、出库和查询', shortcut: 'Alt+2' },
-    { id: 'sales', label: '销售记录', icon: ShoppingCart, title: '销售记录 - 销售数据和分析', shortcut: 'Alt+3' },
-    { id: 'batches', label: '批次管理', icon: Layers, title: '批次管理 - 批量采购和录入', shortcut: 'Alt+4' },
-    { id: 'customers', label: '客户管理', icon: Users, title: '客户管理 - 客户信息和VIP体系', shortcut: 'Alt+5' },
-    { id: 'logs', label: '操作日志', icon: ScrollText, title: '操作日志 - 系统操作记录查询' },
-    { id: 'settings', label: '系统设置', icon: Settings, title: '系统设置 - 配置和数据管理' },
-  ];
+  const activeGroupId = getGroupId(activeTab);
 
   return (
     <>
@@ -224,18 +301,47 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
               <span className="text-lg font-bold text-emerald-600">{storeName}</span>
             </div>
             <div className="flex space-x-1 flex-1">
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                const active = activeTab === tab.id;
+              {navGroups.map(group => {
+                const Icon = group.icon;
+                const isActiveGroup = activeGroupId === group.id;
+
+                // Dashboard: direct button
+                if (group.id === 'dashboard') {
+                  return (
+                    <button key={group.id} onClick={() => onTabChange('dashboard')}
+                      className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${isActiveGroup ? 'nav-tab-active text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                      aria-current={isActiveGroup ? 'page' : undefined}
+                    >
+                      <Icon className="h-4 w-4" />{group.label}
+                    </button>
+                  );
+                }
+
+                // Other groups: DropdownMenu
                 return (
-                  <button key={tab.id} onClick={() => onTabChange(tab.id)}
-                    title={tab.title}
-                    className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${active ? 'nav-tab-active text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                    aria-current={active ? 'page' : undefined}
-                  >
-                    <Icon className="h-4 w-4" />{tab.label}
-                    {tab.shortcut && <span className="hidden lg:inline-block text-[10px] text-muted-foreground/60 ml-1 font-mono">{tab.shortcut.replace('Alt+', '')}</span>}
-                  </button>
+                  <DropdownMenu key={group.id}>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${isActiveGroup ? 'nav-tab-active text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                        aria-current={isActiveGroup ? 'page' : undefined}
+                      >
+                        <Icon className="h-4 w-4" />{group.label}
+                        <ChevronDown className="h-3.5 w-3.5 ml-0.5 text-muted-foreground/60" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[140px]">
+                      {group.children.map(child => (
+                        <DropdownMenuItem key={child.id} onClick={() => onTabChange(child.id)}
+                          className={`cursor-pointer ${activeTab === child.id ? 'text-emerald-600 font-medium' : ''}`}
+                        >
+                          {child.label}
+                          {activeTab === child.id && (
+                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 );
               })}
             </div>

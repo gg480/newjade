@@ -101,13 +101,43 @@ export async function deleteTag(id: number) {
 
 export interface ListTypesParams {
   includeInactive?: boolean;
+  materialId?: number;
 }
 
 /**
- * 查询器型列表
+ * 查询器型列表，支持按材质级联筛选
+ * 当 materialId 有值时，仅返回该材质下存在货品的器型
  */
 export async function listTypes(params: ListTypesParams = {}) {
-  const { includeInactive } = params;
+  const { includeInactive, materialId } = params;
+
+  if (materialId && !Number.isNaN(materialId)) {
+    // 先查询该材质下货品使用的 distinct typeId
+    const items = await db.item.findMany({
+      where: {
+        materialId,
+        typeId: { not: null },
+        isDeleted: false,
+      },
+      select: { typeId: true },
+      distinct: ['typeId'],
+    });
+
+    const typeIds = items.map(i => i.typeId!).filter(Boolean);
+
+    if (typeIds.length === 0) {
+      return [];
+    }
+
+    return db.dictType.findMany({
+      where: {
+        id: { in: typeIds },
+        ...(includeInactive ? {} : { isActive: true }),
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
   return db.dictType.findMany({
     where: includeInactive ? undefined : { isActive: true },
     orderBy: { sortOrder: 'asc' },
