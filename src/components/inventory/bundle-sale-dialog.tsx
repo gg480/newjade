@@ -3,7 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { itemsApi, salesApi, customersApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice } from './shared';
+import type { ItemSummary, Customer } from '@/lib/api.types';
+
+// API返回的货品扩展字段
+interface BundleItem extends ItemSummary {
+  typeName?: string;
+}
+
+interface BundleCustomer extends Customer {
+  phone?: string | null;
+}
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +26,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 
 // ========== Bundle Sale Dialog ==========
 function BundleSaleDialog({ open, onOpenChange, onSuccess }: { open: boolean; onOpenChange: (o: boolean) => void; onSuccess: () => void }) {
-  const [items, setItems] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const { handleError } = useErrorHandler();
+  const [items, setItems] = useState<BundleItem[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     selectedItemIds: [] as number[], totalPrice: 0, allocMethod: 'by_ratio',
@@ -26,8 +38,8 @@ function BundleSaleDialog({ open, onOpenChange, onSuccess }: { open: boolean; on
 
   useEffect(() => {
     if (open) {
-      itemsApi.getItems({ status: 'in_stock', size: 200 }).then((d: any) => setItems(d?.items || [])).catch(() => {});
-      customersApi.getCustomers({ size: 200 }).then((d: any) => setCustomers(d?.items || [])).catch(() => {});
+      itemsApi.getItems({ status: 'in_stock', size: 200 }).then((d) => setItems((d?.items as BundleItem[]) || [])).catch(() => {});
+      customersApi.getCustomers({ size: 200 }).then((d) => setCustomers((d?.items as Customer[]) || [])).catch(() => {});
     }
   }, [open]);
 
@@ -62,8 +74,8 @@ function BundleSaleDialog({ open, onOpenChange, onSuccess }: { open: boolean; on
       setForm({ selectedItemIds: [], totalPrice: 0, allocMethod: 'by_ratio', chainItemIds: [], channel: 'store', saleDate: new Date().toISOString().slice(0, 10), customerId: '', note: '' });
       onOpenChange(false);
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.message || '套装销售失败');
+    } catch (error) {
+      handleError(error, { title: '套装销售失败' });
     } finally {
       setSaving(false);
     }
@@ -141,7 +153,7 @@ function BundleSaleDialog({ open, onOpenChange, onSuccess }: { open: boolean; on
               <SelectTrigger className="h-9"><SelectValue placeholder="选择客户 (可选)" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">不选择</SelectItem>
-                {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ''}</SelectItem>)}
+                {customers.map((c: Customer) => <SelectItem key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ''}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

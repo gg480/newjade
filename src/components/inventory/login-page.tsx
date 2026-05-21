@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { SysConfig } from '@/lib/api.types';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;
@@ -37,7 +38,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       .then(r => r.json())
       .then(data => {
         if (mounted && data.code === 0 && Array.isArray(data.data)) {
-          const cfg = data.data.find((c: any) => c.key === 'store_name');
+          const cfg = data.data.find((c: SysConfig) => c.key === 'store_name');
           if (cfg?.value) setStoreName(cfg.value);
         }
       })

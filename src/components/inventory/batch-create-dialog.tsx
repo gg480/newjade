@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { dictsApi, suppliersApi, batchesApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from '@/components/ui/badge';
 import { Zap, FileText, Plus } from 'lucide-react';
 import SupplierQuickAddDialog from './supplier-quick-add-dialog';
+import type { DictMaterial, DictType, Supplier } from '@/lib/api.types';
 
 // ========== Category abbreviation map ==========
 const CATEGORY_ABBR: Record<string, string> = {
@@ -26,9 +28,10 @@ const CATEGORY_ABBR: Record<string, string> = {
 
 // ========== Batch Create Dialog ==========
 function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, initialSupplierId }: { open: boolean; onOpenChange: (o: boolean) => void; onSuccess: () => void; initialMaterialId?: string; initialSupplierId?: string }) {
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [types, setTypes] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const { handleError } = useErrorHandler();
+  const [materials, setMaterials] = useState<DictMaterial[]>([]);
+  const [types, setTypes] = useState<DictType[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [saving, setSaving] = useState(false);
   const [showSupplierAdd, setShowSupplierAdd] = useState(false);
   const [materialCategory, setMaterialCategory] = useState('');
@@ -48,13 +51,13 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
     if (open) {
       dictsApi.getMaterials().then(setMaterials).catch(() => {});
       dictsApi.getTypes().then(setTypes).catch(() => {});
-      suppliersApi.getSuppliers().then((s: any) => setSuppliers(s?.items || s || [])).catch(() => {});
+      suppliersApi.getSuppliers().then(s => setSuppliers(s?.items || s || [])).catch(() => {});
       // Pre-fill material and supplier if provided
       if (initialMaterialId) {
         setForm(f => ({ ...f, materialId: initialMaterialId }));
         // Infer material category from the material
-        dictsApi.getMaterials().then((mats: any[]) => {
-          const mat = mats.find((m: any) => String(m.id) === String(initialMaterialId));
+        dictsApi.getMaterials().then((mats: DictMaterial[]) => {
+          const mat = mats.find(m => String(m.id) === String(initialMaterialId));
           if (mat?.category) {
             setMaterialCategory(mat.category);
             setQuickCategory(mat.category);
@@ -83,7 +86,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   }, [autoBatchCode]);
 
   // 根据大类筛选材质
-  const filteredMaterials = materials.filter((m: any) => {
+  const filteredMaterials = materials.filter(m => {
     if (!materialCategory) return true;
     return m.category === materialCategory;
   });
@@ -126,8 +129,8 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
       void initialSupplierId;
       onOpenChange(false);
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.message || '创建失败');
+    } catch (error) {
+      handleError(error, { title: '创建失败' });
     } finally {
       setSaving(false);
     }
@@ -139,7 +142,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
       if (!quickCategory) { toast.error('请选择材质大类'); setSaving(false); return; }
       if (!quickQuantity || quickQuantity < 1) { toast.error('请输入有效数量'); setSaving(false); return; }
       // Find the first material in the selected category
-      const mat = materials.find((m: any) => m.category === quickCategory);
+      const mat = materials.find(m => m.category === quickCategory);
       if (!mat) { toast.error('该大类下没有可用材质'); setSaving(false); return; }
       await batchesApi.createBatch({
         batchCode: quickBatchCode,
@@ -157,15 +160,15 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
       setQuickTotalCost(0);
       onOpenChange(false);
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.message || '创建失败');
+    } catch (error) {
+      handleError(error, { title: '创建失败' });
     } finally {
       setSaving(false);
     }
   }
 
   // Quick mode filtered materials (just for validation)
-  const quickFilteredMaterials = materials.filter((m: any) => {
+  const quickFilteredMaterials = materials.filter(m => {
     if (!quickCategory) return true;
     return m.category === quickCategory;
   });
@@ -232,7 +235,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
                         </Button>
                       </div>
                     ) : (
-                      suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
+                      suppliers.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
                     )}
                   </SelectContent>
                 </Select>
@@ -294,14 +297,14 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
               <div className="space-y-1"><Label className="text-xs">材质 *</Label>
                 <Select value={form.materialId} onValueChange={v => setForm(f => ({ ...f, materialId: v }))}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="选择材质" /></SelectTrigger>
-                  <SelectContent>{filteredMaterials.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{filteredMaterials.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-1"><Label className="text-xs">器型</Label>
               <Select value={form.typeId} onValueChange={v => setForm(f => ({ ...f, typeId: v }))}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
-                <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{types.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -332,7 +335,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
                           </Button>
                         </div>
                       ) : (
-                        suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
+                        suppliers.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
                       )}
                     </SelectContent>
                   </Select>
@@ -362,7 +365,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
         open={showSupplierAdd}
         onOpenChange={setShowSupplierAdd}
         onCreated={(s) => {
-          suppliersApi.getSuppliers().then((res: unknown) => setSuppliers((res as { items?: unknown[] })?.items || res || [])).catch(() => {});
+          suppliersApi.getSuppliers().then(res => setSuppliers((res as Record<string, unknown>)?.items as Supplier[] || res || [])).catch(() => {});
           setForm(f => ({ ...f, supplierId: String(s.id) }));
           setQuickSupplierId(String(s.id));
         }}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { customersApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { UserPlus, SkipForward, CheckCircle } from 'lucide-react';
+import type { Customer } from '@/lib/api.types';
 
 interface CustomerQuickAddDialogProps {
   /** 是否打开 */
@@ -23,7 +25,7 @@ interface CustomerQuickAddDialogProps {
     itemCount?: number;
   };
   /** 客户创建成功后回调 */
-  onCreated?: (customer: any) => void;
+  onCreated?: (customer: Customer) => void;
   /** 跳过回调 */
   onSkip?: () => void;
 }
@@ -35,6 +37,7 @@ export function CustomerQuickAddDialog({
   onCreated,
   onSkip,
 }: CustomerQuickAddDialogProps) {
+  const { handleError } = useErrorHandler();
   const [form, setForm] = useState({ name: '', phone: '', wechat: '', address: '', notes: '', tags: '' });
   const [saving, setSaving] = useState(false);
   const [doNotAskAgain, setDoNotAskAgain] = useState(false);
@@ -54,14 +57,14 @@ export function CustomerQuickAddDialog({
       // 检查是否已有同名客户
       const existing = await customersApi.getCustomers({ keyword: form.name.trim(), size: 5 });
       const sameName = (existing?.items || []).find(
-        (c: any) => c.name.trim() === form.name.trim(),
+        (c: Customer) => c.name.trim() === form.name.trim(),
       );
 
       if (sameName) {
         // 同名客户存在，提示是否更新
         toast.warning(`已存在同名客户「${sameName.name}」，信息已合并到该客户`);
         // 更新已有客户的信息（补全空字段）
-        const updateData: any = {};
+        const updateData: Partial<Customer> = {};
         if (form.phone.trim() && !sameName.phone) updateData.phone = form.phone.trim();
         if (form.wechat.trim() && !sameName.wechat) updateData.wechat = form.wechat.trim();
         if (form.address.trim() && !sameName.address) updateData.address = form.address.trim();
@@ -92,8 +95,8 @@ export function CustomerQuickAddDialog({
 
       reset();
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message || '保存客户失败');
+    } catch (error) {
+      handleError(error, { title: '保存客户失败' });
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { dashboardApi, configApi, batchesApi } from '@/lib/api';
+import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge, PaybackBar, EmptyState, LoadingSkeleton, CHART_COLORS } from './shared';
 
@@ -66,34 +67,34 @@ type PeriodFilter = 'month' | 'quarter' | 'year' | 'all' | 'custom';
 
 // ========== Dashboard Tab ==========
 function DashboardTab() {
-  const [summary, setSummary] = useState<any>(null);
-  const [batchProfit, setBatchProfit] = useState<any[]>([]);
-  const [profitByCategory, setProfitByCategory] = useState<any[]>([]);
-  const [profitByChannel, setProfitByChannel] = useState<any[]>([]);
-  const [trend, setTrend] = useState<any[]>([]);
-  const [stockAging, setStockAging] = useState<any>({ items: [], totalItems: 0, totalValue: 0 });
-  const [distByType, setDistByType] = useState<any>(null);
-  const [distByMaterial, setDistByMaterial] = useState<any>(null);
-  const [profitByCounter, setProfitByCounter] = useState<any[]>([]);
-  const [priceRangeCost, setPriceRangeCost] = useState<any[]>([]);
-  const [priceRangeSelling, setPriceRangeSelling] = useState<any[]>([]);
-  const [weightDist, setWeightDist] = useState<any>(null);
-  const [ageDist, setAgeDist] = useState<any[]>([]);
-  const [batchEntryProgress, setBatchEntryProgress] = useState<any[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [batchProfit, setBatchProfit] = useState<BatchProfitItem[]>([]);
+  const [profitByCategory, setProfitByCategory] = useState<ProfitByCategoryItem[]>([]);
+  const [profitByChannel, setProfitByChannel] = useState<ProfitByChannelItem[]>([]);
+  const [trend, setTrend] = useState<TrendDataPoint[]>([]);
+  const [stockAging, setStockAging] = useState<StockAging>({ items: [], totalItems: 0, totalValue: 0 });
+  const [distByType, setDistByType] = useState<DistributionByType | null>(null);
+  const [distByMaterial, setDistByMaterial] = useState<DistributionByMaterial | null>(null);
+  const [profitByCounter, setProfitByCounter] = useState<ProfitByCounterItem[]>([]);
+  const [priceRangeCost, setPriceRangeCost] = useState<PriceRangeItem[]>([]);
+  const [priceRangeSelling, setPriceRangeSelling] = useState<PriceRangeItem[]>([]);
+  const [weightDist, setWeightDist] = useState<WeightDistribution | null>(null);
+  const [ageDist, setAgeDist] = useState<AgeDistributionItem[]>([]);
+  const [batchEntryProgress, setBatchEntryProgress] = useState<(Batch & { materialName?: string; itemsCount?: number })[]>([]);
 
   // New data states
-  const [momData, setMomData] = useState<any>(null);
-  const [turnoverData, setTurnoverData] = useState<any[]>([]);
-  const [heatmapData, setHeatmapData] = useState<any>(null);
-  const [topSellers, setTopSellers] = useState<any[]>([]);
-  const [customerFreq, setCustomerFreq] = useState<any>(null);
-  const [topCustomers, setTopCustomers] = useState<any[]>([]);
-  const [inventoryValueByCategory, setInventoryValueByCategory] = useState<any[]>([]);
-  const [dailySalesSparkline, setDailySalesSparkline] = useState<any[]>([]);
-  const [inventoryTrendSparkline, setInventoryTrendSparkline] = useState<any[]>([]);
-  const [stockAgingTrend, setStockAgingTrend] = useState<any[]>([]);
-  const [salesByChannel, setSalesByChannel] = useState<any[]>([]);
-  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [momData, setMomData] = useState<MonthlyComparison | null>(null);
+  const [turnoverData, setTurnoverData] = useState<TurnoverDataPoint[]>([]);
+  const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
+  const [topSellers, setTopSellers] = useState<TopSellerItem[]>([]);
+  const [customerFreq, setCustomerFreq] = useState<CustomerFrequency | null>(null);
+  const [topCustomers, setTopCustomers] = useState<TopCustomerItem[]>([]);
+  const [inventoryValueByCategory, setInventoryValueByCategory] = useState<InventoryValueByCategoryItem[]>([]);
+  const [dailySalesSparkline, setDailySalesSparkline] = useState<{ day: number; revenue: number }[]>([]);
+  const [inventoryTrendSparkline, setInventoryTrendSparkline] = useState<{ month: string; revenue: number }[]>([]);
+  const [stockAgingTrend, setStockAgingTrend] = useState<{ week: string; count: number }[]>([]);
+  const [salesByChannel, setSalesByChannel] = useState<SalesByChannelItem[]>([]);
+  const [recentSales, setRecentSales] = useState<RecentSaleItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [chartsLoaded, setChartsLoaded] = useState(false);
@@ -119,9 +120,9 @@ function DashboardTab() {
   // Load batch entry progress on mount
   useEffect(() => {
     const ac = new AbortController();
-    batchesApi.getBatches({ size: 100 }).then((data: any) => {
+    batchesApi.getBatches({ size: 100 }).then((data: PaginatedData<Batch>) => {
       if (!ac.signal.aborted) {
-        setBatchEntryProgress((data.items || []).filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)));
+        setBatchEntryProgress((data.items || []).filter((b: Batch) => (b.itemsCount || 0) < (b.quantity || 0)));
       }
     }).catch(() => {});
     return () => ac.abort();
@@ -152,7 +153,7 @@ function DashboardTab() {
     async function loadConfig() {
       try {
         const configs = await configApi.getConfig();
-        const warningDays = (configs as any[])?.find((c: any) => c.key === 'warning_days');
+        const warningDays = configs?.find((c: SysConfig) => c.key === 'warning_days');
         if (warningDays && parseInt(warningDays.value) > 0) {
           setMinDays(parseInt(warningDays.value));
         }
@@ -177,7 +178,7 @@ function DashboardTab() {
     setChartsLoaded(false);
     try {
       const { startDate, endDate } = getDateRange();
-      const params: any = {};
+      const params: DashboardQueryParams = {};
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
@@ -286,7 +287,7 @@ function DashboardTab() {
           remaining -= clampedRev;
         }
         setDailySalesSparkline(dailyData);
-        const invTrend = monthlyTrend.slice(-6).map((t: any) => ({
+        const invTrend = monthlyTrend.slice(-6).map((t: TrendDataPoint) => ({
           month: (t.yearMonth || '').slice(-5),
           revenue: t.revenue || 0,
         }));
@@ -355,12 +356,12 @@ function DashboardTab() {
     if (!heatmapData?.days?.length) return null;
     const days = heatmapData.days;
     // Find the range of months to display
-    const dates = days.map((d: any) => d.date);
+    const dates = days.map((d: { date: string }) => d.date);
     const minDate = dates.reduce((a: string, b: string) => a < b ? a : b);
     const maxDate = dates.reduce((a: string, b: string) => a > b ? a : b);
 
     // Build a map for quick lookup
-    const dayMap = new Map(days.map((d: any) => [d.date, d]));
+    const dayMap = new Map(days.map((d: { date: string }) => [d.date, d]));
 
     // Generate all months between minDate and maxDate
     const months: { year: number; month: number; label: string }[] = [];
@@ -382,8 +383,8 @@ function DashboardTab() {
       const lastDay = new Date(m.year, m.month + 1, 0);
       const startDow = firstDay.getDay(); // 0=Sun
 
-      const weeks: (any | null)[][] = [];
-      let currentWeek: (any | null)[] = [];
+      const weeks: ({ date: string; dayNum: number; intensity: number; count: number } | null)[][] = [];
+      let currentWeek: ({ date: string; dayNum: number; intensity: number; count: number } | null)[] = [];
 
       // Pad start
       for (let i = 0; i < startDow; i++) currentWeek.push(null);
@@ -422,7 +423,7 @@ function DashboardTab() {
   // ===== Top sellers max margin for bar scaling =====
   const topSellerMaxMargin = useMemo(() => {
     if (!topSellers.length) return 1;
-    return Math.max(...topSellers.map((s: any) => Math.abs(s.margin)), 1);
+    return Math.max(...topSellers.map((s: TopSellerItem) => Math.abs(s.margin)), 1);
   }, [topSellers]);
 
   // Count-up animations for overview cards
@@ -443,7 +444,7 @@ function DashboardTab() {
 
   const animTotalItems = useCountUp(summary?.totalItems ?? 0, 800);
   const animStockAging = useCountUp(stockAging.totalItems || 0, 800);
-  const paidBackCount = batchProfit.filter((b: any) => b.status === 'paid_back' || b.status === 'cleared').length;
+  const paidBackCount = batchProfit.filter((b: BatchProfitItem) => b.status === 'paid_back' || b.status === 'cleared').length;
   const animPaidBack = useCountUp(paidBackCount, 800);
 
   if (loading) return <LoadingSkeleton />;
@@ -457,7 +458,7 @@ function DashboardTab() {
 
   // Batch payback pie data
   const batchPieData = Object.entries(
-    batchProfit.reduce((acc: any, b: any) => {
+    batchProfit.reduce((acc: Record<string, number>, b: BatchProfitItem) => {
       const label = batchStatusLabelMap[b.status] || b.status;
       acc[label] = (acc[label] || 0) + 1;
       return acc;
@@ -621,7 +622,7 @@ function DashboardTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {recentSales.map((sale: any, idx: number) => (
+              {recentSales.map((sale: RecentSaleItem, idx: number) => (
                 <div
                   key={sale.id}
                   className={`flex items-center justify-between text-sm py-2 px-3 rounded-lg transition-colors ${idx % 2 === 0 ? 'bg-muted/30' : 'bg-muted/10 hover:bg-muted/30'} ${sale.channel === 'store' ? 'border-l-2 border-l-sky-400' : sale.channel === 'wechat' ? 'border-l-2 border-l-emerald-400' : ''}`}
@@ -893,7 +894,7 @@ function DashboardTab() {
                 <p className="text-xs font-medium text-muted-foreground mb-2">在库售价分布</p>
                 {distByType.priceDistribution?.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.priceDistribution.sort((a: any, b: any) => b.totalSellingPrice - a.totalSellingPrice)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.priceDistribution.sort((a: { totalSellingPrice: number }, b: { totalSellingPrice: number }) => b.totalSellingPrice - a.totalSellingPrice)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -908,7 +909,7 @@ function DashboardTab() {
                 <p className="text-xs font-medium text-muted-foreground mb-2">成交利润分布</p>
                 {distByType.profitDistribution?.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.profitDistribution.sort((a: any, b: any) => b.totalProfit - a.totalProfit)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.profitDistribution.sort((a: { totalProfit: number }, b: { totalProfit: number }) => b.totalProfit - a.totalProfit)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -923,7 +924,7 @@ function DashboardTab() {
                 <p className="text-xs font-medium text-muted-foreground mb-2">成交数量分布</p>
                 {distByType.countDistribution?.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.countDistribution.sort((a: any, b: any) => b.salesCount - a.salesCount)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.countDistribution.sort((a: { salesCount: number }, b: { salesCount: number }) => b.salesCount - a.salesCount)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -938,7 +939,7 @@ function DashboardTab() {
                 <p className="text-xs font-medium text-muted-foreground mb-2">平均毛利率分布</p>
                 {distByType.marginDistribution?.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.marginDistribution.sort((a: any, b: any) => b.avgMargin - a.avgMargin)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.marginDistribution.sort((a: { avgMargin: number }, b: { avgMargin: number }) => b.avgMargin - a.avgMargin)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -965,7 +966,7 @@ function DashboardTab() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">在库售价分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.priceDistribution.sort((a: any, b: any) => b.totalSellingPrice - a.totalSellingPrice)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.priceDistribution.sort((a: { totalSellingPrice: number }, b: { totalSellingPrice: number }) => b.totalSellingPrice - a.totalSellingPrice)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -979,7 +980,7 @@ function DashboardTab() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">成交利润分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.profitDistribution.sort((a: any, b: any) => b.totalProfit - a.totalProfit)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.profitDistribution.sort((a: { totalProfit: number }, b: { totalProfit: number }) => b.totalProfit - a.totalProfit)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -993,7 +994,7 @@ function DashboardTab() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">成交数量分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.countDistribution.sort((a: any, b: any) => b.salesCount - a.salesCount)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.countDistribution.sort((a: { salesCount: number }, b: { salesCount: number }) => b.salesCount - a.salesCount)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -1007,7 +1008,7 @@ function DashboardTab() {
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">平均毛利率分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.marginDistribution.sort((a: any, b: any) => b.avgMargin - a.avgMargin)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.marginDistribution.sort((a: { avgMargin: number }, b: { avgMargin: number }) => b.avgMargin - a.avgMargin)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -1159,7 +1160,7 @@ function DashboardTab() {
                 </div>
                 <div className="flex-1 space-y-2.5">
                   {salesByChannel.map(d => {
-                    const totalRev = salesByChannel.reduce((s: number, c: any) => s + (c.totalRevenue || 0), 0);
+                    const totalRev = salesByChannel.reduce((s: number, c: SalesByChannelItem) => s + (c.totalRevenue || 0), 0);
                     const pct = totalRev > 0 ? ((d.totalRevenue / totalRev) * 100).toFixed(1) : '0.0';
                     const colorMap: Record<string, string> = { '门店': 'bg-sky-500', '微信': 'bg-emerald-500', '其他': 'bg-gray-400' };
                     const dotColor = colorMap[d.label] || 'bg-gray-400';
@@ -1222,13 +1223,13 @@ function DashboardTab() {
               <EmptyState icon={BarChart3} title="暂无数据" desc="还没有在库货品" />
             ) : (
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={inventoryValueByCategory.sort((a: any, b: any) => (b.totalValue || 0) - (a.totalValue || 0))} layout="vertical" margin={{ left: 60 }}>
+                <BarChart data={inventoryValueByCategory.sort((a: InventoryValueByCategoryItem, b: InventoryValueByCategoryItem) => (b.totalValue || 0) - (a.totalValue || 0))} layout="vertical" margin={{ left: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="category" width={60} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => formatPrice(v)} />
                   <Bar dataKey="totalValue" radius={[0, 4, 4, 0]} name="货值">
-                    {inventoryValueByCategory.sort((a: any, b: any) => (b.totalValue || 0) - (a.totalValue || 0)).map((_, i) => (
+                    {inventoryValueByCategory.sort((a: InventoryValueByCategoryItem, b: InventoryValueByCategoryItem) => (b.totalValue || 0) - (a.totalValue || 0)).map((_, i) => (
                       <Cell key={i} fill={['#059669', '#0d9488', '#0ea5e9', '#0284c7', '#f59e0b', '#d97706', '#8b5cf6', '#06b6d4'][i % 8]} />
                     ))}
                   </Bar>
@@ -1415,7 +1416,7 @@ function DashboardTab() {
               <EmptyState icon={Trophy} title="暂无数据" desc="还没有销售记录" />
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto">
-                {topSellers.map((item: any, index: number) => {
+                {topSellers.map((item: TopSellerItem, index: number) => {
                   const barWidth = Math.max((Math.abs(item.margin) / topSellerMaxMargin) * 100, 5);
                   const rankColors = ['text-amber-500', 'text-gray-400', 'text-amber-700', 'text-gray-500', 'text-gray-500'];
                   const rankBgs = ['bg-amber-50 dark:bg-amber-950/30', 'bg-gray-50 dark:bg-gray-900/30', 'bg-amber-50/50 dark:bg-amber-950/20', '', ''];
@@ -1476,7 +1477,7 @@ function DashboardTab() {
                     <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(v: number) => [`${v} 人`, '客户数']} />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} name="客户数">
-                      {customerFreq.distribution.map((_: any, i: number) => (
+                      {customerFreq.distribution.map((_: { label: string; count: number }, i: number) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Bar>
@@ -1508,17 +1509,17 @@ function DashboardTab() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={Math.max(topCustomers.length * 38, 200)} margin={{ left: 10, right: 30 }}>
-              <BarChart data={topCustomers.slice(0, 10).map((c: any, idx: number) => ({ ...c, rank: idx + 1 }))} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 10 }}>
+              <BarChart data={topCustomers.slice(0, 10).map((c: TopCustomerItem, idx: number) => ({ ...c, rank: idx + 1 }))} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} tick={{ fontSize: 10 }} />
                 <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => formatPrice(v)} />
-                <Bar dataKey="totalSpending" name="累计消费" radius={[0, 4, 4, 0]} label={({ name, value, rank }: any) => {
+                <Bar dataKey="totalSpending" name="累计消费" radius={[0, 4, 4, 0]} label={({ name, value, rank }: { name: string; value: number; rank: number }) => {
                   const medalEmojis: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
                   const medal = medalEmojis[rank] || '';
                   return medal;
                 }}>
-                  {topCustomers.slice(0, 10).map((_: any, idx: number) => {
+                  {topCustomers.slice(0, 10).map((_: TopCustomerItem, idx: number) => {
                     const barColors = ['#f59e0b', '#94a3b8', '#d97706', '#059669', '#0ea5e9', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1'];
                     return <Cell key={idx} fill={barColors[idx % barColors.length]} />;
                   })}
@@ -1527,7 +1528,7 @@ function DashboardTab() {
             </ResponsiveContainer>
             {/* Legend with order counts */}
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {topCustomers.slice(0, 10).map((c: any, idx: number) => {
+              {topCustomers.slice(0, 10).map((c: TopCustomerItem, idx: number) => {
                 const medalEmojis: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
                 return (
                   <span key={c.id} className="flex items-center gap-1">
@@ -1683,7 +1684,7 @@ function DashboardTab() {
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {batchEntryProgress.map((b: any) => {
+              {batchEntryProgress.map((b) => {
                 const pct = b.quantity > 0 ? Math.min(((b.itemsCount || 0) / b.quantity) * 100, 100) : 0;
                 return (
                   <div key={b.id || b.batchCode} className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
@@ -1704,7 +1705,7 @@ function DashboardTab() {
       </Card>
 
       {/* ====== 8.6 Batch Payback Progress Ranking ====== */}
-      {batchProfit.filter((b: any) => (b.itemsCount || 0) > 0).length > 0 && (
+      {batchProfit.filter((b: BatchProfitItem) => (b.itemsCount || 0) > 0).length > 0 && (
         <Card className="hover:shadow-md transition-shadow duration-300">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -1715,10 +1716,10 @@ function DashboardTab() {
           <CardContent>
             <div className="space-y-3">
               {[...batchProfit]
-                .filter((b: any) => (b.itemsCount || 0) > 0)
-                .sort((a: any, b: any) => (b.paybackRate || 0) - (a.paybackRate || 0))
+                .filter((b: BatchProfitItem) => (b.itemsCount || 0) > 0)
+                .sort((a: BatchProfitItem, b: BatchProfitItem) => (b.paybackRate || 0) - (a.paybackRate || 0))
                 .slice(0, 5)
-                .map((bp: any, idx: number) => {
+                .map((bp: BatchProfitItem, idx: number) => {
                   const progressPct = Math.min((bp.paybackRate || 0) * 100, 100);
                   const barColor = progressPct >= 100 ? '#059669' : progressPct >= 50 ? '#0ea5e9' : '#f59e0b';
                   return (
@@ -1775,7 +1776,7 @@ function DashboardTab() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {stockAging.items.slice(0, 20).map((item: any) => (
+                      {stockAging.items.slice(0, 20).map((item: StockAgingItem) => (
                         <TableRow key={item.itemId} className="hover:bg-red-50 dark:hover:bg-red-950/20">
                           <TableCell className="font-mono text-sm">{item.skuCode}</TableCell>
                           <TableCell>{item.materialName}</TableCell>

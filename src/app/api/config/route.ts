@@ -1,22 +1,17 @@
 import { NextResponse } from 'next/server';
 import * as configService from '@/services/config.service';
+import { withApiLogging } from '@/lib/api/with-api-logging';
 
-export async function GET() {
-  try {
-    const configs = await configService.getAllConfigs();
-    return NextResponse.json({ code: 0, data: configs, message: 'ok' });
-  } catch (e: any) {
-    return NextResponse.json({ code: 500, data: null, message: `查询配置失败: ${e.message || 'unknown error'}` }, { status: 500 });
-  }
+async function configGET() {
+  const configs = await configService.getAllConfigs();
+  return NextResponse.json({ code: 0, data: configs, message: 'ok' });
 }
 
-export async function PUT(req: Request) {
-  try {
-    const { key, value } = await req.json();
-    const config = await configService.updateConfig(key, value);
-    return NextResponse.json({ code: 0, data: config, message: 'ok' });
-  } catch (e: any) {
-    const status = e.statusCode || 500;
-    return NextResponse.json({ code: status, data: null, message: `保存配置失败: ${e.message || 'unknown error'}` }, { status });
-  }
+async function configPUT(req: Request) {
+  const { key, value } = await req.json();
+  const config = await configService.updateConfig(key, value);
+  return NextResponse.json({ code: 0, data: config, message: 'ok' });
 }
+
+export const GET = withApiLogging('config:GET', configGET);
+export const PUT = withApiLogging('config:PUT', configPUT);

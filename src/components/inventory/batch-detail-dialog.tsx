@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { formatPrice, StatusBadge, PaybackBar, InfoTip } from './shared';
 import ItemCreateDialog from './item-create-dialog';
 import ItemDetailDialog from './item-detail-dialog';
+import type { ItemSummary } from '@/lib/api.types';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -295,7 +296,7 @@ function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | 
                 {(() => {
                   const items = batch.items || [];
                   const filteredItems = debouncedItemSearch.trim()
-                    ? items.filter((item: any) =>
+                    ? items.filter((item: ItemSummary) =>
                         (item.skuCode || '').toLowerCase().includes(debouncedItemSearch.trim().toLowerCase()) ||
                         (item.name || '').toLowerCase().includes(debouncedItemSearch.trim().toLowerCase())
                       )
@@ -311,7 +312,7 @@ function BatchDetailDialog({ batchId, open, onOpenChange }: { batchId: number | 
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredItems.map((item: any) => (
+                          {filteredItems.map((item: ItemSummary) => (
                             <TableRow
                               key={item.id}
                               className="hover:bg-muted/50 transition-colors cursor-pointer"

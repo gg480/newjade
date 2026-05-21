@@ -11,6 +11,13 @@ import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import { formatPrice } from '../shared';
 import { Calculator, Plus } from 'lucide-react';
 import SpecFieldsRenderer from './spec-fields-renderer';
+import type { DictMaterial, DictType, DictTag, Supplier } from '@/lib/api.types';
+
+interface PricingSuggestion {
+  suggestedPrice: number;
+  floorPrice?: number;
+  grossMargin?: number;
+}
 
 interface HighValueFormProps {
   form: {
@@ -29,19 +36,19 @@ interface HighValueFormProps {
   setMaterialCategory: (v: string) => void;
   materialSubType: string;
   setMaterialSubType: (v: string) => void;
-  materials: any[];
-  filteredMaterials: any[];
+  materials: DictMaterial[];
+  filteredMaterials: DictMaterial[];
   subTypes: string[];
-  types: any[];
-  tags: any[];
-  suppliers: any[];
+  types: DictType[];
+  tags: DictTag[];
+  suppliers: Supplier[];
   currentMaterialId: number | null;
   specFieldsObj: Record<string, { required: boolean }>;
   specFieldKeys: string[];
   customFields: Record<string, boolean>;
   setCustomFields: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  pricingSuggestion: any;
-  setPricingSuggestion: (v: any) => void;
+  pricingSuggestion: PricingSuggestion | null;
+  setPricingSuggestion: (v: PricingSuggestion | null) => void;
   pricingLoading: boolean;
   setTagMismatch: React.Dispatch<React.SetStateAction<{ mode: 'high_value' | 'batch'; invalidTagIds: number[]; invalidTagNames: string[] } | null>>;
   onOpenSupplierAdd: () => void;
@@ -64,12 +71,12 @@ function HighValueForm({
     setForm(f => ({ ...f, tagIds: ids }));
   }
 
-  const activeTags = tags.filter((t: any) => t.isActive && t.groupName !== '器型风格');
-  const visibleTagIdSet = new Set(activeTags.map((t: any) => t.id));
+  const activeTags = tags.filter(t => t.isActive && t.groupName !== '器型风格');
+  const visibleTagIdSet = new Set(activeTags.map(t => t.id));
   const invalidSelected = form.tagIds.filter((id: number) => !visibleTagIdSet.has(id));
 
   // Tags - Grouped
-  const groups = activeTags.reduce((acc: any, tag: any) => {
+  const groups = activeTags.reduce((acc: Record<string, DictTag[]>, tag: DictTag) => {
     const g = tag.groupName || '未分组';
     if (!acc[g]) acc[g] = [];
     acc[g].push(tag);
@@ -77,7 +84,7 @@ function HighValueForm({
   }, {});
   const groupKeys = Object.keys(groups);
   const singleGroup = groupKeys.length === 1 && groupKeys[0] === '未分组';
-  const mat = materials.find((m: any) => m.id === currentMaterialId);
+  const mat = materials.find(m => m.id === currentMaterialId);
 
   return (
     <>
@@ -111,14 +118,14 @@ function HighValueForm({
         <div className="space-y-1"><Label className="text-xs">材质 <span className="text-red-500">*</span></Label>
           <Select value={form.materialId} onValueChange={v => setForm(f => ({ ...f, materialId: v }))}>
             <SelectTrigger className="h-9"><SelectValue placeholder="选择材质" /></SelectTrigger>
-            <SelectContent>{filteredMaterials.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
+            <SelectContent>{filteredMaterials.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
       </div>
       <div className="space-y-1"><Label className="text-xs">器型 <span className="text-red-500">*</span></Label>
         <Select value={form.typeId} onValueChange={v => setForm(f => ({ ...f, typeId: v }))}>
           <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
-          <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+          <SelectContent>{types.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -174,7 +181,7 @@ function HighValueForm({
                     </Button>
                   </div>
                 ) : (
-                  suppliers.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
+                  suppliers.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)
                 )}
               </SelectContent>
             </Select>
@@ -213,7 +220,7 @@ function HighValueForm({
           <div key={group}>
             {!singleGroup && <p className="text-xs font-medium text-muted-foreground mb-1">{group}</p>}
             <div className="flex flex-wrap gap-2">
-              {groups[group].map((tag: any) => (
+              {groups[group].map((tag: DictTag) => (
                 <label key={tag.id} className="flex items-center gap-1 cursor-pointer">
                   <Checkbox checked={form.tagIds.includes(tag.id)} onCheckedChange={() => toggleTag(tag.id)} />
                   <span className="text-xs">{tag.name}</span>

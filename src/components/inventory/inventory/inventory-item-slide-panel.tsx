@@ -9,15 +9,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge } from '../shared';
+import type { ItemSummary, DictTag } from '@/lib/api.types';
 
 type GetTagColorFn = (tagName: string) => string;
 
 interface SlidePanelProps {
   selectedItemId: number | null;
-  sortedItems: any[];
+  sortedItems: ItemSummary[];
   onClose: () => void;
   onEdit: (id: number) => void;
-  onQuickSell: (item: any) => void;
+  onQuickSell: (item: ItemSummary) => void;
   onRestoreToStock: (id: number) => void;
   getTagColor: GetTagColorFn;
 }
@@ -30,17 +31,17 @@ function ItemSlideContent({
   onRestoreToStock,
   getTagColor,
 }: {
-  item: any;
+  item: ItemSummary;
   onClose: () => void;
   onEdit: (id: number) => void;
-  onQuickSell: (item: any) => void;
+  onQuickSell: (item: ItemSummary) => void;
   onRestoreToStock: (id: number) => void;
   getTagColor: GetTagColorFn;
 }) {
   const cost = item.allocatedCost || item.estimatedCost || item.costPrice || 0;
   const margin = item.sellingPrice > 0 ? ((item.sellingPrice - cost) / item.sellingPrice * 100) : 0;
-  const itemTagsRaw: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
-  const itemTags: string[] = itemTagsRaw.map((t: any) => typeof t === 'string' ? t : t.name || '');
+  const itemTagsRaw: (string | DictTag)[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+  const itemTags: string[] = itemTagsRaw.map(t => typeof t === 'string' ? t : t.name || '');
   const specFields = item.specFields ? (typeof item.specFields === 'string' ? (() => { try { return JSON.parse(item.specFields); } catch { return {}; } })() : item.specFields) : {};
 
   return (
@@ -123,10 +124,10 @@ function DesktopPanelActions({
   onQuickSell,
   onRestoreToStock,
 }: {
-  item: any;
+  item: ItemSummary;
   onClose: () => void;
   onEdit: (id: number) => void;
-  onQuickSell: (item: any) => void;
+  onQuickSell: (item: ItemSummary) => void;
   onRestoreToStock: (id: number) => void;
 }) {
   return (
@@ -166,11 +167,11 @@ function PanelDetails({
   specFields,
   getTagColor,
 }: {
-  item: any;
+  item: ItemSummary;
   cost: number;
   margin: number;
   itemTags: string[];
-  specFields: Record<string, any>;
+  specFields: Record<string, unknown>;
   getTagColor: GetTagColorFn;
 }) {
   return (
@@ -259,7 +260,7 @@ function PanelDetails({
           <div className="grid grid-cols-2 gap-1.5">
             {Object.entries(specFields).map(([key, val]) => {
               const specLabelMap: Record<string, string> = { weight: '克重', metalWeight: '金重', size: '尺寸', braceletSize: '圈口', beadCount: '颗数', beadDiameter: '珠径', ringSize: '戒圈' };
-              const displayVal = typeof val === 'object' ? (val as any)?.value || '' : val;
+              const displayVal = typeof val === 'object' && val !== null ? (val as Record<string, unknown>)?.value ?? '' : val;
               return (
                 <div key={key} className="text-xs p-1.5 bg-muted/50 rounded">
                   <span className="text-muted-foreground">{specLabelMap[key] || key}:</span> {displayVal}
@@ -294,7 +295,7 @@ function PanelDetails({
 }
 
 // ===== Mobile Status Bar =====
-function MobileStatusBar({ item }: { item: any }) {
+function MobileStatusBar({ item }: { item: ItemSummary }) {
   return (
     <div className="px-4 flex items-center gap-2">
       <StatusBadge status={item.status} />
@@ -317,11 +318,11 @@ function MobileDetails({
   specFields,
   getTagColor,
 }: {
-  item: any;
+  item: ItemSummary;
   cost: number;
   margin: number;
   itemTags: string[];
-  specFields: Record<string, any>;
+  specFields: Record<string, unknown>;
   getTagColor: GetTagColorFn;
 }) {
   return (
@@ -343,7 +344,7 @@ function MobileDetails({
         <div className="flex flex-wrap gap-1">
           {Object.entries(specFields).map(([key, val]) => {
             const specLabelMap: Record<string, string> = { weight: '克重', metalWeight: '金重', size: '尺寸', braceletSize: '圈口', beadCount: '颗数', beadDiameter: '珠径', ringSize: '戒圈' };
-            const displayVal = typeof val === 'object' ? (val as any)?.value || '' : val;
+            const displayVal = typeof val === 'object' && val !== null ? (val as Record<string, unknown>)?.value ?? '' : val;
             return <span key={key} className="text-xs px-2 py-0.5 bg-muted/50 rounded">{specLabelMap[key] || key}: {displayVal}</span>;
           })}
         </div>

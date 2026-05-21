@@ -3,8 +3,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { itemsApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge } from './shared';
 import ImageLightbox from './image-lightbox';
+import type { ItemSummary, ItemImage, DictTag, SaleRecord } from '@/lib/api.types';
+
+// Extended detail type matching the API response
+interface ItemDetail extends ItemSummary {
+  materialName?: string;
+  typeName?: string;
+  supplierName?: string;
+  ageDays?: number;
+  saleRecords?: SaleRecord[];
+}
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +57,8 @@ function ImageWithLoading({ src, alt, className, onClick }: { src: string; alt: 
 
 // ========== Item Detail Dialog ==========
 function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | null; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const [item, setItem] = useState<any>(null);
+  const { handleError } = useErrorHandler();
+  const [item, setItem] = useState<ItemDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -59,7 +71,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
       setItem(data);
       // Set initial selected image to cover image or first image
       if (data.images && data.images.length > 0) {
-        const coverIdx = data.images.findIndex((img: any) => img.isCover);
+        const coverIdx = data.images.findIndex((img: ItemImage) => img.isCover);
         setSelectedImageIndex(coverIdx >= 0 ? coverIdx : 0);
       }
     } catch {
@@ -85,8 +97,8 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
       await itemsApi.uploadImage(itemId, file);
       toast.success('图片上传成功');
       fetchDetail(itemId);
-    } catch (e: any) {
-      toast.error(e.message || '上传失败');
+    } catch (error) {
+      handleError(error, { title: '上传失败' });
     } finally {
       setUploading(false);
     }
@@ -98,8 +110,8 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
       await itemsApi.deleteImage(itemId, imageId);
       toast.success('图片已删除');
       fetchDetail(itemId);
-    } catch (e: any) {
-      toast.error(e.message || '删除失败');
+    } catch (error) {
+      handleError(error, { title: '删除失败' });
     }
   }
 
@@ -109,8 +121,8 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
       await itemsApi.setCoverImage(itemId, imageId);
       toast.success('已设为封面');
       fetchDetail(itemId);
-    } catch (e: any) {
-      toast.error(e.message || '设置封面失败');
+    } catch (error) {
+      handleError(error, { title: '设置封面失败' });
     }
   }
 
@@ -120,7 +132,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
   };
 
   const images = item?.images || [];
-  const imageSrc = (img: any) => img?.url || img?.filename || '';
+  const imageSrc = (img: ItemImage & { url?: string }) => img?.url || img?.filename || '';
 
   return (
     <>
@@ -179,7 +191,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                     {/* Thumbnail strip */}
                     {images.length > 1 && (
                       <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                        {images.map((img: any, idx: number) => (
+                        {images.map((img: ItemImage & { url?: string }, idx: number) => (
                           <div
                             key={img.id}
                             className={`relative shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 cursor-pointer transition-all duration-200 ${idx === selectedImageIndex ? 'border-emerald-500 ring-1 ring-emerald-500/30' : 'border-transparent hover:border-muted-foreground/30'}`}
@@ -278,7 +290,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                   <div>
                     <p className="text-sm font-medium mb-2">规格参数</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                      {Object.entries(item.spec).map(([key, val]: [string, any]) => (
+                      {Object.entries(item.spec).map(([key, val]: [string, unknown]) => (
                         <div key={key}><span className="text-muted-foreground">{specFieldLabels[key] || key}:</span> {String(val)}</div>
                       ))}
                     </div>
@@ -293,7 +305,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                   <div>
                     <p className="text-sm font-medium mb-2">标签</p>
                     <div className="flex flex-wrap gap-2">
-                      {item.tags.map((tag: any) => <Badge key={tag.id} variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">{tag.name}</Badge>)}
+                      {item.tags.map((tag: DictTag) => <Badge key={tag.id} variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">{tag.name}</Badge>)}
                     </div>
                   </div>
                 </>
@@ -317,7 +329,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                   <div>
                     <p className="text-sm font-medium mb-2">销售记录</p>
                     <div className="space-y-2">
-                      {item.saleRecords.map((sr: any) => (
+                      {item.saleRecords.map((sr: SaleRecord) => (
                         <div key={sr.id} className="p-2 bg-muted/50 rounded text-sm">
                           <div className="flex justify-between"><span className="font-mono text-xs">{sr.saleNo}</span><span className="font-medium">{formatPrice(sr.actualPrice)}</span></div>
                           <div className="text-xs text-muted-foreground">{sr.saleDate} · {sr.channel === 'store' ? '门店' : '微信'}{sr.customerName ? ` · ${sr.customerName}` : ''}</div>
@@ -339,7 +351,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
       {lightboxOpen && (
         <ImageLightbox
           key={`lightbox-${selectedImageIndex}`}
-          images={images.map((img: any) => ({ url: imageSrc(img), id: img.id, isCover: img.isCover }))}
+          images={images.map((img: ItemImage & { url?: string }) => ({ url: imageSrc(img), id: img.id, isCover: img.isCover }))}
           initialIndex={selectedImageIndex}
           open={lightboxOpen}
           onClose={() => setLightboxOpen(false)}

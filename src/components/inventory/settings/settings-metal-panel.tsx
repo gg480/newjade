@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DollarSign, Calculator, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { metalApi } from '@/lib/api';
+import type { DictMaterial } from '@/lib/api.types';
 
 interface MetalPanelProps {
-  materials: any[];
-  onMaterialsChange: (updater: (prev: any[]) => any[]) => void;
+  materials: DictMaterial[];
+  onMaterialsChange: (updater: (prev: DictMaterial[]) => DictMaterial[]) => void;
   onPreviewReprice: (materialId: number, newPrice: number) => void;
   onPriceHistory: (materialId: number, materialName: string) => void;
 }
@@ -21,7 +23,8 @@ export default function SettingsMetalPanel({
   onPreviewReprice,
   onPriceHistory,
 }: MetalPanelProps) {
-  const metalMaterials = materials.filter((m: any) => m.costPerGram);
+  const { handleError } = useErrorHandler();
+  const metalMaterials = materials.filter((m: DictMaterial) => m.costPerGram);
 
   if (metalMaterials.length === 0) {
     return (
@@ -54,7 +57,7 @@ export default function SettingsMetalPanel({
           当前配置了克重单价的材质，市价变动时可批量重算在库货品零售价。
         </p>
         <div className="space-y-3">
-          {metalMaterials.map((m: any) => (
+          {metalMaterials.map((m: DictMaterial) => (
             <div key={m.id} className="p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <div>
@@ -79,14 +82,14 @@ export default function SettingsMetalPanel({
                             materialId: m.id,
                             pricePerGram: val,
                           });
-                          onMaterialsChange((ms: any[]) =>
-                            ms.map((x: any) =>
+                          onMaterialsChange((ms: DictMaterial[]) =>
+                            ms.map((x: DictMaterial) =>
                               x.id === m.id ? { ...x, costPerGram: val } : x
                             )
                           );
                           toast.success(`${m.name}市价已更新为 ¥${val}/克`);
-                        } catch (e: any) {
-                          toast.error(e.message);
+                        } catch (error) {
+                          handleError(error, { title: '更新市价失败', silent: true });
                         }
                       }
                     }}

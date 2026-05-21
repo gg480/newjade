@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { customersApi, salesApi } from '@/lib/api';
 import { formatPrice } from './shared';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -41,6 +42,8 @@ interface SaleSearchRow {
 }
 
 export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerged }: CustomerMergeDialogProps) {
+  const { handleError } = useErrorHandler();
+
   // 搜索表单
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -101,8 +104,8 @@ export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerg
       setResults(items);
       setSelectedIds(new Set());
       setSelectAll(false);
-    } catch (e: any) {
-      toast.error(e.message || '搜索失败');
+    } catch (error) {
+      handleError(error, { title: '搜索失败' });
       setResults([]);
     } finally {
       setSearching(false);
@@ -125,8 +128,8 @@ export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerg
       setResults(items);
       setSelectedIds(new Set());
       setSelectAll(false);
-    } catch (e: any) {
-      toast.error(e.message || '搜索失败');
+    } catch (error) {
+      handleError(error, { title: '搜索失败' });
       setResults([]);
     } finally {
       setSearching(false);
@@ -189,8 +192,9 @@ export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerg
             saleRecordIds: saleIds,
           });
           totalMerged += saleIds.length;
-        } catch (e: any) {
-          errors.push(`客户ID ${sourceId}: ${e.message}`);
+        } catch (innerError) {
+          const msg = innerError instanceof Error ? innerError.message : '未知错误';
+          errors.push(`客户ID ${sourceId}: ${msg}`);
         }
       }
 
@@ -216,8 +220,8 @@ export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerg
 
       onMerged?.();
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message || '合并失败');
+    } catch (error) {
+      handleError(error, { title: '合并失败' });
     } finally {
       setMerging(false);
     }

@@ -5,6 +5,13 @@ import JsBarcode from 'jsbarcode';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
+import type { ItemSummary, ItemSpec } from '@/lib/api.types';
+
+// 标签打印所需的货品字段
+interface LabelItem extends ItemSummary {
+  materialName?: string;
+  typeName?: string;
+}
 
 // 规格字段中文映射
 const specFieldLabels: Record<string, string> = {
@@ -12,7 +19,7 @@ const specFieldLabels: Record<string, string> = {
   beadCount: '颗数', beadDiameter: '珠径', ringSize: '戒圈',
 };
 
-function LabelPrintDialog({ item, open, onOpenChange }: { item: any; open: boolean; onOpenChange: (o: boolean) => void }) {
+function LabelPrintDialog({ item, open, onOpenChange }: { item: LabelItem | null; open: boolean; onOpenChange: (o: boolean) => void }) {
   const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // 弹窗打开时用 jsbarcode 在 Canvas 上生成 CODE128 条形码

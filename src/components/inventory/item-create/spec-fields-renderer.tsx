@@ -12,8 +12,8 @@ export const SPEC_FIELD_LABEL_MAP: Record<string, string> = {
 };
 
 interface SpecFieldsRendererProps {
-  form: Record<string, any>;
-  onChange: (field: string, value: any) => void;
+  form: Record<string, unknown>;
+  onChange: (field: string, value: unknown) => void;
   specFieldsObj: Record<string, { required: boolean }>;
   specFieldKeys: string[];
   customFields: Record<string, boolean>;

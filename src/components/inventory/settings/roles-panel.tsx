@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { rolesApi } from '@/lib/api';
 import type { RoleInfo } from '@/lib/api.types';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { EmptyState, LoadingSkeleton } from '@/components/inventory/shared';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,7 @@ const PERMISSION_GROUPS = [
 const ALL_PERMISSION_KEYS = PERMISSION_GROUPS.flatMap(g => g.permissions.map(p => p.key));
 
 export default function RolesPanel() {
+  const { handleError } = useErrorHandler();
   const [roles, setRoles] = useState<RoleInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -70,8 +72,8 @@ export default function RolesPanel() {
     try {
       const data = await rolesApi.list();
       setRoles(data.items);
-    } catch (e: any) {
-      toast.error('加载角色列表失败: ' + (e.message || '未知错误'));
+    } catch (error) {
+      handleError(error, { title: '加载角色列表失败' });
     } finally {
       setLoading(false);
     }
@@ -95,8 +97,8 @@ export default function RolesPanel() {
       setShowCreate(false);
       setFormData({ name: '', description: '', permissions: new Set(ALL_PERMISSION_KEYS) });
       loadRoles();
-    } catch (e: any) {
-      toast.error(e.message || '创建失败');
+    } catch (error) {
+      handleError(error, { title: '创建失败' });
     } finally {
       setSubmitting(false);
     }
@@ -114,8 +116,8 @@ export default function RolesPanel() {
       toast.success('角色更新成功');
       setEditRole(null);
       loadRoles();
-    } catch (e: any) {
-      toast.error(e.message || '更新失败');
+    } catch (error) {
+      handleError(error, { title: '更新失败' });
     } finally {
       setSubmitting(false);
     }
@@ -129,8 +131,8 @@ export default function RolesPanel() {
       toast.success('角色已删除');
       setDeleteRole(null);
       loadRoles();
-    } catch (e: any) {
-      toast.error(e.message || '删除失败');
+    } catch (error) {
+      handleError(error, { title: '删除失败' });
     } finally {
       setSubmitting(false);
     }

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 
 // ============================================================
@@ -23,7 +24,7 @@ export interface ExportSalesParams {
  * JOIN材质/器型/规格，按SKU升序
  */
 export async function getExportInventoryData(params: ExportInventoryParams) {
-  const where: any = { isDeleted: false };
+  const where: Prisma.ItemWhereInput = { isDeleted: false };
   if (params.materialId) where.materialId = parseInt(params.materialId);
   if (params.status) where.status = params.status;
 
@@ -58,7 +59,7 @@ export async function getExportInventoryData(params: ExportInventoryParams) {
  * JOIN货品/客户，按销售日期降序
  */
 export async function getExportSalesData(params: ExportSalesParams) {
-  const where: any = {};
+  const where: Prisma.SaleRecordWhereInput = {};
   if (params.startDate) where.saleDate = { ...where.saleDate, gte: params.startDate };
   if (params.endDate) where.saleDate = { ...where.saleDate, lte: params.endDate };
 

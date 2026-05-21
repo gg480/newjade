@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { NotFoundError, ValidationError, ConflictError, AppError } from '@/lib/errors';
 
@@ -200,7 +201,7 @@ export async function updateRole(id: number, data: UpdateRoleInput): Promise<Rol
     throw new NotFoundError('角色不存在');
   }
 
-  const updateData: any = {};
+  const updateData: Prisma.RoleUpdateInput = {};
 
   if (data.name !== undefined) {
     if (role.isSystem) {

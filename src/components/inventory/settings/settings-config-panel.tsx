@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Settings, CheckCircle, KeyRound, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
+import type { SysConfig } from '@/lib/api.types';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 
 interface ConfigPanelProps {
-  configs: any[];
+  configs: SysConfig[];
   editConfigs: Record<string, string>;
   setEditConfigs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   systemConfig: {
@@ -44,6 +46,7 @@ export default function SettingsConfigPanel({
   onSaveConfig,
   onResetConfig,
 }: ConfigPanelProps) {
+  const { handleError } = useErrorHandler();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -62,8 +65,8 @@ export default function SettingsConfigPanel({
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (e: any) {
-      toast.error(e.message || '密码修改失败');
+    } catch (error) {
+      handleError(error, { title: '密码修改失败' });
     } finally {
       setChangingPassword(false);
     }

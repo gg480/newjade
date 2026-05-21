@@ -49,7 +49,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
 
   // Initial load
   useEffect(() => {
-    customersApi.getCustomers({ size: 50 }).then((d: any) => setOptions(d?.items || d || [])).catch(() => {});
+    customersApi.getCustomers({ size: 50 }).then((d) => setOptions((d?.items as CustomerOption[]) || [])).catch(() => {});
   }, []);
 
   const selectedCustomer = options.find((c) => String(c.id) === value);

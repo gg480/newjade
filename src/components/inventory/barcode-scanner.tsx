@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Camera, Keyboard, AlertTriangle, Loader2 } from 'lucide-react';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 
 interface BarcodeScannerProps {
   onScan: (code: string) => void;
@@ -12,6 +13,7 @@ interface BarcodeScannerProps {
 }
 
 function BarcodeScanner({ onScan, onClose, open }: BarcodeScannerProps) {
+  const { handleError } = useErrorHandler();
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -89,14 +91,19 @@ function BarcodeScanner({ onScan, onClose, open }: BarcodeScannerProps) {
       );
 
       setIsScanning(true);
-    } catch (err: any) {
-      console.error('Barcode scanner error:', err);
-      if (err?.toString?.().includes('NotAllowedError') || err?.toString?.().includes('Permission')) {
-        setError('摄像头权限被拒绝，请在浏览器设置中允许摄像头访问，或切换到手动输入模式。');
-      } else if (err?.toString?.().includes('NotFoundError') || err?.toString?.().includes('Requested device not found')) {
-        setError('未检测到摄像头设备，请切换到手动输入模式。');
+    } catch (err) {
+      handleError(err, { title: '摄像头启动失败', silent: true });
+      if (err instanceof Error) {
+        const msg = err.message || err.toString();
+        if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
+          setError('摄像头权限被拒绝，请在浏览器设置中允许摄像头访问，或切换到手动输入模式。');
+        } else if (msg.includes('NotFoundError') || msg.includes('Requested device not found')) {
+          setError('未检测到摄像头设备，请切换到手动输入模式。');
+        } else {
+          setError(`摄像头启动失败: ${err.message || '未知错误'}。可切换到手动输入模式。`);
+        }
       } else {
-        setError(`摄像头启动失败: ${err?.message || '未知错误'}。可切换到手动输入模式。`);
+        setError('摄像头启动失败，可切换到手动输入模式。');
       }
     }
   }

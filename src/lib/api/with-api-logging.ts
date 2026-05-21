@@ -2,6 +2,7 @@
 // Wraps API route handlers with logging support
 
 import { NextResponse } from 'next/server';
+import { AppError } from '@/lib/errors';
 
 type RouteHandler<T = unknown> = (req: Request, context: T) => Promise<NextResponse>;
 
@@ -18,6 +19,14 @@ export function withApiLogging<T = unknown>(label: string, handler: RouteHandler
     } catch (error) {
       const duration = Date.now() - start;
       console.error(`[API] ${label} ${req.method} ${req.url} - ERROR (${duration}ms)`, error);
+
+      if (error instanceof AppError) {
+        return NextResponse.json(
+          { code: error.code, data: null, message: error.message },
+          { status: error.statusCode }
+        );
+      }
+
       return NextResponse.json(
         { code: 500, data: null, message: '服务器内部错误' },
         { status: 500 }

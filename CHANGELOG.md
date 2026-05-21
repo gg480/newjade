@@ -6,6 +6,117 @@ Format: [BUG] Bug修复 | [FEAT] 功能更新 | [TEST] 测试相关 | [DEPLOY] �
 
 ---
 
+## [2026-05-20]
+
+### [FEAT] Sprint-007: 多用户管理 + 登录验证 + 权限系统
+
+- **SOP 序列**：@Architect → @Backend(T-402~T-404) → @Frontend(T-405~T-408) → @QA(T-409)
+- **验证结果**：构建通过 ✅ | E2E 86/86 通过 ✅
+- **提交统计**：38 个文件，+3195 / -453 行
+
+#### 多用户 & 登录系统
+- **修改文件** (`@Backend`): `src/lib/auth.ts`, `src/middleware.ts`, `src/app/api/auth/route.ts`
+- **新增文件** (`@Backend`): `src/app/api/auth/login/route.ts`, `src/app/api/auth/logout/route.ts`, `src/app/api/auth/me/route.ts`, `src/app/api/auth/password/route.ts`
+- **内容**:
+  - 新增 4 个 auth API 路由，支持用户名+密码登录
+  - 增强 auth.ts：多用户 Session 管理，createSession/validateSession 返回用户信息
+  - 恢复 middleware.ts 鉴权，PUBLIC_PATHS 保护 + token 验证
+
+#### 用户管理
+- **修改文件** (`@Backend`): `prisma/schema.prisma`, `prisma/seed.ts`
+- **新增文件** (`@Backend`): `src/app/api/users/route.ts`, `src/app/api/users/[id]/route.ts`, `src/services/user.service.ts`
+- **新增文件** (`@Frontend`): `src/components/inventory/settings/users-panel.tsx`
+- **内容**: User 模型扩展 displayName/role/isActive/lastLoginAt；前端用户管理面板（CRUD + 角色分配）
+
+#### 角色/权限管理
+- **新增文件** (`@Backend`): `src/app/api/roles/route.ts`, `src/app/api/roles/[id]/route.ts`, `src/services/role.service.ts`
+- **新增文件** (`@Frontend`): `src/components/inventory/settings/roles-panel.tsx`
+- **内容**: 新增 Role 模型；3 个预置角色（admin/manager/staff）；15 项权限矩阵
+
+#### 前端权限集成
+- **修改文件** (`@Frontend`): `src/components/inventory/navigation.tsx`, `settings-tab.tsx`, `login-page.tsx`, `src/app/page.tsx`, `src/lib/store.ts`, `src/lib/api.ts`
+- **内容**:
+  - navigation.tsx：按角色隐藏 Tab，操作按钮按权限显隐
+  - settings-tab.tsx：新增"用户管理"和"角色权限"两个子 Tab
+  - store.ts：扩展 auth state（currentUser/permissions/isAuthenticated）
+  - api.ts：新增 authApi/usersApi/rolesApi，更新 api.types.ts 类型
+
+### [FEAT] Sprint-008: Service 层细化 + any 类型收敛
+
+- **SOP 序列**：@Architect(ADR-017) → @Backend(T-801~T-804) + @Frontend(T-805~T-807) 并行 → @QA(T-808)
+- **验证结果**：构建通过 ✅ | E2E 86/86 通过 ✅
+- **提交统计**：71 个文件，+1366 / -1003 行
+- **成果**：any 类型从 665 处降至 84 处（84% 收敛率）
+
+#### 后端：错误处理统一
+- **修改文件** (`@Backend`): `with-api-logging.ts` + 16 个 Route Handler（pricing/backup/config/metal-prices(4)/customers(3)/sales(4)/items/batch）
+- **内容**:
+  - withApiLogging 内建 AppError 识别 + 自动映射 HTTP 状态码
+  - 16 个 Route 加 withApiLogging 包装，消除所有 catch(e: any) 模板代码
+  - 错误状态码自动映射（400/401/403/404/409 → 对应 statusCode）
+
+#### 后端：Prisma 类型化
+- **修改文件** (`@Backend`): `src/services/items/customers/export/metal-prices/user/role.service.ts`
+- **内容**:
+  - `where: any` → `Prisma.ItemWhereInput` / `Prisma.CustomerWhereInput`
+  - `orderBy: any` → `Prisma.ItemOrderByWithRelationInput`
+  - `updateData: any` → `Prisma.ItemUpdateInput`
+  - `specCreate: any` → `Prisma.ItemSpecCreateWithoutItemInput`
+  - 消除 13 处 Prisma 查询构建中的 any，编译器可校验字段名
+
+#### 后端：map 回调 + 返回类型声明
+- **修改文件** (`@Backend`): `src/services/items/customers/sales/notification/promotions/stocktaking.service.ts`
+- **内容**:
+  - Prisma GetPayload 推导查询结果类型，map 回调自动类型推断
+  - 为导出函数添加明确的返回类型声明接口
+
+#### 前端：统一错误处理
+- **新增文件** (`@Frontend`): `src/hooks/use-error-handler.ts`
+- **修改文件** (`@Frontend`): 40+ 前端组件文件
+- **内容**:
+  - 统一 handleError hook，封装 toast + console.error
+  - 替换 83 处 `catch(e: any)` 为 `catch(error) { handleError(error) }`
+  - 支持静默模式（silent: true）用于非关键错误
+
+#### 前端：any 收敛
+- **修改文件** (`@Frontend`): 38 个前端组件文件逐文件收敛
+- **内容**:
+  - `(form as any)[field]` → `form[field as keyof typeof form]`
+  - `(data as any)` → `data as ApiResponse<T>`
+  - `: any[]` → 具体类型数组（`ItemSummary[]`/`DictMaterial[]` 等）
+  - `map((x: any))` → 自动类型推导
+  - 关键收敛：dashboard-tab 76→1, inventory-tab 31→1, settings-tab 48→12
+
+### [FEAT] Sprint-006: 材质/器型/标签级联筛选
+
+- **SOP 序列**：@Architect → @Backend + @Frontend（并行）→ @QA
+- **验证结果**：API 级联测试 pass + 零类型错误 + E2E 86/86 pass ✅
+
+#### 级联筛选组件
+- **新增文件** (`@Frontend`): `src/components/inventory/shared/material-type-tag-filter.tsx`
+- **修改文件** (`@Frontend`): `src/components/inventory/inventory/inventory-filter-bar.tsx`, `restock-tab.tsx`, `promotions-tab.tsx`
+- **内容**:
+  - 新增 MaterialTypeTagFilter 共享组件（三级联动、自动复位）
+  - inventory-filter-bar 替换为级联组件
+  - 集成到 restock-tab 和 promotions-tab
+
+#### 后端级联支持
+- **修改文件** (`@Backend`): `src/services/dicts.service.ts`, `src/app/api/dicts/types/route.ts`
+- **内容**:
+  - listTypes 增加 materialId 参数，筛选该材质下存在货品的器型
+  - API GET /api/dicts/types 支持 `?material_id=X` 参数
+
+### [FEAT] 入货建议算法优化
+- **修改文件** (`@Backend`): `src/services/restock.service.ts`
+- **内容**:
+  - 从逐件 N+1 查询改为按材质聚合查询
+  - σd 泊松近似 + Z=1.645 安全库存计算
+  - confidence = min(1.0, totalSales90 / 30) 排序
+  - 修复 stockMap 数据源（materialGroups 替代全库 COUNT）
+  - 修复 totalSales 数据源（独立 salesMap 查询）
+  - SchemaFields 过滤防止 upsert 500 错误
+  - take 提升 1000→10000 提高覆盖率
+
 ## [2026-04-19]
 
 ### [FIX] 系统配置无法编辑

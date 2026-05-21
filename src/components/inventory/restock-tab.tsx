@@ -13,10 +13,33 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import MaterialTypeTagFilter from './shared/material-type-tag-filter';
 import { ArrowUpRight, RefreshCw, TrendingUp, Shield, Calendar, DollarSign, Clock, BarChart3 } from 'lucide-react';
+import type { DictMaterial, DictType, DictTag } from '@/lib/api.types';
+
+interface RestockRecommendation {
+  itemId: number;
+  item?: {
+    name?: string;
+    material?: { name?: string };
+    type?: { name?: string };
+  } | null;
+  currentStock: number;
+  safetyStock: number;
+  recommendedQty: number;
+  estimatedCost: number;
+  estimatedSalesCycle: number;
+  confidence: number;
+}
+
+interface PriceRangeOption {
+  id: number;
+  name: string;
+  minValue: number;
+  maxValue: number;
+}
 
 const RestockTab: React.FC = () => {
-  const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [materials, setMaterials] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<RestockRecommendation[]>([]);
+  const [materials, setMaterials] = useState<DictMaterial[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,9 +51,9 @@ const RestockTab: React.FC = () => {
   const [selectedHeat, setSelectedHeat] = useState<string>('');
   const [budget, setBudget] = useState<string>('');
   const [limit, setLimit] = useState<string>('20');
-  const [types, setTypes] = useState<any[]>([]);
-  const [tags, setTags] = useState<any[]>([]);
-  const [priceRanges, setPriceRanges] = useState<any[]>([]);
+  const [types, setTypes] = useState<DictType[]>([]);
+  const [tags, setTags] = useState<DictTag[]>([]);
+  const [priceRanges, setPriceRanges] = useState<PriceRangeOption[]>([]);
 
   // 加载材质列表 + 已有入货建议
   useEffect(() => {
@@ -78,7 +101,7 @@ const RestockTab: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const params: any = {};
+      const params: Record<string, string | number | undefined> = {};
       if (selectedMaterial) {
         params.materialId = selectedMaterial;
       }

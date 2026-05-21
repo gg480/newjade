@@ -3,10 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { salesApi, exportApi, dashboardApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton } from './shared';
 import { useAppStore } from '@/lib/store';
 import BundleSaleDialog from './bundle-sale-dialog';
 import Pagination from './pagination';
+import type { TrendDataPoint, SalesQueryParams, SaleRecord } from '@/lib/api.types';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,9 +67,26 @@ function formatPaymentBadge(note: string | null | undefined) {
   return <Badge variant="outline" className={`text-xs ${config.color}`}>{config.icon} {config.label}</Badge>;
 }
 
+// 销售列表行数据类型（API 返回的额外展平字段）
+interface SaleTableRow extends SaleRecord {
+  itemSku?: string;
+  itemName?: string;
+  customerName?: string;
+  grossProfit?: number;
+  costPrice?: number;
+  materialName?: string;
+  typeName?: string;
+  customerPhone?: string;
+  customerVipLevel?: string;
+  counter?: number;
+  returnedAt?: string | null;
+  itemImage?: string;
+}
+
 // ========== Sales Tab ==========
 function SalesTab() {
-  const [sales, setSales] = useState<any[]>([]);
+  const { handleError } = useErrorHandler();
+  const [sales, setSales] = useState<SaleTableRow[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [salesStats, setSalesStats] = useState({
     totalCount: 0,
@@ -84,11 +103,11 @@ function SalesTab() {
   const [datePreset, setDatePreset] = useState('all');
 
   // Return dialog state
-  const [returnDialog, setReturnDialog] = useState<{ open: boolean; sale: any }>({ open: false, sale: null });
+  const [returnDialog, setReturnDialog] = useState<{ open: boolean; sale: SaleTableRow | null }>({ open: false, sale: null });
   const [returnForm, setReturnForm] = useState({ refundAmount: 0, returnReason: '', returnDate: toLocalDateString(new Date()) });
   const [returnReasonMode, setReturnReasonMode] = useState<string>('_custom');
   const [returnSubmitting, setReturnSubmitting] = useState(false);
-  const [editDialog, setEditDialog] = useState<{ open: boolean; sale: any }>({ open: false, sale: null });
+  const [editDialog, setEditDialog] = useState<{ open: boolean; sale: SaleTableRow | null }>({ open: false, sale: null });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editForm, setEditForm] = useState({ actualPrice: 0, channel: 'store', saleDate: toLocalDateString(new Date()), note: '' });
   const RETURN_REASONS = [
@@ -105,16 +124,16 @@ function SalesTab() {
   const [selectedSaleIds, setSelectedSaleIds] = useState<Set<string>>(new Set());
 
   // Print receipt dialog
-  const [printSale, setPrintSale] = useState<any>(null);
+  const [printSale, setPrintSale] = useState<SaleTableRow | null>(null);
 
   // Sale detail panel
-  const [detailSale, setDetailSale] = useState<any>(null);
+  const [detailSale, setDetailSale] = useState<SaleTableRow | null>(null);
 
   // Today stats
   const [todayStats, setTodayStats] = useState<{ count: number; revenue: number; profit: number } | null>(null);
 
   // Sparkline data
-  const [sparklineData, setSparklineData] = useState<any[]>([]);
+  const [sparklineData, setSparklineData] = useState<TrendDataPoint[]>([]);
   const [sparkLoading, setSparkLoading] = useState(true);
 
   // Refresh key for manual reload triggers (create, return, search, etc.)
@@ -128,7 +147,7 @@ function SalesTab() {
       console.log('[SalesTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
       setLoading(true);
       try {
-        const params: any = { page: pagination.page, size: pagination.size };
+        const params: SalesQueryParams = { page: pagination.page, size: pagination.size };
         if (filters.channel) params.channel = filters.channel;
         if (filters.startDate) params.start_date = filters.startDate;
         if (filters.endDate) params.end_date = filters.endDate;
@@ -152,7 +171,7 @@ function SalesTab() {
     let cancelled = false;
     const loadSalesStats = async () => {
       try {
-        const baseParams: any = {};
+        const baseParams: SalesQueryParams = {};
         if (filters.channel) baseParams.channel = filters.channel;
         if (filters.startDate) baseParams.start_date = filters.startDate;
         if (filters.endDate) baseParams.end_date = filters.endDate;
@@ -161,7 +180,7 @@ function SalesTab() {
         const size = 500;
         let page = 1;
         let pages = 1;
-        const all: any[] = [];
+        const all: SaleTableRow[] = [];
         do {
           const data = await salesApi.getSales({ ...baseParams, page, size });
           all.push(...(data.items || []));
@@ -201,8 +220,8 @@ function SalesTab() {
         const todayItems = data.items || [];
         setTodayStats({
           count: todayItems.length,
-          revenue: todayItems.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0),
-          profit: todayItems.reduce((sum: number, s: any) => sum + (s.grossProfit || 0), 0),
+          revenue: todayItems.reduce((sum: number, s: SaleTableRow) => sum + (s.actualPrice || 0), 0),
+          profit: todayItems.reduce((sum: number, s: SaleTableRow) => sum + (s.grossProfit || 0), 0),
         });
       } catch (e) { console.error('[SalesTab]', e); setTodayStats({ count: 0, revenue: 0, profit: 0 }); }
     }
@@ -217,7 +236,7 @@ function SalesTab() {
       try {
         const trend = await dashboardApi.getTrend({ months: 1 });
         if (!cancelled && trend && trend.length > 0) {
-          setSparklineData(trend.map((t: any) => ({
+          setSparklineData(trend.map((t: TrendDataPoint) => ({
             date: t.yearMonth || t.date || t.label,
             revenue: t.revenue || 0,
             profit: t.profit || 0,
@@ -239,13 +258,13 @@ function SalesTab() {
   const wechatCount = salesStats.channelCount.wechat;
 
   // Return handler
-  function openReturnDialog(sale: any) {
+  function openReturnDialog(sale: SaleTableRow) {
     setReturnDialog({ open: true, sale });
     setReturnForm({ refundAmount: sale.actualPrice || 0, returnReason: '', returnDate: toLocalDateString(new Date()) });
     setReturnReasonMode('_custom');
   }
 
-  function openEditDialog(sale: any) {
+  function openEditDialog(sale: SaleTableRow) {
     setEditDialog({ open: true, sale });
     setEditForm({
       actualPrice: sale.actualPrice || 0,
@@ -286,7 +305,7 @@ function SalesTab() {
     }
     const headers = ['销售日期', 'SKU', '货品名称', '客户', '售价', '成本', '利润', '渠道', '柜台号'];
     const channelMap: Record<string, string> = { store: '门店', wechat: '微信' };
-    const rows = selectedSales.map((s: any) => [
+    const rows = selectedSales.map(s => [
       s.saleDate || '',
       s.itemSku || '',
       s.itemName || s.itemSku || '',
@@ -297,7 +316,7 @@ function SalesTab() {
       channelMap[s.channel] || s.channel || '',
       s.counter || '',
     ]);
-    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: any) => {
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: string | number) => {
       const str = String(cell);
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`;
@@ -316,7 +335,7 @@ function SalesTab() {
     toast.success(`已导出 ${selectedSales.length} 条选中记录`);
   }
 
-  function handlePrintReceipt(sale: any) {
+  function handlePrintReceipt(sale: SaleTableRow) {
     setPrintSale(sale);
     setTimeout(() => window.print(), 300);
   }
@@ -329,7 +348,7 @@ function SalesTab() {
     }
     const headers = ['销售日期', 'SKU', '货品名称', '客户', '售价', '成本', '利润', '渠道', '柜台号'];
     const channelMap: Record<string, string> = { store: '门店', wechat: '微信' };
-    const rows = dataToExport.map((s: any) => [
+    const rows = dataToExport.map(s => [
       s.saleDate || '',
       s.itemSku || '',
       s.itemName || s.itemSku || '',
@@ -341,7 +360,7 @@ function SalesTab() {
       s.counter || '',
     ]);
     // Add BOM for Excel UTF-8 compatibility
-    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: any) => {
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: string | number) => {
       const str = String(cell);
       // Escape quotes and wrap if contains comma/quote/newline
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -373,7 +392,7 @@ function SalesTab() {
       toast.success(`退货成功！已退款 ¥${returnForm.refundAmount.toFixed(2)}`);
       setReturnDialog({ open: false, sale: null });
       refresh();
-    } catch (e: any) { toast.error(e.message || '退货失败'); }
+    } catch (error) { handleError(error, { title: '退货失败' }); }
   }
 
   async function handleEditSale() {
@@ -398,8 +417,8 @@ function SalesTab() {
       setEditDialog({ open: false, sale: null });
       if (detailSale && detailSale.id === editDialog.sale.id) setDetailSale(null);
       refresh();
-    } catch (e: any) {
-      toast.error(e.message || '更新销售记录失败');
+    } catch (error) {
+      handleError(error, { title: '更新销售记录失败' });
     } finally {
       setEditSubmitting(false);
     }
@@ -547,7 +566,7 @@ function SalesTab() {
           <CardContent className="p-4">
             <div className="absolute -right-1 -bottom-1 opacity-10"><ShoppingCart className="h-16 w-16 text-amber-500" /></div>
             <p className="text-sm text-muted-foreground">最高利润</p>
-            <p className="text-2xl font-bold text-emerald-600">{sales.length > 0 ? formatPrice(Math.max(...sales.map((s: any) => s.grossProfit || 0))) : '-'}</p>
+            <p className="text-2xl font-bold text-emerald-600">{sales.length > 0 ? formatPrice(Math.max(...sales.map(s => s.grossProfit || 0))) : '-'}</p>
           </CardContent>
         </Card>
         <Card className="relative overflow-hidden border-l-4 border-l-purple-500 hover:shadow-md hover:border-purple-400 transition-all duration-200">
@@ -555,7 +574,7 @@ function SalesTab() {
             <div className="absolute -right-1 -bottom-1 opacity-10"><BarChart3 className="h-16 w-16 text-purple-500" /></div>
             <p className="text-sm text-muted-foreground">利润率范围</p>
             <p className="text-2xl font-bold tabular-nums">{(() => {
-              const margins = sales.filter((s: any) => s.actualPrice > 0).map((s: any) => ((s.grossProfit || 0) / s.actualPrice) * 100);
+              const margins = sales.filter(s => s.actualPrice > 0).map(s => ((s.grossProfit || 0) / s.actualPrice) * 100);
               if (margins.length === 0) return '-';
               return `${Math.min(...margins).toFixed(0)}%-${Math.max(...margins).toFixed(0)}%`;
             })()}</p>

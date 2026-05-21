@@ -216,10 +216,10 @@ export async function getSales(params: GetSalesParams) {
 
   // 金额范围过滤
   if (minAmount !== undefined && !isNaN(minAmount)) {
-    (where.actualPrice as any) = { ...((where.actualPrice as any) || {}), gte: minAmount };
+    where.actualPrice = { ...(where.actualPrice || {}), gte: minAmount };
   }
   if (maxAmount !== undefined && !isNaN(maxAmount)) {
-    (where.actualPrice as any) = { ...((where.actualPrice as any) || {}), lte: maxAmount };
+    where.actualPrice = { ...(where.actualPrice || {}), lte: maxAmount };
   }
 
   if (!includeReturned) {
@@ -240,7 +240,7 @@ export async function getSales(params: GetSalesParams) {
   const orderBy = orderByMap[sortBy] || orderByMap.created_at;
 
   let total = 0;
-  let records: any[] = [];
+  let records: Prisma.SaleRecordGetPayload<{ include: typeof saleInclude }>[] = [];
 
   // 日期过滤：历史数据存在 YYYY-MM-DD 和 YYYY/M/D 混合格式，
   // 为保证准确性，在内存中做归一化过滤
@@ -249,7 +249,7 @@ export async function getSales(params: GetSalesParams) {
 
     const startNorm = normalizeSaleDate(startDate);
     const endNorm = normalizeSaleDate(endDate);
-    const filtered = all.filter((r: any) => {
+    const filtered = all.filter((r) => {
       const d = normalizeSaleDate(r.saleDate);
       if (!d) return false;
       if (startNorm && d < startNorm) return false;
@@ -257,7 +257,7 @@ export async function getSales(params: GetSalesParams) {
       return true;
     });
 
-    const sorted = filtered.sort((a: any, b: any) => {
+    const sorted = filtered.sort((a, b) => {
       const dir = direction === 'asc' ? 1 : -1;
       const cmpStr = (x: string, y: string) => x.localeCompare(y) * dir;
       const cmpNum = (x: number, y: number) => (x - y) * dir;
@@ -289,7 +289,7 @@ export async function getSales(params: GetSalesParams) {
   }
 
   // 附加计算字段（前端消费）
-  const items = records.map((r: any) => ({
+  const items = records.map((r) => ({
     ...r,
     itemSku: r.item?.skuCode,
     itemName: r.item?.name,

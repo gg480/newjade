@@ -166,7 +166,7 @@ export interface MonthlyReportData {
 // ============================================================
 
 /** 从销售列表计算汇总指标 */
-function calcSummary(sales: any[]) {
+function calcSummary(sales: Array<{ actualPrice: number; grossProfit: number }>) {
   const revenue = sales.reduce((s, r) => s + (r.actualPrice || 0), 0);
   const profit = sales.reduce((s, r) => s + (r.grossProfit || 0), 0);
   const soldCount = sales.length;
@@ -183,7 +183,7 @@ function classifyPriceBand(price: number): string {
 }
 
 /** 按材质分类聚合（from sales items） */
-function aggregateByMaterial(sales: any[]): Map<string, { amount: number; count: number }> {
+function aggregateByMaterial(sales: Array<{ actualPrice: number; materialName: string }>): Map<string, { amount: number; count: number }> {
   const map = new Map<string, { amount: number; count: number }>();
   for (const s of sales) {
     const name = s.materialName || '未知';
@@ -196,7 +196,7 @@ function aggregateByMaterial(sales: any[]): Map<string, { amount: number; count:
 }
 
 /** 按器型分类聚合 */
-function aggregateByType(sales: any[]): Map<string, { amount: number; count: number }> {
+function aggregateByType(sales: Array<{ actualPrice: number; typeName: string }>): Map<string, { amount: number; count: number }> {
   const map = new Map<string, { amount: number; count: number }>();
   for (const s of sales) {
     const name = s.typeName || '未知';
@@ -226,7 +226,7 @@ function toTopN(
 }
 
 /** 计算价格带分布 */
-function calcPriceBands(sales: any[]): PriceBandItem[] {
+function calcPriceBands(sales: Array<{ actualPrice: number }>): PriceBandItem[] {
   const bands: PriceBandItem[] = [
     { band: '0-5千', count: 0, amount: 0 },
     { band: '5千-2万', count: 0, amount: 0 },

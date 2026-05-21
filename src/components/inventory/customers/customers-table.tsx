@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '../shared';
 import { customersApi } from '@/lib/api';
 import { toast } from 'sonner';
+import type { Customer, CustomerDetail, SaleRecordSummary } from '@/lib/api.types';
 
 import {
   ChevronDown, ChevronUp, Crown, Sparkles, Shield, ShieldCheck, Phone, MessageCircle, FileText,
@@ -65,19 +66,49 @@ function MiniSpendingChart({ data }: { data: { month: string; amount: number }[]
   );
 }
 
+// 客户列表行扩展类型（含统计字段）
+interface CustomerTableRow extends Customer {
+  totalSpending?: number;
+  orderCount?: number;
+  lastPurchaseDate?: string;
+  daysSinceLastPurchase?: number;
+  avgOrderValue?: number;
+}
+
+// 客户画像详情类型
+interface CustomerProfileDetail extends CustomerDetail {
+  purchaseStats?: {
+    totalSpending: number;
+    orderCount: number;
+    avgOrderValue: number;
+    lastPurchaseDate: string | null;
+    daysSinceLastPurchase: number | null;
+  };
+  monthlySpending?: Array<{ month: string; amount: number }>;
+  topMaterials?: Array<{ name: string; count: number; totalSpending: number }>;
+  vipProgress?: {
+    currentLevel: string;
+    nextLevel: string | null;
+    nextMin: number | null;
+    progressToNext: number;
+  };
+  tags?: string[];
+  notes?: string;
+}
+
 // ========== Customers Table Props ==========
 interface CustomersTableProps {
-  customers: any[];
+  customers: CustomerTableRow[];
   keyword: string;
   showIncompleteOnly: boolean;
   sortBy: string;
   expandedCustomerId: number | null;
   onToggleExpand: (id: number | null) => void;
-  customerDetail: any;
+  customerDetail: CustomerProfileDetail | null;
   detailLoading: boolean;
-  onProfileClick: (customer: any) => void;
-  onEdit: (customer: any) => void;
-  onDelete: (customer: any) => void;
+  onProfileClick: (customer: CustomerTableRow) => void;
+  onEdit: (customer: CustomerTableRow) => void;
+  onDelete: (customer: CustomerTableRow) => void;
   onRefresh: () => void;
 }
 
@@ -252,7 +283,7 @@ export function CustomersTable({
                             {customerDetail.purchaseStats
                               ? formatPrice(customerDetail.purchaseStats.totalSpending)
                               : customerDetail.saleRecords
-                                ? formatPrice(customerDetail.saleRecords.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0))
+                                ? formatPrice(customerDetail.saleRecords.reduce((sum: number, s: SaleRecordSummary) => sum + (s.actualPrice || 0), 0))
                                 : '¥0.00'}
                           </p>
                         </div>
@@ -263,14 +294,14 @@ export function CustomersTable({
                         <div>
                           <p className="text-muted-foreground text-xs">最近购买</p>
                           <p className="font-medium">{customerDetail.purchaseStats?.lastPurchaseDate || (customerDetail.saleRecords?.length > 0
-                            ? customerDetail.saleRecords.sort((a: any, b: any) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())[0]?.saleDate
+                            ? customerDetail.saleRecords.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())[0]?.saleDate
                             : '无')}</p>
                         </div>
                       </div>
                       {customerDetail.saleRecords && customerDetail.saleRecords.length > 0 && (
                         <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
                           <p className="text-xs font-medium text-muted-foreground">购买记录</p>
-                          {customerDetail.saleRecords.slice(0, 10).map((sr: any) => (
+                          {customerDetail.saleRecords.slice(0, 10).map(sr => (
                             <div key={sr.id} className="flex items-center justify-between text-xs p-1.5 bg-muted/50 rounded hover:bg-muted/80 transition-colors gap-2">
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="font-mono shrink-0">{sr.item?.skuCode || sr.saleNo}</span>
@@ -286,13 +317,13 @@ export function CustomersTable({
                       )}
                       {customerDetail.saleRecords && customerDetail.saleRecords.length > 0 && (() => {
                         const sales = customerDetail.saleRecords;
-                        const sorted = [...sales].sort((a: any, b: any) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
+                        const sorted = [...sales].sort((a: SaleRecordSummary, b: SaleRecordSummary) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
                         const firstDate = sorted[0]?.saleDate || '无';
                         const lastDate = sorted[sorted.length - 1]?.saleDate || '无';
-                        const totalSpending = sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0);
+                        const totalSpending = sales.reduce((sum: number, s: SaleRecordSummary) => sum + (s.actualPrice || 0), 0);
                         const avgOrder = totalSpending / sales.length;
                         const typeCount: Record<string, { count: number; name: string }> = {};
-                        sales.forEach((sr: any) => {
+                        sales.forEach((sr: SaleRecordSummary) => {
                           const typeName = sr.item?.material?.name || '其他';
                           if (!typeCount[typeName]) typeCount[typeName] = { count: 0, name: typeName };
                           typeCount[typeName].count++;
@@ -338,9 +369,9 @@ export function CustomersTable({
                   )}
                   {customerDetail?.saleRecords && customerDetail.saleRecords.length >= 2 && (() => {
                     const recentSales = [...customerDetail.saleRecords]
-                      .sort((a: any, b: any) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime())
+                      .sort((a: SaleRecordSummary, b: SaleRecordSummary) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime())
                       .slice(-6)
-                      .map((sr: any) => ({ date: sr.saleDate?.slice(5) || '', amount: sr.actualPrice || 0 }));
+                      .map(sr => ({ date: sr.saleDate?.slice(5) || '', amount: sr.actualPrice || 0 }));
                     return (
                       <div className="mt-2">
                         <p className="text-xs font-medium text-muted-foreground mb-1">近期消费金额</p>

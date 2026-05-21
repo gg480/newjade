@@ -12,23 +12,33 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge } from '../shared';
+import type { ItemSummary, DictTag } from '@/lib/api.types';
+
+// API返回的扩展货品字段
+interface InventoryItem extends ItemSummary {
+  coverImage?: string;
+  materialName?: string;
+  typeName?: string;
+  estimatedCost?: number;
+  ageDays?: number;
+}
 
 type GetTagColorFn = (tagName: string) => string;
 
 interface MobileCardsProps {
-  sortedItems: any[];
+  sortedItems: InventoryItem[];
   selectedIds: Set<number>;
   onToggleSelect: (id: number) => void;
   onOpenLightbox: (itemId: number) => void;
   onSelectItem: (id: number) => void;
   onShowDetailDialog: (id: number) => void;
   onShowEditDialog: (id: number) => void;
-  onShowSaleDialog: (item: any) => void;
-  onShowReturnConfirm: (item: any) => void;
+  onShowSaleDialog: (item: InventoryItem) => void;
+  onShowReturnConfirm: (item: InventoryItem) => void;
   onRestoreToStock: (id: number) => void;
   onDeleteItem: (id: number) => void;
   onNavigateToBatches: () => void;
-  onPrintLabel: (item: any) => void;
+  onPrintLabel: (item: InventoryItem) => void;
   getTagColor: GetTagColorFn;
 }
 
@@ -118,8 +128,8 @@ export default function InventoryMobileCards({
             </div>
             {/* Tags */}
             {(() => {
-              const tgs: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
-              const tagLabels: string[] = tgs.map((t: any) => typeof t === 'string' ? t : t.name || '');
+              const tgs: unknown[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+              const tagLabels: string[] = tgs.map((t: unknown) => typeof t === 'string' ? t : (t as DictTag).name || '');
               if (tagLabels.length === 0) return null;
               return (
                 <div className="flex flex-wrap gap-1">

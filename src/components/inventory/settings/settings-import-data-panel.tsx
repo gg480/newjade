@@ -19,18 +19,33 @@ import {
   Settings,
 } from 'lucide-react';
 
+interface ImportRecordRow {
+  success: boolean;
+  row: number;
+  skuCode: string | null;
+  name: string | null;
+  error: string | null;
+}
+
+interface ImportResultData {
+  successCount: number;
+  failCount: number;
+  total: number;
+  results: ImportRecordRow[];
+}
+
 interface ImportDataPanelProps {
   importType: 'items' | 'sales';
   setImportType: (v: 'items' | 'sales') => void;
   importFile: File | null;
   importing: boolean;
-  importResult: any;
+  importResult: ImportResultData | null;
   autoCreate: boolean;
   setAutoCreate: (v: boolean) => void;
   skipExisting: boolean;
   setSkipExisting: (v: boolean) => void;
   previewData: { headers: string[]; rows: string[][] } | null;
-  onFileSelect: (file: File) => void;
+  onFileSelect: (file: File | null) => void;
   onImport: () => void;
   downloadTemplateUrl: string;
 }
@@ -117,7 +132,7 @@ export default function SettingsImportDataPanel({
                 <span className="text-sm font-medium">{importFile.name}</span>
                 <span className="text-xs text-muted-foreground">({(importFile.size / 1024).toFixed(1)} KB)</span>
               </div>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={() => onFileSelect(null as any)}>×</Button>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={() => onFileSelect(null)}>×</Button>
             </div>
           )}
         </CardContent>
@@ -218,14 +233,14 @@ export default function SettingsImportDataPanel({
                 <span className="text-sm text-muted-foreground">总计: {importResult.total}条</span>
               </div>
             </div>
-            {importResult.results && importResult.results.filter((r: any) => !r.success).length > 0 && (
+            {importResult.results && importResult.results.filter((r: ImportRecordRow) => !r.success).length > 0 && (
               <div>
                 <p className="text-sm font-medium mb-2 text-red-600">失败详情：</p>
                 <div className="max-h-64 overflow-y-auto border rounded-lg custom-scrollbar">
                   <Table>
                     <TableHeader><TableRow><TableHead className="w-14">行号</TableHead><TableHead>SKU</TableHead><TableHead>名称</TableHead><TableHead>失败原因</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {importResult.results.filter((r: any) => !r.success).map((r: any, i: number) => (
+                      {importResult.results.filter((r: ImportRecordRow) => !r.success).map((r: ImportRecordRow, i: number) => (
                         <TableRow key={i}>
                           <TableCell className="text-xs text-center">{r.row}</TableCell>
                           <TableCell className="text-xs font-mono">{r.skuCode || '-'}</TableCell>
@@ -237,8 +252,8 @@ export default function SettingsImportDataPanel({
                   </Table>
                 </div>
                 <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={() => {
-                  const failed = importResult.results.filter((r: any) => !r.success);
-                  const csv = ['行号,SKU,名称,失败原因', ...failed.map((r: any) => `${r.row},${r.skuCode || ''},${r.name || ''},${r.error || ''}`)].join('\n');
+                  const failed = importResult.results.filter((r: ImportRecordRow) => !r.success);
+                  const csv = ['行号,SKU,名称,失败原因', ...failed.map((r: ImportRecordRow) => `${r.row},${r.skuCode || ''},${r.name || ''},${r.error || ''}`)].join('\n');
                   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
@@ -247,16 +262,16 @@ export default function SettingsImportDataPanel({
                 }}><Download className="h-3 w-3 mr-1" />下载失败记录</Button>
               </div>
             )}
-            {importResult.results && importResult.results.filter((r: any) => r.success).length > 0 && (
+            {importResult.results && importResult.results.filter((r: ImportRecordRow) => r.success).length > 0 && (
               <details className="mt-3">
                 <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
-                  查看成功记录（{importResult.results.filter((r: any) => r.success).length}条）
+                  查看成功记录（{importResult.results.filter((r: ImportRecordRow) => r.success).length}条）
                 </summary>
                 <div className="max-h-48 overflow-y-auto border rounded-lg mt-2 custom-scrollbar">
                   <Table>
                     <TableHeader><TableRow><TableHead className="w-14">行号</TableHead><TableHead>SKU</TableHead><TableHead>名称</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {importResult.results.filter((r: any) => r.success).map((r: any, i: number) => (
+                      {importResult.results.filter((r: ImportRecordRow) => r.success).map((r: ImportRecordRow, i: number) => (
                         <TableRow key={i}>
                           <TableCell className="text-xs text-center">{r.row}</TableCell>
                           <TableCell className="text-xs font-mono">{r.skuCode || '-'}</TableCell>

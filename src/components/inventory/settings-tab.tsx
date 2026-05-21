@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, itemsApi, salesApi, batchesApi, customersApi } from '@/lib/api';
+import type { DictMaterial, DictType, DictTag, Supplier, MetalPrice, SysConfig, ImportResult } from '@/lib/api.types';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import { toast } from 'sonner';
 import { formatPrice, EmptyState, LoadingSkeleton } from './shared';
@@ -141,8 +142,8 @@ function SettingsTab() {
   const [editTag, setEditTag] = useState<any>(null);
 
   // Metal reprice states
-  const [repricePreview, setRepricePreview] = useState<any>(null);
-  const [priceHistory, setPriceHistory] = useState<any[]>([]);
+  const [repricePreview, setRepricePreview] = useState<({ affectedItems: Array<{ itemId: number; skuCode: string; name?: string; oldPrice: number; newPrice: number }>; oldPrice: number; newPrice: number } | RepricePreview) & { materialId?: number; newPrice?: number } | null>(null);
+  const [priceHistory, setPriceHistory] = useState<MetalPrice[]>([]);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
   const [priceHistoryMaterial, setPriceHistoryMaterial] = useState<string>('');
 
@@ -251,7 +252,7 @@ function SettingsTab() {
           const sizeRes = await fetch('/api/config');
           const sizeJson = await sizeRes.json();
           if (sizeJson.code === 0) {
-            const sizeStr = sizeJson.data?.find?.((c: any) => c.key === 'db_size')?.value;
+            const sizeStr = sizeJson.data?.find?.((c: SysConfig) => c.key === 'db_size')?.value;
             if (sizeStr) setDbSize(sizeStr);
           }
         } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
@@ -296,11 +297,11 @@ function SettingsTab() {
   useEffect(() => {
     if (!materials.length) return;
     const mid = tagMaterialFilter ? parseInt(tagMaterialFilter, 10) : undefined;
-    dictsApi.getTags(undefined, true, mid).then((tg: any[]) => setTags(tg || [])).catch(() => {});
+    dictsApi.getTags(undefined, true, mid).then((tg: DictTag[]) => setTags(tg || [])).catch(() => {});
   }, [tagMaterialFilter, materials.length]);
 
   async function toggleMaterialActive(id: number, isActive: boolean) {
-    try { await dictsApi.updateMaterial(id, { isActive: !isActive }); setMaterials(m => m.map(x => x.id === id ? { ...x, isActive: !isActive } : x)); toast.success(isActive ? '已停用' : '已启用'); } catch (e: any) { toast.error(e.message); }
+    try { await dictsApi.updateMaterial(id, { isActive: !isActive }); setMaterials(m => m.map(x => x.id === id ? { ...x, isActive: !isActive } : x)); toast.success(isActive ? '已停用' : '已启用'); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '操作失败'); }
   }
 
   function persistLocalSystemConfig(nextConfig: typeof defaultSettings) {
@@ -312,7 +313,7 @@ function SettingsTab() {
   }
 
   async function updateConfig(key: string, value: string) {
-    try { await configApi.updateConfig(key, value); setConfigs(c => c.map(x => x.key === key ? { ...x, value } : x)); setEditConfigs(prev => ({ ...prev, [key]: value })); toast.success('配置已更新'); } catch (e: any) { toast.error(e.message); }
+    try { await configApi.updateConfig(key, value); setConfigs(c => c.map(x => x.key === key ? { ...x, value } : x)); setEditConfigs(prev => ({ ...prev, [key]: value })); toast.success('配置已更新'); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '操作失败'); }
   }
 
   // Supplier handlers
@@ -321,17 +322,17 @@ function SettingsTab() {
   }
 
   async function handleCreateSupplier() {
-    try { await suppliersApi.createSupplier(supplierForm); toast.success('供应商创建成功'); setShowCreateSupplier(false); setSupplierForm({ name: '', contact: '', phone: '', notes: '' }); fetchSuppliers(); } catch (e: any) { toast.error(e.message || '创建失败'); }
+    try { await suppliersApi.createSupplier(supplierForm); toast.success('供应商创建成功'); setShowCreateSupplier(false); setSupplierForm({ name: '', contact: '', phone: '', notes: '' }); fetchSuppliers(); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '创建失败'); }
   }
 
   async function handleUpdateSupplier() {
     if (!editSupplier) return;
-    try { await suppliersApi.updateSupplier(editSupplier.id, supplierForm); toast.success('供应商更新成功'); setEditSupplier(null); setSupplierForm({ name: '', contact: '', phone: '', notes: '' }); fetchSuppliers(); } catch (e: any) { toast.error(e.message || '更新失败'); }
+    try { await suppliersApi.updateSupplier(editSupplier.id, supplierForm); toast.success('供应商更新成功'); setEditSupplier(null); setSupplierForm({ name: '', contact: '', phone: '', notes: '' }); fetchSuppliers(); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '更新失败'); }
   }
 
   async function handleDeleteSupplier() {
     if (!deleteSupplier) return;
-    try { await suppliersApi.deleteSupplier(deleteSupplier.id); toast.success('供应商已删除'); setDeleteSupplier(null); fetchSuppliers(); } catch (e: any) { toast.error(e.message || '删除失败'); }
+    try { await suppliersApi.deleteSupplier(deleteSupplier.id); toast.success('供应商已删除'); setDeleteSupplier(null); fetchSuppliers(); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '删除失败'); }
   }
 
   // Data cleanup handlers
@@ -367,22 +368,22 @@ function SettingsTab() {
     }
   }
 
-  function openEditSupplierDialog(s: any) {
+  function openEditSupplierDialog(s: Supplier) {
     setEditSupplier(s);
     setSupplierForm({ name: s.name || '', contact: s.contact || '', phone: s.phone || '', notes: s.notes || '' });
   }
 
   // Dict handlers
   async function handleCreateMaterial() {
-    try { await dictsApi.createMaterial({ ...materialForm, costPerGram: materialForm.costPerGram ? parseFloat(materialForm.costPerGram) : undefined }); toast.success('材质创建成功'); setShowCreateMaterial(false); setMaterialForm({ name: '', category: '', subType: '', origin: '', costPerGram: '' }); const m = await dictsApi.getMaterials(true); setMaterials(m || []); } catch (e: any) { toast.error(e.message || '创建失败'); }
+    try { await dictsApi.createMaterial({ ...materialForm, costPerGram: materialForm.costPerGram ? parseFloat(materialForm.costPerGram) : undefined }); toast.success('材质创建成功'); setShowCreateMaterial(false); setMaterialForm({ name: '', category: '', subType: '', origin: '', costPerGram: '' }); const m = await dictsApi.getMaterials(true); setMaterials(m || []); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '创建失败'); }
   }
 
   async function handleUpdateMaterial() {
     if (!editMaterial) return;
-    try { await dictsApi.updateMaterial(editMaterial.id, { ...materialForm, costPerGram: materialForm.costPerGram ? parseFloat(materialForm.costPerGram) : undefined }); toast.success('材质更新成功'); setEditMaterial(null); setMaterialForm({ name: '', category: '', subType: '', origin: '', costPerGram: '' }); const m = await dictsApi.getMaterials(true); setMaterials(m || []); } catch (e: any) { toast.error(e.message || '更新失败'); }
+    try { await dictsApi.updateMaterial(editMaterial.id, { ...materialForm, costPerGram: materialForm.costPerGram ? parseFloat(materialForm.costPerGram) : undefined }); toast.success('材质更新成功'); setEditMaterial(null); setMaterialForm({ name: '', category: '', subType: '', origin: '', costPerGram: '' }); const m = await dictsApi.getMaterials(true); setMaterials(m || []); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '更新失败'); }
   }
 
-  function openEditMaterialDialog(m: any) {
+  function openEditMaterialDialog(m: DictMaterial) {
     setEditMaterial(m);
     setMaterialForm({ name: m.name || '', category: m.category || '', subType: m.subType || '', origin: m.origin || '', costPerGram: m.costPerGram ? String(m.costPerGram) : '' });
   }
@@ -393,7 +394,7 @@ function SettingsTab() {
       toast.success('器型创建成功');
       setShowCreateType(false); setTypeForm({ name: '', specFields: {} });
       const t = await dictsApi.getTypes(true); setTypes(t || []);
-    } catch (e: any) { toast.error(e.message || '创建失败'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '创建失败'); }
   }
 
   async function handleUpdateType() {
@@ -403,7 +404,7 @@ function SettingsTab() {
       toast.success('器型更新成功');
       setEditType(null); setTypeForm({ name: '', specFields: {} });
       const t = await dictsApi.getTypes(true); setTypes(t || []);
-    } catch (e: any) { toast.error(e.message || '更新失败'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '更新失败'); }
   }
 
   async function handleDeleteType() {
@@ -413,46 +414,46 @@ function SettingsTab() {
       toast.success('器型已删除/停用');
       setDeleteType(null);
       const t = await dictsApi.getTypes(true); setTypes(t || []);
-    } catch (e: any) { toast.error(e.message || '删除失败'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '删除失败'); }
   }
 
-  function openEditTypeDialog(t: any) {
+  function openEditTypeDialog(t: DictType) {
     setEditType(t);
     setTypeForm({ name: t.name || '', specFields: parseSpecFields(t.specFields) });
   }
 
   async function handleCreateTag() {
     const mid = tagMaterialFilter ? parseInt(tagMaterialFilter, 10) : undefined;
-    try { await dictsApi.createTag(tagForm); toast.success('标签创建成功'); setShowCreateTag(false); setTagForm({ name: '', groupName: '' }); const tg = await dictsApi.getTags(undefined, true, mid); setTags(tg || []); } catch (e: any) { toast.error(e.message || '创建失败'); }
+    try { await dictsApi.createTag(tagForm); toast.success('标签创建成功'); setShowCreateTag(false); setTagForm({ name: '', groupName: '' }); const tg = await dictsApi.getTags(undefined, true, mid); setTags(tg || []); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '创建失败'); }
   }
 
   async function handleUpdateTag() {
     if (!editTag) return;
     const mid = tagMaterialFilter ? parseInt(tagMaterialFilter, 10) : undefined;
-    try { await dictsApi.updateTag(editTag.id, { name: tagForm.name, groupName: tagForm.groupName || null }); toast.success('标签更新成功'); setEditTag(null); setTagForm({ name: '', groupName: '' }); const tg = await dictsApi.getTags(undefined, true, mid); setTags(tg || []); } catch (e: any) { toast.error(e.message || '更新失败'); }
+    try { await dictsApi.updateTag(editTag.id, { name: tagForm.name, groupName: tagForm.groupName || null }); toast.success('标签更新成功'); setEditTag(null); setTagForm({ name: '', groupName: '' }); const tg = await dictsApi.getTags(undefined, true, mid); setTags(tg || []); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '更新失败'); }
   }
 
   async function toggleTagActive(id: number, isActive: boolean) {
-    try { await dictsApi.updateTag(id, { isActive: !isActive }); setTags(tg => tg.map(x => x.id === id ? { ...x, isActive: !isActive } : x)); toast.success(isActive ? '已停用' : '已启用'); } catch (e: any) { toast.error(e.message); }
+    try { await dictsApi.updateTag(id, { isActive: !isActive }); setTags(tg => tg.map(x => x.id === id ? { ...x, isActive: !isActive } : x)); toast.success(isActive ? '已停用' : '已启用'); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '操作失败'); }
   }
 
-  function openEditTagDialog(tag: any) {
+  function openEditTagDialog(tag: DictTag) {
     setEditTag(tag);
     setTagForm({ name: tag.name || '', groupName: tag.groupName || '' });
   }
 
   // Metal reprice handlers
   async function handlePreviewReprice(materialId: number, newPrice: number) {
-    try { const result = await metalApi.previewReprice({ materialId, newPricePerGram: newPrice }); setRepricePreview({ ...result, materialId, newPrice }); } catch (e: any) { toast.error(e.message || '预览失败'); }
+    try { const result = await metalApi.previewReprice({ materialId, newPricePerGram: newPrice }); setRepricePreview({ ...result, materialId, newPrice }); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '预览失败'); }
   }
 
   async function handleConfirmReprice() {
     if (!repricePreview) return;
-    try { await metalApi.confirmReprice({ materialId: repricePreview.materialId, newPricePerGram: repricePreview.newPrice }); toast.success('调价已确认，相关货品已更新'); setRepricePreview(null); const m = await dictsApi.getMaterials(true); setMaterials(m || []); } catch (e: any) { toast.error(e.message || '确认调价失败'); }
+    try { await metalApi.confirmReprice({ materialId: repricePreview.materialId, newPricePerGram: repricePreview.newPrice }); toast.success('调价已确认，相关货品已更新'); setRepricePreview(null); const m = await dictsApi.getMaterials(true); setMaterials(m || []); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '确认调价失败'); }
   }
 
   async function handlePriceHistory(materialId: number, materialName: string) {
-    try { const h = await metalApi.getPriceHistory({ material_id: materialId }); setPriceHistory(h || []); setPriceHistoryMaterial(materialName); setShowPriceHistory(true); } catch (e: any) { toast.error(e.message || '加载历史失败'); }
+    try { const h = await metalApi.getPriceHistory({ material_id: materialId }); setPriceHistory(h || []); setPriceHistoryMaterial(materialName); setShowPriceHistory(true); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '加载历史失败'); }
   }
 
   // Import handlers
@@ -485,7 +486,7 @@ function SettingsTab() {
         : await importApi.importSales(importFile, { autoCreate });
       setImportResult(result);
       toast.success(`导入完成: 成功${result.successCount}条, 失败${result.failCount}条`);
-    } catch (e: any) { toast.error(e.message || '导入失败'); } finally { setImporting(false); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '导入失败'); } finally { setImporting(false); }
   }
 
   // CSV quick import handler
@@ -509,14 +510,15 @@ function SettingsTab() {
       const result = await importApi.importCsvItems(csvFile);
       setCsvResult(result);
       const parts = [`成功${result.success}件`];
-      if ((result as any).duplicated > 0) parts.push(`重复跳过${(result as any).duplicated}件`);
+      const resultExt = result as ImportResult & { duplicated?: number };
+      if (resultExt.duplicated > 0) parts.push(`重复跳过${resultExt.duplicated}件`);
       if (result.skipped > 0) parts.push(`跳过${result.skipped}行`);
       if (result.errors.length === 0) {
         toast.success(`CSV导入完成: ${parts.join('，')}`);
       } else {
         toast.warning(`CSV导入完成: ${parts.join('，')}，${result.errors.length}行错误`);
       }
-    } catch (e: any) { toast.error(e.message || 'CSV导入失败'); } finally { setCsvImporting(false); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'CSV导入失败'); } finally { setCsvImporting(false); }
   }
 
   // Backup download handler
@@ -542,7 +544,7 @@ function SettingsTab() {
       setLastBackupFromStorage(nowDisplay);
       localStorage.setItem('last_backup_time', new Date().toISOString());
       toast.success('备份下载完成');
-    } catch (e: any) { toast.error(e.message || '备份下载失败'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '备份下载失败'); }
   }
 
   // Config save handler
@@ -572,12 +574,12 @@ function SettingsTab() {
 
   // Type toggle handler (for panel callback)
   async function handleToggleType(id: number) {
-    try { await dictsApi.deleteType(id); toast.success('器型已删除/停用'); const tp = await dictsApi.getTypes(true); setTypes(tp || []); } catch (e: any) { toast.error(e.message); }
+    try { await dictsApi.deleteType(id); toast.success('器型已删除/停用'); const tp = await dictsApi.getTypes(true); setTypes(tp || []); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '操作失败'); }
   }
 
   if (loading) return <LoadingSkeleton />;
 
-  const tagGroups = tags.reduce((acc: any, tag: any) => {
+  const tagGroups = tags.reduce((acc: Record<string, DictTag[]>, tag: DictTag) => {
     const g = tag.groupName || '未分组';
     if (!acc[g]) acc[g] = [];
     acc[g].push(tag);
@@ -987,7 +989,7 @@ function SettingsTab() {
               <span className="text-sm">状态</span>
               <Button size="sm" variant={editType?.isActive ? 'outline' : 'default'} className={editType?.isActive ? 'text-orange-600' : 'bg-emerald-600 hover:bg-emerald-700'} onClick={async () => {
                 if (!editType) return;
-                try { await dictsApi.deleteType(editType.id); toast.success(editType.isActive ? '已停用' : '已启用'); const tp = await dictsApi.getTypes(true); setTypes(tp || []); setEditType(null); } catch (e: any) { toast.error(e.message); }
+                try { await dictsApi.deleteType(editType.id); toast.success(editType.isActive ? '已停用' : '已启用'); const tp = await dictsApi.getTypes(true); setTypes(tp || []); setEditType(null); } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '操作失败'); }
               }}>{editType?.isActive ? '停用' : '启用'}</Button>
             </div>
           </div>
@@ -1092,7 +1094,7 @@ function SettingsTab() {
                   <Table>
                     <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>名称</TableHead><TableHead className="text-right">原价</TableHead><TableHead className="text-right">新价</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {repricePreview.affectedItems.map((item: any) => (
+                      {repricePreview.affectedItems.map((item: { itemId: number; skuCode: string; name?: string; oldPrice: number; newPrice: number }) => (
                         <TableRow key={item.itemId}>
                           <TableCell className="font-mono text-xs">{item.skuCode}</TableCell>
                           <TableCell className="text-sm">{item.name || '-'}</TableCell>
@@ -1132,7 +1134,7 @@ function SettingsTab() {
                 setShowRestoreConfirm(false);
                 setRestoreFile(null);
                 setTimeout(() => window.location.reload(), 3000);
-              } catch (e: any) { toast.error(e.message || '恢复失败'); } finally { setRestoring(false); }
+              } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '恢复失败'); } finally { setRestoring(false); }
             }} className="bg-red-600 hover:bg-red-700" disabled={restoring}>
               {restoring && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               确认恢复
@@ -1152,7 +1154,7 @@ function SettingsTab() {
               <Table>
                 <TableHeader><TableRow><TableHead>日期</TableHead><TableHead className="text-right">单价(元/克)</TableHead><TableHead>操作人</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {priceHistory.map((h: any, i: number) => (
+                  {priceHistory.map((h: MetalPrice, i: number) => (
                     <TableRow key={i}>
                       <TableCell className="text-sm">{h.effectiveDate || h.createdAt?.slice(0, 10) || '-'}</TableCell>
                       <TableCell className="text-right font-medium text-emerald-600">¥{h.pricePerGram}</TableCell>

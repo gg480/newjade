@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { itemsApi, dictsApi } from '@/lib/api';
+import type { ItemSummary, DictType, DictTag } from '@/lib/api.types';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge } from './shared';
 import { parseSpecFields } from './settings-tab';
 import EditBasicFields from './item-edit/edit-basic-fields';
@@ -16,9 +18,10 @@ import { Copy } from 'lucide-react';
 
 // ========== Item Edit Dialog ==========
 function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: number | null; open: boolean; onOpenChange: (o: boolean) => void; onSuccess: () => void }) {
-  const [item, setItem] = useState<any>(null);
-  const [types, setTypes] = useState<any[]>([]);
-  const [tags, setTags] = useState<any[]>([]);
+  const { handleError } = useErrorHandler();
+  const [item, setItem] = useState<ItemSummary | null>(null);
+  const [types, setTypes] = useState<DictType[]>([]);
+  const [tags, setTags] = useState<DictTag[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, boolean>>({});
@@ -50,10 +53,10 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   useEffect(() => {
     if (open && itemId) {
       setLoading(true);
-      itemsApi.getItem(itemId).then((data: any) => {
+      itemsApi.getItem(itemId).then((data: ItemSummary) => {
         setItem(data);
         setItemMaterialId(data.materialId || null);
-        const specObj: any = data.spec || {};
+        const specObj = data.spec || {};
         setForm({
           name: data.name || '',
           sellingPrice: data.sellingPrice || 0,
@@ -62,7 +65,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
           certNo: data.certNo || '',
           notes: data.notes || '',
           origin: data.origin || '',
-          tagIds: data.tags ? data.tags.map((t: any) => t.id) : [],
+          tagIds: data.tags ? data.tags.map((t: DictTag) => t.id) : [],
           weight: specObj.weight || '',
           metalWeight: specObj.metalWeight || '',
           size: specObj.size || '',
@@ -88,7 +91,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     }
   }, [item?.id]);
 
-  const selectedType = types.find((t: any) => String(t.id) === String(item?.typeId));
+  const selectedType = types.find((t: DictType) => String(t.id) === String(item?.typeId));
   const typeSpecFields = parseSpecFields(selectedType?.specFields);
   // When no type is selected, show all spec fields; otherwise show only type-specific fields
   const ALL_SPEC_FIELDS: Record<string, { required: boolean }> = {
@@ -109,7 +112,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     if (!form.counter) return '请输入柜台号';
     // 器型必填规格字段
     for (const field of specFieldKeys) {
-      if (specFieldsObj[field]?.required && !(form as any)[field]) {
+      if (specFieldsObj[field]?.required && !form[field as keyof typeof form]) {
         const label = SPEC_FIELD_LABEL_MAP[field] || field;
         return `请输入${label}`;
       }
@@ -120,7 +123,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   // Check if a field has changed from original
   function isFieldChanged(field: string) {
     if (!originalForm) return false;
-    return String((form as any)[field]) !== String((originalForm as any)[field]);
+    return String(form[field as keyof typeof form]) !== String(originalForm[field as keyof typeof originalForm]);
   }
 
   // Count how many fields have changed
@@ -132,7 +135,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
       if (key === 'tagIds') {
         if (JSON.stringify(form.tagIds) !== JSON.stringify(originalForm.tagIds)) count++;
       } else {
-        if (String((form as any)[key]) !== String((originalForm as any)[key])) count++;
+        if (String(form[key]) !== String(originalForm[key])) count++;
       }
     }
     return count;
@@ -142,7 +145,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     return getChangedFieldsCount() > 0;
   }
 
-  function onFieldChange(field: string, value: any) {
+  function onFieldChange(field: keyof typeof form, value: string | number | number[]) {
     setForm(f => ({ ...f, [field]: value }));
   }
 
@@ -158,8 +161,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
 
     setSaving(true);
     try {
-      const spec: Record<string, any> = {};
-      specFieldKeys.forEach(f => { if ((form as any)[f]) spec[f] = (form as any)[f]; });
+      const spec: Record<string, string | number> = {};
+      specFieldKeys.forEach(f => { if (form[f as keyof typeof form]) spec[f] = String(form[f as keyof typeof form]); });
       await itemsApi.updateItem(itemId, {
         name: form.name || undefined,
         sellingPrice: form.sellingPrice,
@@ -174,8 +177,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
       toast.success('货品更新成功！');
       onOpenChange(false);
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.message || '更新失败');
+    } catch (error) {
+      handleError(error, { title: '更新失败' });
     } finally {
       setSaving(false);
     }
@@ -185,8 +188,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     if (!item) return;
     setSaving(true);
     try {
-      const spec: Record<string, any> = {};
-      specFieldKeys.forEach(f => { if ((form as any)[f]) spec[f] = (form as any)[f]; });
+      const spec: Record<string, string | number> = {};
+      specFieldKeys.forEach(f => { if (form[f as keyof typeof form]) spec[f] = String(form[f as keyof typeof form]); });
       await itemsApi.createItem({
         materialId: item.materialId,
         typeId: item.typeId || undefined,
@@ -206,8 +209,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
       toast.success('已复制为新货品！');
       onOpenChange(false);
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.message || '复制失败');
+    } catch (error) {
+      handleError(error, { title: '复制失败' });
     } finally {
       setSaving(false);
     }
@@ -220,8 +223,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
 
     setSaving(true);
     try {
-      const spec: Record<string, any> = {};
-      specFieldKeys.forEach(f => { if ((form as any)[f]) spec[f] = (form as any)[f]; });
+      const spec: Record<string, string | number> = {};
+      specFieldKeys.forEach(f => { if (form[f as keyof typeof form]) spec[f] = String(form[f as keyof typeof form]); });
       await itemsApi.updateItem(itemId, {
         name: form.name || undefined,
         sellingPrice: form.sellingPrice,
@@ -236,8 +239,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
       toast.success('货品更新成功！');
       onSuccess();
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e.message || '更新失败');
+    } catch (error) {
+      handleError(error, { title: '更新失败' });
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, salesApi, dictsApi, batchesApi, exportApi, customersApi } from '@/lib/api';
+import type { ItemSummary, DictMaterial, DictType, DictTag, Batch, Customer, PaginatedData, ItemsQueryParams, CreateSaleBody, BatchPriceAdjustResult } from '@/lib/api.types';
 import { CustomerSearchSelect } from './customer-search-select';
 import { itemsApiEnhanced } from '@/lib/api';
 import { toast } from 'sonner';
@@ -68,16 +69,16 @@ function getTagColor(tagName: string): string {
 // ========== Inventory Tab ==========
 function InventoryTab() {
   const { setActiveTab } = useAppStore();
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ItemSummary[]>([]);
   const [summary, setSummary] = useState({
     statusCounts: { in_stock: 0, sold: 0, returned: 0 },
     totalCost: 0,
     totalMarketValue: 0,
   });
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [types, setTypes] = useState<any[]>([]);
-  const [tags, setTags] = useState<any[]>([]);
-  const [allBatches, setAllBatches] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<DictMaterial[]>([]);
+  const [types, setTypes] = useState<DictType[]>([]);
+  const [tags, setTags] = useState<DictTag[]>([]);
+  const [allBatches, setAllBatches] = useState<Batch[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' });
@@ -94,14 +95,14 @@ function InventoryTab() {
   const [showCreate, setShowCreate] = useState(false);
   const [detailItemId, setDetailItemId] = useState<number | null>(null);
   const [editItemId, setEditItemId] = useState<number | null>(null);
-  const [returnConfirmItem, setReturnConfirmItem] = useState<{ open: boolean; item: any }>({ open: false, item: null });
-  const [saleDialog, setSaleDialog] = useState<{ open: boolean; item: any }>({ open: false, item: null });
+  const [returnConfirmItem, setReturnConfirmItem] = useState<{ open: boolean; item: ItemSummary | null }>({ open: false, item: null });
+  const [saleDialog, setSaleDialog] = useState<{ open: boolean; item: ItemSummary | null }>({ open: false, item: null });
   const [saleForm, setSaleForm] = useState({ actualPrice: 0, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' });
   const [scanSku, setScanSku] = useState('');
   const [scanLoading, setScanLoading] = useState(false);
-  const [printLabelItem, setPrintLabelItem] = useState<any>(null);
+  const [printLabelItem, setPrintLabelItem] = useState<ItemSummary | null>(null);
   const [showScanner, setShowScanner] = useState(false);
-  const [scannerComponent, setScannerComponent] = useState<React.ComponentType<any> | null>(null);
+  const [scannerComponent, setScannerComponent] = useState<React.ComponentType<object> | null>(null);
 
   // Open scanner - dynamic import of local barcode-scanner component
   async function openScanner() {
@@ -126,7 +127,7 @@ function InventoryTab() {
 
   // Batch sell form
   const [batchSellForm, setBatchSellForm] = useState({ channel: 'store', saleDate: new Date().toISOString().slice(0, 10), useCurrentPrice: true, customerId: '' });
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Batch delete options
   const [batchDeleteHard, setBatchDeleteHard] = useState(false);
@@ -179,7 +180,7 @@ function InventoryTab() {
       console.error('加载标签失败:', error);
     }
   };
-  useEffect(() => { customersApi.getCustomers().then((d: any) => setCustomers(d?.items || d || [])).catch(() => {}); }, []);
+  useEffect(() => { customersApi.getCustomers().then((d: PaginatedData<Customer>) => setCustomers(d?.items || d || [])).catch(() => {}); }, []);
   useEffect(() => { batchesApi.getBatches({ page: 1, size: 1000 }).then(d => setAllBatches(d.items || [])).catch(() => {}); }, []);
 
   // Listen for escape key to close detail panel
@@ -248,7 +249,7 @@ function InventoryTab() {
       result = result.filter(i => String(i.typeId) === filters.typeId);
     }
     if (filters.tagId) {
-      result = result.filter(i => i.tags?.some((t: any) => String(t.id) === filters.tagId));
+      result = result.filter(i => i.tags?.some((t: DictTag) => String(t.id) === filters.tagId));
     }
     return result;
   }, [items, activeStatuses, filters.minPrice, filters.maxPrice, filters.purchaseStartDate, filters.purchaseEndDate, filters.typeId, filters.tagId]);
@@ -286,7 +287,7 @@ function InventoryTab() {
   }, [filteredItems, sortBy, sortOrder]);
 
   // 根据大类筛选材质
-  const filteredMaterials = materials.filter((m: any) => {
+  const filteredMaterials = materials.filter((m: DictMaterial) => {
     if (!filters.materialCategory) return true;
     return m.category === filters.materialCategory;
   });
@@ -314,7 +315,7 @@ function InventoryTab() {
       console.log('[InventoryTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
       setLoading(true);
       try {
-        const params: any = { page: pagination.page, size: pagination.size };
+        const params: ItemsQueryParams = { page: pagination.page, size: pagination.size };
         if (filters.materialId) params.material_id = filters.materialId;
         if (filters.typeId) params.type_id = filters.typeId;
         if (filters.tagId) params.tag_id = filters.tagId;
@@ -372,12 +373,12 @@ function InventoryTab() {
   // ========== Image Lightbox Gallery ==========
   const galleryImages = useMemo(() => {
     return sortedItems
-      .filter((item: any) => item.coverImage)
-      .map((item: any, idx: number) => ({ id: idx, url: item.coverImage, isCover: true, itemId: item.id, skuCode: item.skuCode }));
+      .filter((item: ItemSummary) => item.coverImage)
+      .map((item: ItemSummary, idx: number) => ({ id: idx, url: item.coverImage, isCover: true, itemId: item.id, skuCode: item.skuCode }));
   }, [sortedItems]);
 
   function openLightbox(itemId: number) {
-    const idx = galleryImages.findIndex((img: any) => img.itemId === itemId);
+    const idx = galleryImages.findIndex((img: { itemId: number }) => img.itemId === itemId);
     if (idx >= 0) {
       setLightboxImages(galleryImages);
       setLightboxIndex(idx);
@@ -396,13 +397,13 @@ function InventoryTab() {
       return;
     }
     try {
-      const salePayload: any = { itemId: saleDialog.item.id, actualPrice: saleForm.actualPrice, channel: saleForm.channel, saleDate: saleForm.saleDate, note: saleForm.note };
+      const salePayload: CreateSaleBody = { itemId: saleDialog.item.id, actualPrice: saleForm.actualPrice, channel: saleForm.channel, saleDate: saleForm.saleDate, note: saleForm.note };
       if (saleForm.customerId) salePayload.customerId = Number(saleForm.customerId);
       await salesApi.createSale(salePayload);
       toast.success('出库成功！');
       setSaleDialog({ open: false, item: null });
       refresh();
-    } catch (e: any) { toast.error(e.message || '出库失败'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '出库失败'); }
   }
 
   async function handleDelete(id: number) {
@@ -418,8 +419,8 @@ function InventoryTab() {
       toast.success('删除成功');
       setDeleteConfirmItem(null);
       refresh();
-    } catch (e: any) {
-      toast.error(e.message || '删除失败');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '删除失败');
     }
   }
 
@@ -430,7 +431,7 @@ function InventoryTab() {
       toast.success('退货成功！');
       setReturnConfirmItem({ open: false, item: null });
       refresh();
-    } catch (e: any) { toast.error(e.message || '退货失败'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '退货失败'); }
   }
 
   async function handleRestoreToStock(itemId?: number) {
@@ -603,7 +604,7 @@ function InventoryTab() {
     setBatchProgress({ current: 0, total: selectedInStockItems.length });
     let successCount = 0;
     let failCount = 0;
-    const selectedCustomer = customers.find((c: any) => String(c.id) === batchSellForm.customerId);
+    const selectedCustomer = customers.find((c: Customer) => String(c.id) === batchSellForm.customerId);
     const customerName = selectedCustomer?.name || '';
     for (let i = 0; i < selectedInStockItems.length; i++) {
       const item = selectedInStockItems[i];
@@ -692,9 +693,9 @@ function InventoryTab() {
       } else {
         toast.success(`批量调价成功！共 ${result.success} 件`);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       setBatchLoading(false);
-      toast.error(e.message || '批量调价失败');
+      toast.error(e instanceof Error ? e.message : '批量调价失败');
     }
   }
 
@@ -843,8 +844,8 @@ function InventoryTab() {
             onSelectItem={(id) => setSelectedItemId(id)}
             onShowDetailDialog={setDetailItemId}
             onShowEditDialog={setEditItemId}
-            onShowSaleDialog={(item: any) => { setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' }); }}
-            onShowReturnConfirm={(item: any) => setReturnConfirmItem({ open: true, item })}
+            onShowSaleDialog={(item: ItemSummary) => { setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' }); }}
+            onShowReturnConfirm={(item: ItemSummary) => setReturnConfirmItem({ open: true, item })}
             onRestoreToStock={handleRestoreToStock}
             onDeleteItem={handleDelete}
             onNavigateToBatches={() => setActiveTab('batches')}
@@ -859,12 +860,12 @@ function InventoryTab() {
           onSelectItem={(id) => setSelectedItemId(id)}
           onShowDetailDialog={setDetailItemId}
           onShowEditDialog={setEditItemId}
-          onShowSaleDialog={(item: any) => { setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' }); }}
-          onShowReturnConfirm={(item: any) => setReturnConfirmItem({ open: true, item })}
+          onShowSaleDialog={(item: ItemSummary) => { setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' }); }}
+          onShowReturnConfirm={(item: ItemSummary) => setReturnConfirmItem({ open: true, item })}
           onRestoreToStock={handleRestoreToStock}
           onDeleteItem={handleDelete}
           onNavigateToBatches={() => setActiveTab('batches')}
-          onPrintLabel={(item: any) => setPrintLabelItem(item)}
+          onPrintLabel={(item: ItemSummary) => setPrintLabelItem(item)}
           getTagColor={getTagColor}
         />
         </>
@@ -1008,7 +1009,7 @@ function InventoryTab() {
                 if (batchSellForm.useCurrentPrice) return sum + (i.sellingPrice || 0);
                 return sum + (batchSellPrices[i.id] ?? (i.sellingPrice || 0));
               }, 0);
-              const selectedCustomer = customers.find((c: any) => String(c.id) === batchSellForm.customerId);
+              const selectedCustomer = customers.find((c: Customer) => String(c.id) === batchSellForm.customerId);
               return (
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg text-sm">
                   <p className="text-muted-foreground">
@@ -1271,7 +1272,7 @@ function InventoryTab() {
         sortedItems={sortedItems}
         onClose={() => setSelectedItemId(null)}
         onEdit={(id: number) => { setSelectedItemId(null); setEditItemId(id); }}
-        onQuickSell={(item: any) => { setSelectedItemId(null); setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '' }); }}
+        onQuickSell={(item: ItemSummary) => { setSelectedItemId(null); setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '' }); }}
         onRestoreToStock={handleRestoreToStock}
         getTagColor={getTagColor}
       />

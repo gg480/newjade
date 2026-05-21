@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import SpecFieldsRenderer from './spec-fields-renderer';
+import type { DictMaterial, DictType, DictTag, Batch } from '@/lib/api.types';
 
 interface BatchItemFormProps {
   form: {
@@ -25,18 +26,18 @@ interface BatchItemFormProps {
   setBatchMaterialCategory: (v: string) => void;
   batchMaterialSubType: string;
   setBatchMaterialSubType: (v: string) => void;
-  batches: any[];
+  batches: Batch[];
   batchSubTypes: string[];
-  types: any[];
-  tags: any[];
-  materials: any[];
+  types: DictType[];
+  tags: DictTag[];
+  materials: DictMaterial[];
   currentMaterialId: number | null;
   specFieldsObj: Record<string, { required: boolean }>;
   specFieldKeys: string[];
   customFields: Record<string, boolean>;
   setCustomFields: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setTagMismatch: React.Dispatch<React.SetStateAction<{ mode: 'high_value' | 'batch'; invalidTagIds: number[]; invalidTagNames: string[] } | null>>;
-  selectedBatch: any;
+  selectedBatch: Batch | null;
 }
 
 function BatchItemForm({
@@ -53,12 +54,12 @@ function BatchItemForm({
     setForm(f => ({ ...f, tagIds: ids }));
   }
 
-  const activeTags = tags.filter((t: any) => t.isActive && t.groupName !== '器型风格');
-  const visibleTagIdSet = new Set(activeTags.map((t: any) => t.id));
+  const activeTags = tags.filter(t => t.isActive && t.groupName !== '器型风格');
+  const visibleTagIdSet = new Set(activeTags.map(t => t.id));
   const invalidSelected = form.tagIds.filter((id: number) => !visibleTagIdSet.has(id));
 
   // Tags - Grouped
-  const groups = activeTags.reduce((acc: any, tag: any) => {
+  const groups = activeTags.reduce((acc: Record<string, DictTag[]>, tag: DictTag) => {
     const g = tag.groupName || '未分组';
     if (!acc[g]) acc[g] = [];
     acc[g].push(tag);
@@ -66,17 +67,17 @@ function BatchItemForm({
   }, {});
   const groupKeys = Object.keys(groups);
   const singleGroup = groupKeys.length === 1 && groupKeys[0] === '未分组';
-  const mat = materials.find((m: any) => m.id === currentMaterialId);
+  const mat = materials.find(m => m.id === currentMaterialId);
 
   return (
     <>
       <div className="space-y-1"><Label className="text-xs">所属批次 <span className="text-red-500">*</span></Label>
         <Select value={form.batchId} onValueChange={v => setForm(f => ({ ...f, batchId: v }))}>
           <SelectTrigger className="h-9"><SelectValue placeholder="选择批次" /></SelectTrigger>
-          <SelectContent>{batches.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode} - {b.materialName}</SelectItem>)}</SelectContent>
+          <SelectContent>{batches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode} - {b.materialName}</SelectItem>)}</SelectContent>
         </Select>
         {form.batchId && (() => {
-          const b = batches.find((x: any) => String(x.id) === String(form.batchId));
+          const b = batches.find(x => String(x.id) === String(form.batchId));
           if (b && b.totalCost && b.quantity) {
             const allocated = (b.totalCost / b.quantity).toFixed(2);
             return <p className="text-xs text-muted-foreground mt-1">预计分摊成本: ¥{allocated}/件 (总¥{b.totalCost} ÷ {b.quantity}件)</p>;
@@ -94,7 +95,7 @@ function BatchItemForm({
         <div className="space-y-1"><Label className="text-xs">器型 <span className="text-red-500">*</span></Label>
           <Select value={form.typeId} onValueChange={v => setForm(f => ({ ...f, typeId: v }))}>
             <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
-            <SelectContent>{types.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+            <SelectContent>{types.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
       </div>
@@ -153,7 +154,7 @@ function BatchItemForm({
           <div key={group}>
             {!singleGroup && <p className="text-xs font-medium text-muted-foreground mb-1">{group}</p>}
             <div className="flex flex-wrap gap-2">
-              {groups[group].map((tag: any) => (
+              {groups[group].map((tag: DictTag) => (
                 <label key={tag.id} className="flex items-center gap-1 cursor-pointer">
                   <Checkbox checked={form.tagIds.includes(tag.id)} onCheckedChange={() => toggleTag(tag.id)} />
                   <span className="text-xs">{tag.name}</span>

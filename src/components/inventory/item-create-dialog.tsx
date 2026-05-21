@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, batchesApi, suppliersApi, dictsApi, pricingApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
+import type { DictMaterial, DictType, DictTag, Batch, Supplier, PaginatedData, PricingResult } from '@/lib/api.types';
 import { parseSpecFields, SPEC_FIELD_LABEL_MAP } from './settings-tab';
 import HighValueForm from './item-create/high-value-form';
 import BatchItemForm from './item-create/batch-item-form';
@@ -15,16 +17,17 @@ import { Gem, Layers } from 'lucide-react';
 
 // ========== Item Creation Dialog ==========
 function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defaultBatchInfo }: { open: boolean; onOpenChange: (o: boolean) => void; onSuccess: () => void; defaultBatchId?: number; defaultBatchInfo?: { materialId?: number; supplierId?: number; purchaseDate?: string; typeId?: number } }) {
+  const { handleError } = useErrorHandler();
   const [mode, setMode] = useState<'high_value' | 'batch'>('high_value');
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [types, setTypes] = useState<any[]>([]);
-  const [tags, setTags] = useState<any[]>([]);
-  const [batches, setBatches] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<DictMaterial[]>([]);
+  const [types, setTypes] = useState<DictType[]>([]);
+  const [tags, setTags] = useState<DictTag[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [saving, setSaving] = useState(false);
   const [showSupplierAdd, setShowSupplierAdd] = useState(false);
   const [tagMismatch, setTagMismatch] = useState<{ mode: 'high_value' | 'batch'; invalidTagIds: number[]; invalidTagNames: string[] } | null>(null);
-  const [pricingSuggestion, setPricingSuggestion] = useState<any>(null);
+  const [pricingSuggestion, setPricingSuggestion] = useState<(PricingResult & { suggestedPrice?: number }) | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, boolean>>({});
 
@@ -51,8 +54,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     if (open) {
       dictsApi.getMaterials().then(setMaterials).catch(() => {});
       dictsApi.getTypes().then(setTypes).catch(() => {});
-      suppliersApi.getSuppliers().then((s: any) => setSuppliers(s?.items || s || [])).catch(() => {});
-      batchesApi.getBatches({ size: 100 }).then((d: any) => setBatches(d?.items || [])).catch(() => {});
+      suppliersApi.getSuppliers().then((s: PaginatedData<Supplier>) => setSuppliers(s?.items || s || [])).catch(() => {});
+      batchesApi.getBatches({ size: 100 }).then((d: PaginatedData<Batch>) => setBatches(d?.items || [])).catch(() => {});
 
       // Pre-configure for batch mode if defaultBatchId is provided
       if (defaultBatchId) {
@@ -67,7 +70,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   }, [open, defaultBatchId, defaultBatchInfo]);
 
   const selectedBatch = useMemo(
-    () => batches.find((b: any) => String(b.id) === String(batchForm.batchId)),
+    () => batches.find((b: Batch) => String(b.id) === String(batchForm.batchId)),
     [batches, batchForm.batchId],
   );
   const highValueMaterialId = highValueForm.materialId ? Number(highValueForm.materialId) : null;
@@ -76,7 +79,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
 
   useEffect(() => {
     if (!open) return;
-    dictsApi.getTags(undefined, false, currentMaterialId || undefined).then((list: any[]) => {
+    dictsApi.getTags(undefined, false, currentMaterialId || undefined).then((list: DictTag[]) => {
       setTags(list);
     }).catch(() => {});
   }, [open, currentMaterialId]);
@@ -86,7 +89,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   }, [mode, currentMaterialId]);
 
   // 根据大类筛选材质（含子类）
-  const filteredByCategory = materials.filter((m: any) => {
+  const filteredByCategory = materials.filter((m: DictMaterial) => {
     if (!materialCategory) return true;
     return m.category === materialCategory;
   });
@@ -94,38 +97,38 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   // 动态提取子类列表
   const subTypes = useMemo(() => {
     const types = new Set<string>();
-    filteredByCategory.forEach((m: any) => { if (m.subType) types.add(m.subType); });
+    filteredByCategory.forEach((m: DictMaterial) => { if (m.subType) types.add(m.subType); });
     return Array.from(types).sort();
   }, [filteredByCategory]);
 
   // 根据大类+子类筛选材质
   const filteredMaterials = useMemo(() => {
-    return filteredByCategory.filter((m: any) => {
+    return filteredByCategory.filter((m: DictMaterial) => {
       if (!materialSubType) return true;
       return m.subType === materialSubType;
     });
   }, [filteredByCategory, materialSubType]);
 
-  // Batch mode 同理
-  const batchFilteredByCategory = useMemo(() => materials.filter((m: any) => {
+  // ===== 批次模式 =====
+  const batchFilteredByCategory = useMemo(() => materials.filter((m: DictMaterial) => {
     if (!batchMaterialCategory) return true;
     return m.category === batchMaterialCategory;
   }), [materials, batchMaterialCategory]);
 
   const batchSubTypes = useMemo(() => {
     const types = new Set<string>();
-    batchFilteredByCategory.forEach((m: any) => { if (m.subType) types.add(m.subType); });
+    batchFilteredByCategory.forEach((m: DictMaterial) => { if (m.subType) types.add(m.subType); });
     return Array.from(types).sort();
   }, [batchFilteredByCategory]);
 
   const batchFilteredMaterials = useMemo(() => {
-    return batchFilteredByCategory.filter((m: any) => {
+    return batchFilteredByCategory.filter((m: DictMaterial) => {
       if (!batchMaterialSubType) return true;
       return m.subType === batchMaterialSubType;
     });
   }, [batchFilteredByCategory, batchMaterialSubType]);
 
-  const selectedType = types.find((t: any) => String(t.id) === (mode === 'high_value' ? highValueForm.typeId : batchForm.typeId));
+  const selectedType = types.find((t: DictType) => String(t.id) === (mode === 'high_value' ? highValueForm.typeId : batchForm.typeId));
   const typeSpecFields = parseSpecFields(selectedType?.specFields);
   // When no type is selected, show all spec fields; otherwise show only type-specific fields
   const ALL_SPEC_FIELDS: Record<string, { required: boolean }> = {
@@ -139,10 +142,10 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   function validateRequiredFields(form: typeof highValueForm | typeof batchForm, isHighValue: boolean): string | null {
     if (!form.typeId) return '请选择器型';
     // 高货模式才校验成本价，通货模式成本由批次分摊
-    if (isHighValue && !(form as any).costPrice) return '请输入成本价';
+    if (isHighValue && !highValueForm.costPrice) return '请输入成本价';
     // 器型必填规格字段
     for (const field of specFieldKeys) {
-      if (specFieldsObj[field]?.required && !(form as any)[field]) {
+      if (specFieldsObj[field]?.required && !form[field as keyof typeof form]) {
         const label = SPEC_FIELD_LABEL_MAP[field] || field;
         return `请输入${label}`;
       }
@@ -158,8 +161,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         if (!highValueForm.sellingPrice) { toast.error('请输入售价'); setSaving(false); return; }
         const validationError = validateRequiredFields(highValueForm, true);
         if (validationError) { toast.error(validationError); setSaving(false); return; }
-        const spec: Record<string, any> = {};
-        specFieldKeys.forEach(f => { if ((highValueForm as any)[f]) spec[f] = (highValueForm as any)[f]; });
+        const spec: Record<string, string | number> = {};
+        specFieldKeys.forEach(f => { if (highValueForm[f as keyof typeof highValueForm]) spec[f] = String(highValueForm[f as keyof typeof highValueForm]); });
         await itemsApi.createItem({
           materialId: Number(highValueForm.materialId),
           typeId: highValueForm.typeId ? Number(highValueForm.typeId) : undefined,
@@ -181,8 +184,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         if (!batchForm.sellingPrice) { toast.error('请输入售价'); setSaving(false); return; }
         const validationError = validateRequiredFields(batchForm, false);
         if (validationError) { toast.error(validationError); setSaving(false); return; }
-        const spec: Record<string, any> = {};
-        specFieldKeys.forEach(f => { if ((batchForm as any)[f]) spec[f] = (batchForm as any)[f]; });
+        const spec: Record<string, string | number> = {};
+        specFieldKeys.forEach(f => { if (batchForm[f as keyof typeof batchForm]) spec[f] = String(batchForm[f as keyof typeof batchForm]); });
         await itemsApi.createItem({
           batchId: Number(batchForm.batchId),
           typeId: batchForm.typeId ? Number(batchForm.typeId) : undefined,
@@ -204,15 +207,17 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
       setBatchMaterialSubType('');
       onOpenChange(false);
       onSuccess();
-    } catch (e: any) {
-      if (e?.message?.includes('TAG_MATERIAL_MISMATCH')) {
-        const invalidTagIds = e?.details?.invalidTagIds || [];
-        const invalidTagNames = e?.details?.invalidTagNames || [];
+    } catch (error: unknown) {
+      // 处理标签与材质不匹配的特殊错误
+      if (error instanceof Error && error.message?.includes('TAG_MATERIAL_MISMATCH')) {
+        const details = (error as Record<string, unknown>).details as Record<string, unknown> | undefined;
+        const invalidTagIds = (details?.invalidTagIds as number[]) || [];
+        const invalidTagNames = (details?.invalidTagNames as string[]) || [];
         setTagMismatch({ mode, invalidTagIds, invalidTagNames });
         toast.error(invalidTagNames.length > 0 ? `标签与材质不匹配：${invalidTagNames.join('、')}` : '存在标签与材质不匹配');
         return;
       }
-      toast.error(e.message || '入库失败');
+      handleError(error, { title: '入库失败' });
     } finally {
       setSaving(false);
     }
@@ -229,8 +234,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         weight: highValueForm.weight ? parseFloat(highValueForm.weight) : undefined,
       });
       setPricingSuggestion(result);
-    } catch (e: any) {
-      toast.error(e.message || '定价计算失败');
+    } catch (error) {
+      handleError(error, { title: '定价计算失败' });
     } finally {
       setPricingLoading(false);
     }

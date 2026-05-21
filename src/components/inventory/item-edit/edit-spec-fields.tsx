@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import type { DictTag, ItemSummary, DictMaterial, DictType } from '@/lib/api.types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,9 +14,9 @@ interface EditSpecFieldsProps {
     tagIds: number[];
     weight: string; metalWeight: string; size: string; braceletSize: string; beadCount: string; beadDiameter: string; ringSize: string;
   };
-  onChange: (field: string, value: any) => void;
-  tags: any[];
-  item: any;
+  onChange: (field: string, value: string | number | number[]) => void;
+  tags: DictTag[];
+  item: ItemSummary | null;
   specFieldsObj: Record<string, { required: boolean }>;
   specFieldKeys: string[];
   customFields: Record<string, boolean>;
@@ -34,7 +35,7 @@ const RING_SIZES = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 2
 function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKeys, customFields, setCustomFields, onTagToggle }: EditSpecFieldsProps) {
   function renderSizeSelect(field: string, sizes: number[]) {
     const isCustom = customFields[field] || false;
-    const value = (form as any)[field] || '';
+    const value = form[field as keyof typeof form] || '';
     const label = SPEC_FIELD_LABEL_MAP[field] || field;
     const isRequired = specFieldsObj[field]?.required ?? false;
     const isOther = !sizes.includes(Number(value)) && value !== '';
@@ -117,7 +118,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                   <Input
                     type="number"
                     step="0.01"
-                    value={(form as any)[field] || ''}
+                    value={form[field as keyof typeof form] || ''}
                     onChange={e => onChange(field, e.target.value)}
                     className="h-9 pr-8"
                     placeholder={label}
@@ -135,7 +136,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                 </Label>
                 <Input
                   type="text"
-                  value={(form as any)[field] || ''}
+                  value={form[field as keyof typeof form] || ''}
                   onChange={e => onChange(field, e.target.value)}
                   className="h-9"
                   placeholder="例: 35×25×8 mm"
@@ -152,7 +153,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                 <Input
                   type="number"
                   min="1"
-                  value={(form as any)[field] || ''}
+                  value={form[field as keyof typeof form] || ''}
                   onChange={e => onChange(field, e.target.value)}
                   className="h-9"
                   placeholder={label}
@@ -170,7 +171,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                   <Input
                     type="number"
                     step="0.5"
-                    value={(form as any)[field] || ''}
+                    value={form[field as keyof typeof form] || ''}
                     onChange={e => onChange(field, e.target.value)}
                     className="h-9 pr-10"
                     placeholder={label}
@@ -188,7 +189,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
               </Label>
               <Input
                 type="text"
-                value={(form as any)[field] || ''}
+                value={form[field as keyof typeof form] || ''}
                 onChange={e => onChange(field, e.target.value)}
                 className="h-9"
                 placeholder={label}
@@ -201,13 +202,13 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
   }
 
   // Tags - Grouped and filtered by material
-  const activeTags = tags.filter((t: any) => t.isActive);
-  const groups = activeTags.reduce((acc: any, tag: any) => {
+  const activeTags = tags.filter((t: DictTag) => t.isActive);
+  const groups = activeTags.reduce((acc: Record<string, DictTag[]>, tag: DictTag) => {
     const g = tag.groupName || '未分组';
     if (!acc[g]) acc[g] = [];
     acc[g].push(tag);
     return acc;
-  }, {});
+  }, {} as Record<string, DictTag[]>);
   const groupKeys = Object.keys(groups);
   const singleGroup = groupKeys.length === 1 && groupKeys[0] === '未分组';
 
@@ -223,7 +224,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
           <div key={group}>
             {!singleGroup && <p className="text-xs font-medium text-muted-foreground mb-1">{group}</p>}
             <div className="flex flex-wrap gap-2">
-              {groups[group].map((tag: any) => (
+              {groups[group].map((tag: DictTag) => (
                 <label key={tag.id} className="flex items-center gap-1 cursor-pointer">
                   <Checkbox checked={form.tagIds.includes(tag.id)} onCheckedChange={() => onTagToggle(tag.id)} />
                   <span className="text-xs">{tag.name}</span>

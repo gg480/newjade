@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { CalendarDays, Tag, Target, Plus } from 'lucide-react';
 import PromotionItemSelect from './promotion-item-select';
 
+interface PromotionFormData {
+  name: string;
+  type: string;
+  discountValue: number;
+  condition: number;
+  startDate: string;
+  endDate: string;
+  recurrence: string;
+  status: string;
+  itemIds: number[];
+}
+
+interface PromotionItemRef {
+  item: { id: number };
+}
+
+interface PromotionEditData {
+  name?: string;
+  type?: string;
+  discountValue?: number;
+  condition?: number;
+  startDate?: string;
+  endDate?: string;
+  recurrence?: string;
+  status?: string;
+  items?: PromotionItemRef[];
+}
+
 // 促销创建/编辑对话框组件
 function PromotionCreateDialog({ 
   open, 
@@ -21,10 +50,10 @@ function PromotionCreateDialog({
 }: { 
   open: boolean; 
   onClose: (o: boolean) => void; 
-  onSubmit: (data: any) => void;
-  initialData?: any 
+  onSubmit: (data: PromotionFormData) => void;
+  initialData?: PromotionEditData 
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PromotionFormData>({
     name: '',
     type: 'discount',
     discountValue: 0,
@@ -36,6 +65,7 @@ function PromotionCreateDialog({
     itemIds: [] as number[],
   });
   
+  const { handleError } = useErrorHandler();
   const [saving, setSaving] = useState(false);
   const [showItemSelect, setShowItemSelect] = useState(false);
 
@@ -51,7 +81,7 @@ function PromotionCreateDialog({
         endDate: initialData.endDate || new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().slice(0, 10),
         recurrence: initialData.recurrence || 'none',
         status: initialData.status || 'draft',
-        itemIds: initialData.items?.map((item: any) => item.item.id) || [],
+        itemIds: initialData.items?.map((item: PromotionItemRef) => item.item.id) || [],
       });
     } else {
       setForm({
@@ -146,8 +176,8 @@ function PromotionCreateDialog({
         discountValue: form.discountValue || undefined,
         condition: form.condition || undefined,
       });
-    } catch (e: any) {
-      toast.error(e.message || '操作失败');
+    } catch (error) {
+      handleError(error, { title: '操作失败' });
     } finally {
       setSaving(false);
     }

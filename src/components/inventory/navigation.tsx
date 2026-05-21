@@ -8,6 +8,7 @@ import NotificationBell from './notification-bell';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import type { Batch, SysConfig } from '@/lib/api.types';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -81,7 +82,7 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
         const data = await res.json();
         if (cancelled) return;
         const batches = data.items || [];
-        setPendingBatches(batches.filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)).length);
+        setPendingBatches(batches.filter((b: Batch) => (b.itemsCount || 0) < (b.quantity || 0)).length);
       } catch (e) { console.error('[Nav]', e); /* silently fail */ }
       // Check sales today
       try {
@@ -276,7 +277,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
       .then(r => r.json())
       .then(data => {
         if (mounted && data.code === 0 && Array.isArray(data.data)) {
-          const cfg = data.data.find((c: any) => c.key === 'store_name');
+          const cfg = data.data.find((c: SysConfig) => c.key === 'store_name');
           if (cfg?.value) setStoreName(cfg.value);
         }
       })

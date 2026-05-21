@@ -6,12 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { formatPrice } from '../shared';
+import type { Batch } from '@/lib/api.types';
 
 import {
   Layers, CheckCircle, TrendingUp, DollarSign, Plus, FileDown, Package,
   Search, X, Trophy, Ban, PlayCircle, ClipboardList, TrendingDown,
   ArrowUpRight, ArrowDownRight, 
 } from 'lucide-react';
+
+interface RoiItem {
+  id: number;
+  batchCode: string;
+  materialName?: string;
+  margin: number;
+  profit: number;
+}
 
 // ========== Batches Filter Bar Props ==========
 interface BatchesFilterBarProps {
@@ -20,11 +29,11 @@ interface BatchesFilterBarProps {
   completedCount: number;
   inProgressCount: number;
   notStartedCount: number;
-  roiLeaderboard: any[];
+  roiLeaderboard: RoiItem[];
   searchText: string;
   onSearchChange: (text: string) => void;
   debouncedSearch: string;
-  filteredBatches: any[];
+  filteredBatches: Batch[];
   onNewBatch: () => void;
   onQuickAddItem: () => void;
   onExportCSV: () => void;
@@ -115,7 +124,7 @@ export function BatchesFilterBar({
               <Badge variant="secondary" className="text-[10px] ml-1">TOP {roiLeaderboard.length}</Badge>
             </p>
             <div className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 -mx-1 px-1">
-              {roiLeaderboard.map((b: any, idx: number) => {
+              {roiLeaderboard.map((b: RoiItem, idx: number) => {
                 const barColor = b.margin >= 100 ? 'bg-emerald-500' : b.margin >= 50 ? 'bg-sky-500' : 'bg-amber-500';
                 const textColor = b.margin >= 100 ? 'text-emerald-600 dark:text-emerald-400' : b.margin >= 50 ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400';
                 return (

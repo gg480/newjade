@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatPrice, StatusBadge, PaybackBar } from '../shared';
+import type { Batch } from '@/lib/api.types';
 
 import {
   Eye, Pencil, Trash2, Clock, ArrowUpRight, ArrowDownRight,
@@ -13,10 +14,10 @@ import {
 
 // ========== Batches Table Props ==========
 interface BatchesTableProps {
-  filteredBatches: any[];
+  filteredBatches: Batch[];
   onViewDetail: (id: number) => void;
-  onEdit: (batch: any) => void;
-  onDelete: (batch: any) => void;
+  onEdit: (batch: Batch) => void;
+  onDelete: (batch: Batch) => void;
   onAllocate: (id: number) => void;
   allocMethodLabels: Record<string, string>;
 }

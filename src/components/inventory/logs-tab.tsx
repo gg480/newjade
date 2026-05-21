@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { logsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { EmptyState, LoadingSkeleton } from './shared';
+import type { OperationLog } from '@/lib/api.types';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,7 +98,7 @@ function ActionBorder({ action }: { action: string }) {
 
 // ========== Logs Tab ==========
 function LogsTab() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<OperationLog[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState('');
@@ -117,7 +118,7 @@ function LogsTab() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const params: Record<string, any> = { page: pagination.page, size: 20 };
+        const params: Record<string, string | number | undefined> = { page: pagination.page, size: 20 };
         if (actionFilter) params.action = actionFilter;
         if (startDate) params.start_date = startDate;
         if (endDate) params.end_date = endDate;
@@ -213,7 +214,7 @@ function LogsTab() {
     };
     const targetLabels: Record<string, string> = { item: '货品', batch: '批次', sale: '销售', customer: '客户', supplier: '供应商' };
     const header = '时间,操作,类型,详情';
-    const rows = logs.map((log: any) => {
+    const rows = logs.map((log: OperationLog) => {
       const time = log.createdAt || '';
       const action = actionLabels[log.action] || log.action || '';
       const type = targetLabels[log.targetType] || log.targetType || '';
@@ -348,7 +349,7 @@ function LogsTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.map((log: any) => {
+                    {logs.map((log: OperationLog) => {
                       const actionBorder = ACTION_CONFIG[log.action]?.border || 'border-l-gray-400';
                       return (
                       <TableRow key={log.id} className={`hover:bg-muted/50 transition-colors border-l-2 ${actionBorder}`}>
@@ -384,10 +385,10 @@ function LogsTab() {
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-2">
-            {logs.map((log: any) => {
-              const actionBorder = ACTION_CONFIG[log.action]?.border || 'border-l-gray-400';
-              return (
-              <Card key={log.id} className={`hover:shadow-sm transition-shadow border-l-2 ${actionBorder}`}>
+            {logs.map((log: OperationLog) => {
+                const actionBorder = ACTION_CONFIG[log.action]?.border || 'border-l-gray-400';
+                return (
+                <Card key={log.id} className={`hover:shadow-sm transition-shadow border-l-2 ${actionBorder}`}>
                 <CardContent className="p-3 space-y-2">
                   {/* Top: action badge + time */}
                   <div className="flex items-center justify-between">

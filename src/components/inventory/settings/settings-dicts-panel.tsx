@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import type { DictMaterial, DictType, DictTag } from '@/lib/api.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,22 +11,22 @@ import { Plus, Pencil, Gem, Box, Tag, Hash, Layers, Crown } from 'lucide-react';
 import { formatSpecFieldsDisplay } from '../settings-tab';
 
 interface DictsPanelProps {
-  materials: any[];
-  types: any[];
-  tags: any[];
-  tagGroups: Record<string, any[]>;
+  materials: DictMaterial[];
+  types: DictType[];
+  tags: DictTag[];
+  tagGroups: Record<string, DictTag[]>;
   tagGroupFilter: string;
   setTagGroupFilter: (v: string) => void;
   tagMaterialFilter: string;
   setTagMaterialFilter: (v: string) => void;
   onShowCreateMaterial: () => void;
-  onOpenEditMaterial: (m: any) => void;
+  onOpenEditMaterial: (m: DictMaterial) => void;
   onToggleMaterialActive: (id: number, isActive: boolean) => void;
   onShowCreateType: () => void;
-  onOpenEditType: (t: any) => void;
+  onOpenEditType: (t: DictType) => void;
   onToggleType: (id: number) => void;
   onShowCreateTag: () => void;
-  onOpenEditTag: (tag: any) => void;
+  onOpenEditTag: (tag: DictTag) => void;
   onToggleTagActive: (id: number, isActive: boolean) => void;
 }
 
@@ -71,12 +72,12 @@ export default function SettingsDictsPanel({
         <CardContent>
           {/* Material Statistics Info Bar */}
           {(() => {
-            const activeMaterials = materials.filter((m: any) => m.isActive);
+            const activeMaterials = materials.filter((m: DictMaterial) => m.isActive);
             const materialsWithSubType = activeMaterials.filter(
-              (m: any) => m.subType
+              (m: DictMaterial) => m.subType
             ).length;
             const categoryCount = new Set(
-              activeMaterials.map((m: any) => m.category).filter(Boolean)
+              activeMaterials.map((m: DictMaterial) => m.category).filter(Boolean)
             ).size;
             return (
               <div className="mb-3 p-3 bg-muted/30 rounded-lg flex items-center gap-4 text-sm flex-wrap">
@@ -114,7 +115,7 @@ export default function SettingsDictsPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materials.map((m: any) => (
+                {materials.map((m: DictMaterial) => (
                   <TableRow
                     key={m.id}
                     className={!m.isActive ? 'opacity-50' : ''}
@@ -199,7 +200,7 @@ export default function SettingsDictsPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {types.map((t: any) => (
+                {types.map((t: DictType) => (
                   <TableRow
                     key={t.id}
                     className={!t.isActive ? 'opacity-50' : ''}
@@ -282,8 +283,8 @@ export default function SettingsDictsPanel({
               <SelectContent>
                 <SelectItem value="_all">全部材质</SelectItem>
                 {materials
-                  .filter((m: any) => m.isActive)
-                  .map((m: any) => (
+                  .filter((m: DictMaterial) => m.isActive)
+                  .map((m: DictMaterial) => (
                     <SelectItem key={m.id} value={String(m.id)}>
                       {m.name}
                     </SelectItem>
@@ -316,13 +317,13 @@ export default function SettingsDictsPanel({
               .filter(
                 ([group]) => !tagGroupFilter || group === tagGroupFilter
               )
-              .map(([group, groupTags]: [string, any]) => (
+              .map(([group, groupTags]: [string, DictTag[]]) => (
                 <div key={group}>
                   <p className="text-sm font-medium text-muted-foreground mb-1">
                     {group}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {(groupTags as any[]).map((tag: any) => (
+                    {groupTags.map((tag: DictTag) => (
                       <div key={tag.id} className="group relative">
                         <Badge
                           variant={tag.isActive ? 'default' : 'secondary'}

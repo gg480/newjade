@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { logAction } from '@/lib/log';
 import { NotFoundError, ValidationError } from '@/lib/errors';
@@ -240,7 +241,7 @@ export async function getItems(params: GetItemsParams) {
   const sortBy = params.sortBy || 'created_at';
   const sortOrder = params.sortOrder || 'desc';
 
-  const baseWhere: any = { isDeleted: false };
+  const baseWhere: Prisma.ItemWhereInput = { isDeleted: false };
   if (materialId) baseWhere.materialId = parseInt(materialId);
   if (typeId) baseWhere.typeId = parseInt(typeId);
   if (batchId) baseWhere.batchId = parseInt(batchId);
@@ -263,7 +264,7 @@ export async function getItems(params: GetItemsParams) {
       ];
     }
   }
-  const where: any = { ...baseWhere };
+  const where: Prisma.ItemWhereInput = { ...baseWhere };
   if (status) where.status = status;
 
   // 构建排序
@@ -280,8 +281,8 @@ export async function getItems(params: GetItemsParams) {
     name: 'name',
   };
   const orderByField = fieldMap[field] || 'createdAt';
-  const orderBy: any = {};
-  orderBy[orderByField] = direction;
+  const orderBy: Prisma.ItemOrderByWithRelationInput = {};
+  (orderBy as Record<string, string>)[orderByField] = direction;
 
   const [total, items, summaryRows] = await Promise.all([
     db.item.count({ where }),
@@ -366,7 +367,7 @@ export async function createItem(body: CreateItemInput) {
 
   // 通货模式：从批次获取 materialId
   let finalMaterialId = materialId;
-  let batchData: any = null;
+  let batchData: Prisma.BatchGetPayload<{ include: { material: true } }> | null = null;
   if (batchId && !materialId) {
     batchData = await db.batch.findUnique({ where: { id: batchId }, include: { material: true } });
     if (batchData) finalMaterialId = batchData.materialId;
@@ -382,7 +383,7 @@ export async function createItem(body: CreateItemInput) {
 
   // 校验标签-材质兼容性
   const normalizedTagIds = Array.isArray(tagIds)
-    ? tagIds.map((id: any) => parseInt(id, 10)).filter((id: number) => !Number.isNaN(id))
+    ? tagIds.map((id) => parseInt(id, 10)).filter((id: number) => !Number.isNaN(id))
     : [];
   const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, finalMaterialId);
   if (invalidTagData) {
@@ -467,9 +468,9 @@ export async function createItem(body: CreateItemInput) {
     }
 
     return item;
-  } catch (e: any) {
+  } catch (e) {
     if (e instanceof ValidationError) throw e;
-    if (e.message?.includes('Unique')) {
+    if (e instanceof Error && e.message?.includes('Unique')) {
       throw new ValidationError('SKU编号已存在');
     }
     throw e;
@@ -508,7 +509,7 @@ export async function getItemById(id: number) {
 
   return {
     ...item,
-    images: (item.images || []).map((img: any) => ({
+    images: (item.images || []).map((img) => ({
       ...img,
       url: img.filename,
     })),
@@ -517,7 +518,7 @@ export async function getItemById(id: number) {
     typeName: item.type?.name,
     supplierName,
     ageDays,
-    coverImage: item.images.find((i: any) => i.isCover)?.filename || item.images[0]?.filename || null,
+    coverImage: item.images.find((i) => i.isCover)?.filename || item.images[0]?.filename || null,
   };
 }
 
@@ -547,7 +548,7 @@ export async function updateItem(id: number, body: UpdateItemInput) {
     : original.materialId;
   if (tagIds !== undefined) {
     const normalizedTagIds = Array.isArray(tagIds)
-      ? tagIds.map((tid: any) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
+      ? tagIds.map((tid) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
       : [];
     const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, effectiveMaterialId);
     if (invalidTagData) {
@@ -561,7 +562,7 @@ export async function updateItem(id: number, body: UpdateItemInput) {
   if (tagIds !== undefined) {
     await db.itemTag.deleteMany({ where: { itemId: id } });
     const normalizedTagIds = Array.isArray(tagIds)
-      ? tagIds.map((tid: any) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
+      ? tagIds.map((tid) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
       : [];
     if (normalizedTagIds.length > 0) {
       await db.itemTag.createMany({ data: normalizedTagIds.map((tid: number) => ({ itemId: id, tagId: tid })) });
@@ -646,7 +647,7 @@ export async function batchCreateItems(body: BatchCreateInput) {
   const { materialId, typeId, supplierId, skuPrefix, quantity, batchCode, batchId, costPrice, sellingPrice, counter, weight, size, purchaseDate, tagIds } = body;
 
   // 构建规格数据
-  const specCreate: any = {};
+  const specCreate: Record<string, unknown> = {};
   if (weight != null && weight !== '') specCreate.weight = parseFloat(String(weight));
   if (size != null && size !== '') specCreate.size = String(size);
 
@@ -701,7 +702,7 @@ export async function batchCreateItems(body: BatchCreateInput) {
     throw new ValidationError('请输入有效的成本价（或选择批次自动分摊）');
   }
 
-  const created: any[] = [];
+  const created: Array<Prisma.ItemGetPayload<{}>> = [];
   try {
     for (let i = 0; i < parsedQuantity; i++) {
       const seq = String(i + 1).padStart(3, '0');
@@ -722,7 +723,7 @@ export async function batchCreateItems(body: BatchCreateInput) {
           supplierId: parsedSupplierId,
           purchaseDate,
           status: 'in_stock',
-          ...(tagIds?.length ? { tags: { connect: tagIds.map((id: any) => ({ id: parseInt(String(id)) })) } } : {}),
+          ...(tagIds?.length ? { tags: { connect: tagIds.map((id) => ({ id: parseInt(String(id)) })) } } : {}),
           ...(Object.keys(specCreate).length > 0 ? { spec: { create: specCreate } } : {}),
         },
       });
@@ -736,8 +737,8 @@ export async function batchCreateItems(body: BatchCreateInput) {
     });
 
     return { created: created.length, items: created };
-  } catch (e: any) {
-    if (e.message?.includes('Unique')) {
+  } catch (e) {
+    if (e instanceof Error && e.message?.includes('Unique')) {
       throw new ValidationError('SKU编号已存在');
     }
     throw e;

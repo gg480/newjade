@@ -5,6 +5,7 @@ import { usersApi, rolesApi } from '@/lib/api';
 import type { UserInfo, RoleInfo } from '@/lib/api.types';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatRelativeTime } from '@/components/inventory/settings-tab';
 import { EmptyState, LoadingSkeleton } from '@/components/inventory/shared';
 
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function UsersPanel() {
+  const { handleError } = useErrorHandler();
   const currentUser = useAppStore(s => s.currentUser);
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [roles, setRoles] = useState<RoleInfo[]>([]);
@@ -48,8 +50,8 @@ export default function UsersPanel() {
       const data = await usersApi.list({ page, limit: 20, keyword: searchKeyword || undefined });
       setUsers(data.items);
       setPagination(data.pagination);
-    } catch (e: any) {
-      toast.error('加载用户列表失败: ' + (e.message || '未知错误'));
+    } catch (error) {
+      handleError(error, { title: '加载用户列表失败' });
     } finally {
       setLoading(false);
     }
@@ -95,8 +97,8 @@ export default function UsersPanel() {
       setShowCreate(false);
       setFormData({ username: '', displayName: '', password: '', roleId: '' });
       loadUsers(1);
-    } catch (e: any) {
-      toast.error(e.message || '创建失败');
+    } catch (error) {
+      handleError(error, { title: '创建失败' });
     } finally {
       setSubmitting(false);
     }
@@ -114,8 +116,8 @@ export default function UsersPanel() {
       toast.success('用户更新成功');
       setEditUser(null);
       loadUsers(pagination.page);
-    } catch (e: any) {
-      toast.error(e.message || '更新失败');
+    } catch (error) {
+      handleError(error, { title: '更新失败' });
     } finally {
       setSubmitting(false);
     }
@@ -137,8 +139,8 @@ export default function UsersPanel() {
       toast.success('密码重置成功');
       setResetPwdUser(null);
       setNewPassword('');
-    } catch (e: any) {
-      toast.error(e.message || '重置失败');
+    } catch (error) {
+      handleError(error, { title: '重置失败' });
     } finally {
       setSubmitting(false);
     }
@@ -153,8 +155,8 @@ export default function UsersPanel() {
       toast.success(disableUser.isActive ? '用户已禁用' : '用户已启用');
       setDisableUser(null);
       loadUsers(pagination.page);
-    } catch (e: any) {
-      toast.error(e.message || '操作失败');
+    } catch (error) {
+      handleError(error, { title: '操作失败' });
     } finally {
       setSubmitting(false);
     }

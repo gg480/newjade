@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { NotFoundError, ValidationError, ConflictError } from '@/lib/errors';
 
@@ -194,7 +195,7 @@ export async function updateUser(id: number, data: UpdateUserInput): Promise<Use
     }
   }
 
-  const updateData: any = {};
+  const updateData: Prisma.UserUpdateInput = {};
   if (data.displayName !== undefined) updateData.displayName = data.displayName.trim();
   if (data.roleId !== undefined) updateData.roleId = data.roleId;
   if (data.isActive !== undefined) updateData.isActive = data.isActive;

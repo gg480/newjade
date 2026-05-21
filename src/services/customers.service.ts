@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { logAction } from '@/lib/log';
 import { NotFoundError, ValidationError } from '@/lib/errors';
@@ -131,7 +132,7 @@ function calculateMonthlySpending(saleRecords: Array<{ actualPrice: number; sale
 function calculateTopMaterials(saleRecords: Array<{ actualPrice: number; item?: { material?: { name?: string } } | null }>) {
   const materialCounts: Record<string, { count: number; total: number }> = {};
   for (const sr of saleRecords) {
-    const matName = (sr.item as any)?.material?.name || '未知';
+    const matName = sr.item?.material?.name || '未知';
     if (!materialCounts[matName]) materialCounts[matName] = { count: 0, total: 0 };
     materialCounts[matName].count++;
     materialCounts[matName].total += sr.actualPrice || 0;
@@ -194,7 +195,7 @@ export async function getCustomers(params: GetCustomersParams) {
   const dbSortFields = new Set(['created_at', 'name']);
   const needsInMemorySort = !dbSortFields.has(sortBy);
 
-  let customers: any[];
+  let customers: Prisma.CustomerGetPayload<{}>[];
   if (needsInMemorySort) {
     // 内存排序：先查出所有匹配客户
     customers = await db.customer.findMany({
@@ -216,7 +217,7 @@ export async function getCustomers(params: GetCustomersParams) {
   }
 
   // 聚合每位客户的消费统计
-  const customerIds = customers.map((c: any) => c.id);
+  const customerIds = customers.map((c) => c.id);
   const spendingAgg = customerIds.length > 0 ? await db.saleRecord.groupBy({
     by: ['customerId'],
     where: { customerId: { in: customerIds } },
@@ -259,7 +260,7 @@ export async function getCustomers(params: GetCustomersParams) {
   }
 
   // 组装 items
-  let items = customers.map((c: any) => {
+  let items = customers.map((c) => {
     const spending = spendingMap.get(c.id) || { totalSpending: 0, orderCount: 0, lastSaleDate: null };
     return {
       ...c,
@@ -272,7 +273,7 @@ export async function getCustomers(params: GetCustomersParams) {
 
   // 内存排序
   if (needsInMemorySort) {
-    const sortFns: Record<string, (a: any, b: any) => number> = {
+    const sortFns: Record<string, (a: { totalSpending: number; orderCount: number; lastPurchaseDate: string | null }, b: { totalSpending: number; orderCount: number; lastPurchaseDate: string | null }) => number> = {
       total_spending: (a, b) => direction === 'desc' ? b.totalSpending - a.totalSpending : a.totalSpending - b.totalSpending,
       order_count: (a, b) => direction === 'desc' ? b.orderCount - a.orderCount : a.orderCount - b.orderCount,
       last_purchase: (a, b) => {
@@ -403,7 +404,7 @@ export async function updateCustomer(id: number, data: UpdateCustomerInput) {
     throw new NotFoundError('未找到');
   }
 
-  const updateData: any = { ...data };
+  const updateData: Prisma.CustomerUpdateInput = { ...data };
   // tags 数组转 JSON 存储
   if (Array.isArray(data.tags)) {
     updateData.tags = data.tags.length > 0 ? JSON.stringify(data.tags) : null;
@@ -465,7 +466,7 @@ export async function mergeCustomers(sourceId: number, input: MergeCustomersInpu
   }
 
   // 去重并确保都是整数
-  const uniqueIds = Array.from(new Set(saleRecordIds.map((id: any) => parseInt(id)))).filter(
+  const uniqueIds = Array.from(new Set(saleRecordIds.map((id) => parseInt(id)))).filter(
     (id) => !isNaN(id),
   );
   if (uniqueIds.length === 0) {

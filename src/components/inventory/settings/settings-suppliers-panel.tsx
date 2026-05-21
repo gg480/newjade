@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import type { Supplier, SupplierStats } from '@/lib/api.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +14,13 @@ import { EmptyState } from '../shared';
 import { suppliersApi } from '@/lib/api';
 
 interface SuppliersPanelProps {
-  suppliers: any[];
+  suppliers: Supplier[];
   supplierSearch: string;
   setSupplierSearch: (v: string) => void;
   debouncedSupplierSearch: string;
   onShowCreateSupplier: () => void;
-  onEditSupplier: (s: any) => void;
-  onDeleteSupplier: (s: any) => void;
+  onEditSupplier: (s: Supplier) => void;
+  onDeleteSupplier: (s: Supplier) => void;
 }
 
 /** 统计摘要数据 */
@@ -65,7 +66,7 @@ export default function SettingsSuppliersPanel({
     setStatsLoading(true);
     suppliersApi
       .getSupplierStats()
-      .then((data: any) => {
+      .then((data: SupplierStats) => {
         if (!cancelled && data?.total) setStats(data.total);
       })
       .catch(() => {})
@@ -110,7 +111,7 @@ export default function SettingsSuppliersPanel({
     const q = debouncedSupplierSearch.trim().toLowerCase();
     if (!q) return suppliers;
     return suppliers.filter(
-      (s: any) =>
+      (s: Supplier) =>
         (s.name || '').toLowerCase().includes(q) ||
         (s.contact || '').toLowerCase().includes(q) ||
         (s.phone || '').toLowerCase().includes(q),
@@ -213,7 +214,7 @@ export default function SettingsSuppliersPanel({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filteredSuppliers.map((s: any) => {
+            {filteredSuppliers.map((s: Supplier) => {
               const isExpanded = expandedId === s.id;
               return (
                 <div key={s.id}>

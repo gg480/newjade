@@ -5,6 +5,7 @@ import { customersApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatPrice, EmptyState, LoadingSkeleton, ConfirmDialog } from './shared';
 import Pagination from './pagination';
+import type { Customer, CustomerDetail, SaleRecordSummary } from '@/lib/api.types';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,16 +79,46 @@ function MiniSpendingChart({ data }: { data: { month: string; amount: number }[]
   );
 }
 
+// 客户列表行扩展类型（含统计字段）
+interface CustomerTableRow extends Customer {
+  totalSpending?: number;
+  orderCount?: number;
+  lastPurchaseDate?: string;
+  daysSinceLastPurchase?: number;
+  avgOrderValue?: number;
+}
+
+// 客户画像详情类型
+interface CustomerProfileDetail extends CustomerDetail {
+  purchaseStats?: {
+    totalSpending: number;
+    orderCount: number;
+    avgOrderValue: number;
+    lastPurchaseDate: string | null;
+    daysSinceLastPurchase: number | null;
+  };
+  monthlySpending?: Array<{ month: string; amount: number }>;
+  topMaterials?: Array<{ name: string; count: number; totalSpending: number }>;
+  vipProgress?: {
+    currentLevel: string;
+    nextLevel: string | null;
+    nextMin: number | null;
+    progressToNext: number;
+  };
+  tags?: string[];
+  notes?: string;
+}
+
 // ========== Customer Profile Dialog ==========
 function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTagsUpdated }: {
-  customer: any;
+  customer: CustomerTableRow | null;
   open: boolean;
   onClose: () => void;
-  onEdit: (c: any) => void;
+  onEdit: (c: CustomerTableRow) => void;
   onMerge?: () => void;
   onTagsUpdated: () => void;
 }) {
-  const [detail, setDetail] = useState<any>(null);
+  const [detail, setDetail] = useState<CustomerProfileDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
@@ -97,7 +128,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
   useEffect(() => {
     if (open && customer?.id) {
       setLoading(true);
-      customersApi.getCustomerDetail(customer.id).then((data: any) => {
+      customersApi.getCustomerDetail(customer.id).then((data: CustomerProfileDetail) => {
         setDetail(data);
         setNotes(data.notes || '');
       }).catch(() => {
@@ -273,7 +304,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
             )}
 
             {/* Monthly Spending Chart */}
-            {monthlySpending.length > 0 && monthlySpending.some((d: any) => d.amount > 0) && (
+            {monthlySpending.length > 0 && monthlySpending.some(d => d.amount > 0) && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium flex items-center gap-1.5">
                   <Calendar className="h-4 w-4 text-sky-600" />近6月消费趋势
@@ -289,7 +320,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
                   <ShoppingBag className="h-4 w-4 text-amber-600" />偏好分析
                 </h4>
                 <div className="space-y-1.5">
-                  {topMaterials.map((m: any) => (
+                  {topMaterials.map(m => (
                     <div key={m.name} className="flex items-center justify-between text-sm bg-muted/50 rounded-lg px-3 py-1.5">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">{m.name}</Badge>
@@ -355,7 +386,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
                   <Clock className="h-4 w-4 text-gray-600" />购买记录
                 </h4>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                  {detail.saleRecords.map((sr: any) => (
+                  {detail.saleRecords.map(sr => (
                     <div key={sr.id} className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded hover:bg-muted/80 transition-colors">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-muted-foreground shrink-0">{sr.saleDate}</span>
@@ -411,9 +442,9 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
 
 // ========== Customers Tab ==========
 function CustomersTab() {
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<CustomerTableRow[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
@@ -423,16 +454,16 @@ function CustomersTab() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ name: '', phone: '', wechat: '', address: '', notes: '', tags: '' });
   const [expandedCustomerId, setExpandedCustomerId] = useState<number | null>(null);
-  const [customerDetail, setCustomerDetail] = useState<any>(null);
+  const [customerDetail, setCustomerDetail] = useState<CustomerProfileDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [editCustomer, setEditCustomer] = useState<any>(null);
+  const [editCustomer, setEditCustomer] = useState<CustomerTableRow | null>(null);
   const [editForm, setEditForm] = useState({ name: '', phone: '', wechat: '', address: '', notes: '', tags: '' });
-  const [profileCustomer, setProfileCustomer] = useState<any>(null);
-  const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState<any>(null);
+  const [profileCustomer, setProfileCustomer] = useState<CustomerTableRow | null>(null);
+  const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState<CustomerTableRow | null>(null);
   const [sortBy, setSortBy] = useState<string>('lastPurchaseDate');
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
   // 合并对话框
-  const [mergeTarget, setMergeTarget] = useState<any>(null);
+  const [mergeTarget, setMergeTarget] = useState<CustomerTableRow | null>(null);
   const SORT_OPTIONS = [
     { value: 'lastPurchaseDate', label: '最近购买', icon: Clock, order: 'desc' },
     { value: 'totalSpent', label: '消费总额', icon: DollarSignIcon, order: 'desc' },
@@ -480,7 +511,7 @@ function CustomersTab() {
   useEffect(() => {
     if (expandedCustomerId) {
       setDetailLoading(true);
-      customersApi.getCustomerDetail(expandedCustomerId).then((data: any) => {
+      customersApi.getCustomerDetail(expandedCustomerId).then((data: CustomerProfileDetail) => {
         setCustomerDetail(data);
       }).catch(() => {
         toast.error('加载客户详情失败');
@@ -512,7 +543,7 @@ function CustomersTab() {
     } catch (e: any) { toast.error(e.message || '更新失败'); }
   }
 
-  function openEditDialog(customer: any) {
+  function openEditDialog(customer: CustomerTableRow) {
     setEditCustomer(customer);
     setEditForm({
       name: customer.name || '',
@@ -530,7 +561,7 @@ function CustomersTab() {
       return;
     }
     const headers = ['客户编号', '姓名', '电话', '微信', '标签', '总消费', '购买次数', 'VIP等级', '最近购买', '地址', '备注'];
-    const rows = customers.map((c: any) => {
+    const rows = customers.map(c => {
       const vip = getVipLevel(c.totalSpending || 0);
       const tags = Array.isArray(c.tags) ? c.tags.join('、') : (c.tags || '');
       return [
@@ -547,7 +578,7 @@ function CustomersTab() {
         c.notes || '',
       ];
     });
-    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: any) => {
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: string | number) => {
       const str = String(cell);
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`;

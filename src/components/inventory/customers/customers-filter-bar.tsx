@@ -6,19 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatPrice } from '../shared';
+import type { Customer } from '@/lib/api.types';
 
 import {
   Users, TrendingUp, BarChart3, Sparkles, Search, FileDown, Plus,
   DollarSign as DollarSignIcon, ShoppingCart as ShoppingCartIcon, ArrowDownAZ, Clock,
 } from 'lucide-react';
 
+interface CustomerStats {
+  totalCustomers: number;
+  repeatRate: number;
+  totalRevenue: number;
+  avgOrderValue?: number;
+}
+
 // ========== Customers Filter Bar Props ==========
 interface CustomersFilterBarProps {
-  stats: any;
+  stats: CustomerStats;
   keyword: string;
   onKeywordChange: (value: string) => void;
   loading: boolean;
-  customers: any[];
+  customers: Customer[];
   showIncompleteOnly: boolean;
   onToggleIncomplete: () => void;
   sortBy: string;

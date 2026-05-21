@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 
@@ -79,7 +80,7 @@ export async function getCurrentPrices(): Promise<CurrentPriceItem[]> {
  * 获取价格历史（按日期降序，可筛选材质）
  */
 export async function getPriceHistory(params: PriceHistoryParams): Promise<PriceHistoryItem[]> {
-  const where: any = {};
+  const where: Prisma.MetalPriceWhereInput = {};
   if (params.materialId) where.materialId = parseInt(params.materialId);
 
   const records = await db.metalPrice.findMany({

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import MaterialTypeTagFilter from '@/components/inventory/shared/material-type-tag-filter';
+import type { DictMaterial, DictType, DictTag, Batch } from '@/lib/api.types';
 
 // ========== Active Filter Tags Component ==========
 interface ActiveFilterTagsProps {
@@ -22,10 +23,10 @@ interface ActiveFilterTagsProps {
     counter: string; batchId: string; minPrice: string; maxPrice: string;
     purchaseStartDate: string; purchaseEndDate: string;
   };
-  materials: any[];
-  types: any[];
-  tagsData: any[];
-  allBatches: any[];
+  materials: DictMaterial[];
+  types: DictType[];
+  tagsData: DictTag[];
+  allBatches: Batch[];
   allCounters: number[];
   onClearAll: () => void;
   onClear: (key: string) => void;
@@ -39,20 +40,20 @@ function ActiveFilterTags({ filters, materials, types, tagsData, allBatches, all
     tags.push({ key: 'materialCategory', label: cat?.label || filters.materialCategory });
   }
   if (filters.materialId) {
-    const mat = materials.find((m: any) => String(m.id) === filters.materialId);
+    const mat = materials.find(m => String(m.id) === filters.materialId);
     tags.push({ key: 'materialId', label: mat?.name || filters.materialId });
   }
   if (filters.typeId) {
-    const typ = types.find((t: any) => String(t.id) === filters.typeId);
+    const typ = types.find(t => String(t.id) === filters.typeId);
     tags.push({ key: 'typeId', label: `器型: ${typ?.name || filters.typeId}` });
   }
   if (filters.tagId) {
-    const tag = tagsData.find((t: any) => String(t.id) === filters.tagId);
+    const tag = tagsData.find(t => String(t.id) === filters.tagId);
     tags.push({ key: 'tagId', label: `标签: ${tag?.name || filters.tagId}` });
   }
   if (filters.counter) tags.push({ key: 'counter', label: `${filters.counter}号柜` });
   if (filters.batchId) {
-    const batch = allBatches.find((b: any) => String(b.id) === filters.batchId);
+    const batch = allBatches.find(b => String(b.id) === filters.batchId);
     tags.push({ key: 'batchId', label: batch?.batchCode || filters.batchId });
   }
   if (filters.minPrice) tags.push({ key: 'minPrice', label: `最低价: ¥${filters.minPrice}` });
@@ -105,13 +106,13 @@ interface FilterBarProps {
   onSearchFieldChange: (v: string) => void;
 
   // Dropdown data
-  materials: any[];
-  filteredMaterials: any[];
-  types: any[];
-  tags: any[];
+  materials: DictMaterial[];
+  filteredMaterials: DictMaterial[];
+  types: DictType[];
+  tags: DictTag[];
   onLoadTypes: (materialId?: number) => void;
   onLoadTags: (materialId?: number) => void;
-  allBatches: any[];
+  allBatches: Batch[];
   allCounters: number[];
 
   // More filters
@@ -291,7 +292,7 @@ export default function InventoryFilterBar({
               <SelectTrigger className="h-9"><SelectValue placeholder="全部批次" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部批次</SelectItem>
-                {allBatches.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode}</SelectItem>)}
+                {allBatches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

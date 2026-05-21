@@ -14,12 +14,22 @@ import {
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge } from '../shared';
 import SortableHead from './inventory-sortable-head';
+import type { ItemSummary, DictTag } from '@/lib/api.types';
+
+// API返回的扩展货品字段
+interface InventoryItem extends ItemSummary {
+  coverImage?: string;
+  materialName?: string;
+  typeName?: string;
+  estimatedCost?: number;
+  ageDays?: number;
+}
 
 // 标签颜色映射（由主文件通过 props 传入）
 type GetTagColorFn = (tagName: string) => string;
 
 interface DesktopTableProps {
-  sortedItems: any[];
+  sortedItems: InventoryItem[];
   selectedIds: Set<number>;
   isAllSelected: boolean;
   isSomeSelected: boolean;
@@ -33,8 +43,8 @@ interface DesktopTableProps {
   onSelectItem: (id: number) => void;
   onShowDetailDialog: (id: number) => void;
   onShowEditDialog: (id: number) => void;
-  onShowSaleDialog: (item: any) => void;
-  onShowReturnConfirm: (item: any) => void;
+  onShowSaleDialog: (item: InventoryItem) => void;
+  onShowReturnConfirm: (item: InventoryItem) => void;
   onRestoreToStock: (id: number) => void;
   onDeleteItem: (id: number) => void;
   onNavigateToBatches: () => void;
@@ -164,8 +174,8 @@ export default function InventoryDesktopTable({
                   {/* Tags */}
                   <TableCell>
                     {(() => {
-                      const tgs: any[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
-                      const tagLabels: string[] = tgs.map((t: any) => typeof t === 'string' ? t : t.name || '');
+                      const tgs: unknown[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+                      const tagLabels: string[] = tgs.map((t: unknown) => typeof t === 'string' ? t : (t as DictTag).name || '');
                       if (tagLabels.length === 0) return <span className="text-muted-foreground">—</span>;
                       return <div className="flex flex-wrap gap-1 max-w-[160px]">{tagLabels.slice(0, 3).map((t: string, i: number) => (
                         <Badge key={i} variant="outline" className={`text-[10px] h-5 px-1.5 ${getTagColor(t)}`}>{t}</Badge>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +14,27 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { Search, CheckSquare, X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
+import type { ItemSummary, DictMaterial, DictType } from '@/lib/api.types';
+
+// API返回扩展字段
+interface PromotionItem extends ItemSummary {
+  materialName?: string;
+  typeName?: string;
+}
+
+interface ItemQueryParams {
+  page: number;
+  size: number;
+  status?: string;
+  material_id?: string;
+  type_id?: string;
+  keyword?: string;
+  minPrice?: string;
+  maxPrice?: string;
+}
 
 // API 函数
-async function getItems(params: any) {
+async function getItems(params: Record<string, string | number | undefined>) {
   const url = new URL('/api/items', window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
     if (value) url.searchParams.append(key, value);
@@ -52,9 +71,10 @@ function PromotionItemSelect({
   onSelect: (itemIds: number[]) => void;
   selectedItemIds: number[]
 }) {
-  const [items, setItems] = useState<any[]>([]);
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [types, setTypes] = useState<any[]>([]);
+  const { handleError } = useErrorHandler();
+  const [items, setItems] = useState<PromotionItem[]>([]);
+  const [materials, setMaterials] = useState<DictMaterial[]>([]);
+  const [types, setTypes] = useState<DictType[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ 
@@ -89,7 +109,7 @@ function PromotionItemSelect({
         }
 
         // 加载商品
-        const params: any = { 
+        const params: Record<string, string | number | undefined> = { 
           page: pagination.page, 
           size: pagination.size,
           status: filters.status
@@ -107,9 +127,9 @@ function PromotionItemSelect({
           setItems(itemsData.items || []);
           setPagination(itemsData.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
-      } catch (e: any) {
-        console.error('[PromotionItemSelect] loadData FAILED:', e);
-        if (!cancelled) toast.error(e.message || '加载商品失败');
+      } catch (error) {
+        console.error('[PromotionItemSelect] loadData FAILED:', error);
+        if (!cancelled) handleError(error, { title: '加载商品失败' });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -129,7 +149,7 @@ function PromotionItemSelect({
 
   // 根据大类筛选材质
   const filteredMaterials = useMemo(() => {
-    return materials.filter((m: any) => {
+    return materials.filter((m: DictMaterial) => {
       if (!filters.materialCategory) return true;
       return m.category === filters.materialCategory;
     });
@@ -174,7 +194,7 @@ function PromotionItemSelect({
   };
 
   // 商品的辅助指标（暂无数据时显示 -）
-  function calculateItemMetrics(item: any) {
+  function calculateItemMetrics(item: PromotionItem) {
     return {
       salesVolume: 0,
       stockLevel: item.status === 'in_stock' ? '充足' : '缺货',

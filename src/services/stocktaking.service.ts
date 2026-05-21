@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 
@@ -31,6 +32,16 @@ export interface StocktakingDetailUpdate {
   notes?: string;
 }
 
+export interface StocktakingDetailItem {
+  id: number;
+  itemId: number;
+  systemQty: number;
+  actualQty: number;
+  variance: number;
+  notes?: string;
+  item?: { material?: { name?: string }; type?: { name?: string } };
+}
+
 export interface StocktakingWithDetails {
   id: number;
   type: string;
@@ -39,7 +50,7 @@ export interface StocktakingWithDetails {
   endDate?: string;
   notes?: string;
   createdAt: Date;
-  details: any[];
+  details: StocktakingDetailItem[];
 }
 
 // ============================================================
@@ -51,7 +62,7 @@ export interface StocktakingWithDetails {
  * 等同于 GET /api/stocktaking
  */
 export async function listStocktakings(query: StocktakingListQuery): Promise<{
-  stocktakings: any[];
+  stocktakings: StocktakingWithDetails[];
   total: number;
   page: number;
   size: number;
@@ -210,11 +221,14 @@ export async function updateStocktakingDetails(stocktakingId: number, details: S
   const updatedDetails = await Promise.all(
     details.map(async (detail) => {
       const { detailId, actualQty, notes } = detail;
+      // 需要先查出当前 systemQty
+      const existingDetail = await db.stocktakingDetail.findUnique({ where: { id: detailId } });
+      const systemQty = existingDetail?.systemQty ?? 0;
       return await db.stocktakingDetail.update({
         where: { id: detailId },
         data: {
           actualQty,
-          variance: actualQty - (detail as any).systemQty || 1,
+          variance: actualQty - systemQty,
           notes,
         },
       });

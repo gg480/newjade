@@ -42,7 +42,7 @@ export interface PromotionWithItemCount {
   status: string;
   createdAt: Date;
   itemCount: number;
-  items?: any[];
+  items?: ItemBrief[];
 }
 
 export interface ItemBrief {
@@ -287,7 +287,7 @@ export async function getPromotionItems(promotionId: number): Promise<{
  * 等同于 POST /api/promotions/:id/items
  */
 export async function addPromotionItems(promotionId: number, itemIds: number[]): Promise<{
-  items: any[];
+  items: ItemBrief[];
   addedCount: number;
   totalCount: number;
 }> {
@@ -346,7 +346,7 @@ export async function addPromotionItems(promotionId: number, itemIds: number[]):
  * 等同于 DELETE /api/promotions/:id/items
  */
 export async function removePromotionItems(promotionId: number, itemIds: number[]): Promise<{
-  items: any[];
+  items: ItemBrief[];
   removedCount: number;
   totalCount: number;
 }> {

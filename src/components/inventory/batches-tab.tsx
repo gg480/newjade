@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { batchesApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, EmptyState, LoadingSkeleton, ConfirmDialog } from './shared';
 import BatchCreateDialog from './batch-create-dialog';
 import BatchDetailDialog from './batch-detail-dialog';
@@ -17,10 +18,23 @@ import { BatchesFilterBar } from './batches/batches-filter-bar';
 import { BatchesTable } from './batches/batches-table';
 
 import { Layers } from 'lucide-react';
+import type { Batch } from '@/lib/api.types';
+
+// 批次列表扩展类型（含展平字段）
+interface BatchTableRow extends Batch {
+  materialName?: string;
+  supplierName?: string;
+  revenue?: number;
+  soldCount?: number;
+  note?: string;
+  margin?: number;
+  profit?: number;
+}
 
 // ========== Batches Tab ==========
 function BatchesTab() {
-  const [batches, setBatches] = useState<any[]>([]);
+  const { handleError } = useErrorHandler();
+  const [batches, setBatches] = useState<BatchTableRow[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -36,14 +50,14 @@ function BatchesTab() {
   }, [searchText]);
 
   // Edit dialog
-  const [editDialog, setEditDialog] = useState<{ open: boolean; batch: any }>({ open: false, batch: null });
+  const [editDialog, setEditDialog] = useState<{ open: boolean; batch: BatchTableRow | null }>({ open: false, batch: null });
   const [editForm, setEditForm] = useState({ totalCost: 0, quantity: 0, purchaseDate: '', supplierName: '', note: '' });
 
   // Delete dialog
-  const [deleteBatch, setDeleteBatch] = useState<any>(null);
+  const [deleteBatch, setDeleteBatch] = useState<BatchTableRow | null>(null);
 
   // Quick add item state
-  const [quickAddBatch, setQuickAddBatch] = useState<any>(null);
+  const [quickAddBatch, setQuickAddBatch] = useState<BatchTableRow | null>(null);
 
   // Refresh key for manual reload triggers
   const [refreshKey, setRefreshKey] = useState(0);
@@ -71,10 +85,10 @@ function BatchesTab() {
       const result = await batchesApi.allocateBatch(batchId);
       toast.success(`成本分摊完成！共 ${result.items?.length || 0} 件货品`);
       refresh();
-    } catch (e: any) { toast.error(e.message || '分摊失败'); }
+    } catch (error) { handleError(error, { title: '分摊失败' }); }
   }
 
-  function openEditDialog(batch: any) {
+  function openEditDialog(batch: BatchTableRow) {
     setEditDialog({ open: true, batch });
     setEditForm({
       totalCost: batch.totalCost || 0,
@@ -92,7 +106,7 @@ function BatchesTab() {
       toast.success('批次更新成功');
       setEditDialog({ open: false, batch: null });
       refresh();
-    } catch (e: any) { toast.error(e.message || '更新失败'); }
+    } catch (error) { handleError(error, { title: '更新失败' }); }
   }
 
   async function handleDelete() {
@@ -102,8 +116,8 @@ function BatchesTab() {
       toast.success('批次删除成功');
       setDeleteBatch(null);
       refresh();
-    } catch (e: any) {
-      toast.error(e.message || '删除失败');
+    } catch (error) {
+      handleError(error, { title: '删除失败' });
     }
   }
 
@@ -113,7 +127,7 @@ function BatchesTab() {
       return;
     }
     const headers = ['批次编号', '材质', '供应商', '数量', '已录入', '进度%', '总成本', '单价', '创建日期'];
-    const rows = filteredBatches.map((b: any) => {
+    const rows = filteredBatches.map(b => {
       const qty = b.quantity || 0;
       const itemsCount = b.itemsCount || 0;
       const pct = qty > 0 ? Math.round((itemsCount / qty) * 100) : 0;
@@ -130,7 +144,7 @@ function BatchesTab() {
         b.purchaseDate || b.createdAt?.slice(0, 10) || '',
       ];
     });
-    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: any) => {
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map((cell: string | number) => {
       const str = String(cell);
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`;
@@ -153,21 +167,21 @@ function BatchesTab() {
   const filteredBatches = useMemo(() => {
     if (!debouncedSearch.trim()) return batches;
     const q = debouncedSearch.trim().toLowerCase();
-    return batches.filter((b: any) => (b.batchCode || '').toLowerCase().includes(q));
+    return batches.filter(b => (b.batchCode || '').toLowerCase().includes(q));
   }, [batches, debouncedSearch]);
 
   // ROI Leaderboard: top 5 batches with sales, sorted by profit margin
   const roiLeaderboard = useMemo(() => {
     return batches
-      .filter((b: any) => (b.soldCount || 0) > 0)
-      .map((b: any) => {
+      .filter(b => (b.soldCount || 0) > 0)
+      .map(b => {
         const revenue = b.revenue || 0;
         const cost = b.totalCost || 0;
         const margin = cost > 0 ? ((revenue - cost) / cost) * 100 : 0;
         const profit = revenue - cost;
         return { ...b, margin, profit };
       })
-      .sort((a: any, b: any) => b.margin - a.margin)
+      .sort((a, b) => b.margin - a.margin)
       .slice(0, 5);
   }, [batches]);
 
