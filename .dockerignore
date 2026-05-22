@@ -17,6 +17,7 @@ tests/
 
 # 脚本（构建/部署脚本不需要进镜像）
 scripts/
+!scripts/entrypoint.sh
 
 # 团队协作文件
 .trae/
