@@ -12,8 +12,8 @@ FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-# 安装 pnpm（通过 corepack 启用）
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# 安装 pnpm（固定 v9 避免 v10+ build scripts 审批问题）
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
