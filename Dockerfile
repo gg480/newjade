@@ -59,6 +59,7 @@ RUN mkdir -p /app/db
 # 暴露服务端口
 EXPOSE 5000
 
-# 启动：先确保 Prisma Client 就绪，再启动 Next.js 生产服务
+# 启动：Prisma Client 就绪后，先同步数据库结构再启动服务
+# db push 确保 schema 变更（如新增 users 表）应用到已有数据库
 # pnpm 下 node_modules/.bin/next 是 shell 脚本，必须用 npx 调用
-CMD ["sh", "-c", "npx prisma generate && DATABASE_URL=file:./db/custom.db npx next start -p 5000"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push && DATABASE_URL=file:./data/db/custom.db npx next start -p 5000"]
