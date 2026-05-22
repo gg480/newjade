@@ -83,6 +83,15 @@ if [ -f "${DB_PATH}" ]; then
     }
   fi
   echo "[INFO] Schema sync completed"
+
+  # Re-apply base seed to fix any schema-driven data issues (e.g. new columns, role assignments)
+  # seed-base.ts uses upsert — safe to run repeatedly on existing databases
+  echo "[INFO] Re-applying base seed to fix data integrity..."
+  if [ -n "${RUN_AS}" ]; then
+    ${RUN_AS} npx tsx prisma/seed-base.ts 2>&1 || echo "[WARN] Seed re-apply had issues, continuing..."
+  else
+    npx tsx prisma/seed-base.ts 2>&1 || echo "[WARN] Seed re-apply had issues, continuing..."
+  fi
 else
   echo "[INFO] No existing database found, initializing..."
   
@@ -104,16 +113,16 @@ else
   # Seed base config (materials, types, tags, system settings, metal prices)
   echo "[INFO] Seeding base configuration data..."
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} node prisma/seed-base.js 2>&1 || {
+    ${RUN_AS} npx tsx prisma/seed-base.ts 2>&1 || {
       echo "[ERROR] Seed base data failed!"
       echo "[ERROR] The application may not work correctly without base data."
-      echo "[ERROR] You can try running manually: node prisma/seed-base.js"
+      echo "[ERROR] You can try running manually: npx tsx prisma/seed-base.ts"
     }
   else
-    node prisma/seed-base.js 2>&1 || {
+    npx tsx prisma/seed-base.ts 2>&1 || {
       echo "[ERROR] Seed base data failed!"
       echo "[ERROR] The application may not work correctly without base data."
-      echo "[ERROR] You can try running manually: node prisma/seed-base.js"
+      echo "[ERROR] You can try running manually: npx tsx prisma/seed-base.ts"
     }
   fi
 fi
@@ -123,7 +132,7 @@ MATERIAL_COUNT=$(echo "SELECT COUNT(*) FROM DictMaterial;" | sqlite3 "${DB_PATH}
 echo "[INFO] DictMaterial count: ${MATERIAL_COUNT}"
 if [ "${MATERIAL_COUNT}" = "0" ]; then
   echo "[WARN] No material data found! Attempting to re-seed..."
-  node prisma/seed-base.js 2>&1 || echo "[WARN] Re-seed also failed"
+  npx tsx prisma/seed-base.ts 2>&1 || echo "[WARN] Re-seed also failed"
 fi
 
 # 5. Start application
