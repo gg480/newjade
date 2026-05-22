@@ -1,72 +1,64 @@
-# ---- Stage 1: Dependencies ----
-FROM node:22-alpine AS deps
+# ============================================================
+# Jade ERP - 极空间 NAS Docker 部署
+# 多架构支持：x86_64 + ARM64
+# 构建命令：docker buildx build --platform linux/amd64,linux/arm64
+# ============================================================
+
+# ---- Stage 1: Builder ----
+# 使用 BUILDPLATFORM 让构建在宿主机原生架构上执行（速度快）
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
+
+# 声明目标平台参数（供构建时交叉编译判断）
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+# 安装 pnpm（通过 corepack 启用）
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
+# 先复制依赖清单，利用 Docker 层缓存
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
+# 安装依赖 + 生成 Prisma Client
 RUN pnpm install --frozen-lockfile && \
     npx prisma generate
 
-# ---- Stage 2: Build ----
-FROM node:22-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@latest --activate
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
+# 复制全部源代码
 COPY . .
 
+# 构建 Next.js 生产包
 RUN npx prisma generate && \
     pnpm build
 
-# Pre-compile seed script to JS (no tsx needed at runtime)
-# bcrypt must be externalized (native C++ module, cannot be bundled)
-RUN npx esbuild prisma/seed-base.ts \
-    --bundle --platform=node --format=cjs \
-    --outfile=prisma/seed-base.js \
-    --external:@prisma/client \
-    --external:bcrypt
-
-# ---- Stage 3: Production (minimal) ----
+# ---- Stage 2: Runner（最小运行时） ----
 FROM node:22-alpine AS runner
-
-# Install su-exec for privilege dropping + sqlite tools + pinned Prisma CLI
-# Keep Prisma CLI major version aligned with @prisma/client in package.json
-ARG PRISMA_CLI_VERSION=6.11.1
-RUN apk add --no-cache su-exec && \
-    npm install -g prisma@${PRISMA_CLI_VERSION}
 
 WORKDIR /app
 
+# 设置环境变量
 ENV NODE_ENV=production
-ENV DATA_DIR=/app/data
-ENV PORT=5000
-ENV HOSTNAME="0.0.0.0"
-ENV PUID=0
-ENV PGID=0
+ENV DATABASE_URL=file:./db/custom.db
 
-# Copy standalone Next.js output (includes minimal node_modules for app)
-COPY --from=builder /app/.next/standalone ./
-# Copy bcrypt native module (used by seed-base.js at runtime, not in standalone)
-COPY --from=builder /app/node_modules/bcrypt ./node_modules/bcrypt
-# Copy static assets (not included in standalone)
-COPY --from=builder /app/.next/static ./.next/static
-# Copy public folder
-COPY --from=builder /app/public ./public
-# Copy Prisma schema + compiled seed for runtime db init
+# 从 Builder 复制必要文件
+# .next —— Next.js 构建产物
+COPY --from=builder /app/.next ./next
+# prisma —— Schema + migration 文件（运行时 prisma generate 需要）
 COPY --from=builder /app/prisma ./prisma
-# Copy entrypoint script
-COPY --from=builder /app/scripts/entrypoint.sh /app/scripts/entrypoint.sh
+# node_modules —— 运行时依赖
+COPY --from=builder /app/node_modules ./node_modules
+# package.json —— 脚本入口定义
+COPY --from=builder /app/package.json ./package.json
+# public —— 静态资源
+COPY --from=builder /app/public ./public
 
-# Create data directories and set permissions
-RUN mkdir -p /app/data/db /app/data/images /app/data/logs && \
-    chmod -R 777 /app/data && \
-    chmod +x /app/scripts/entrypoint.sh
+# 创建数据库持久化目录（通过 volume 挂载）
+RUN mkdir -p /app/db
 
-# Single volume for all persistent data
-VOLUME ["/app/data"]
-
+# 暴露服务端口
 EXPOSE 5000
 
-ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+# 启动：先确保 Prisma Client 就绪，再启动 Next.js 生产服务
+# DATABASE_URL 指向 volume 挂载的 SQLite 文件
+CMD ["sh", "-c", "npx prisma generate && DATABASE_URL=file:./db/custom.db node node_modules/.bin/next start -p 5000"]

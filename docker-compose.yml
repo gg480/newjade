@@ -1,34 +1,36 @@
+# ============================================================
+# Jade ERP - 极空间 NAS Docker Compose 部署
+# 使用方式：docker compose up -d
+# ============================================================
+
 version: "3.8"
 
 services:
-  jade-inventory:
-    # 建议在 .env 中设置 JADE_IMAGE 为固定 sha tag，避免 latest 漂移
-    # 示例:
-    # JADE_IMAGE=crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:sha-xxxxxxxx
-    image: ${JADE_IMAGE:-crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:latest}
-    container_name: jade-inventory
+  jade-erp:
+    # 本地构建镜像（也可替换为仓库镜像地址）
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jade-erp:latest
+    container_name: jade-erp
     ports:
-      - "${JADE_PORT:-5000}:5000"
+      - "5000:5000"
     volumes:
-      # 建议在 .env 中配置宿主机绝对路径（NAS 更稳定）
-      - ${JADE_DB_DIR:-./jade-ssd/db}:/app/data/db
-      - ${JADE_IMAGE_DIR:-./jade-hdd/images}:/app/data/images
-      - ${JADE_LOG_DIR:-./jade-ssd/logs}:/app/data/logs
-      - ${JADE_BACKUP_DIR:-./jade-ssd/backups}:/app/backups
-      - ${JADE_CONFIG_DIR:-./jade-ssd/config}:/app/config
+      # SQLite 数据库持久化：容器内 /app/db 映射到宿主机 ./db 目录
+      - ./db:/app/db
     environment:
-      - DATA_DIR=/app/data
-      - BACKUP_DIR=/app/backups
+      - DATABASE_URL=file:./db/custom.db
       - NODE_ENV=production
-      - TZ=${TZ:-Asia/Shanghai}
-      # PUID/PGID for NAS permission compatibility
-      # Default 0 = run as root (simplest, works on all NAS)
-      - PUID=${PUID:-0}
-      - PGID=${PGID:-0}
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    # 健康检查：每 30s 探测一次 API 健康端点
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-    restart: unless-stopped
