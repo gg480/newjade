@@ -121,6 +121,7 @@ tests/
 - `.coze` config uses `scripts/deploy-build.sh` for build (handles install + prisma + build)
 - `package.json` has `postinstall: "prisma generate"` and `prebuild: "prisma generate"` as safeguards
 - Production start script: `DATABASE_URL=${DATABASE_URL:-file:./db/custom.db} NODE_ENV=production next start -p 5000`
+- **Dockerfile CMD 规范**：使用 `npx next start`（pnpm环境必须），CMD不包含 `prisma db push`（数据库迁移由部署脚本显式触发）
 
 ## Known Issues
 
@@ -130,6 +131,7 @@ tests/
 - **认证已启用**（Sprint-007 多用户登录系统）：默认管理员 `admin` / `admin123`，支持角色权限，7天会话有效期。首次访问显示登录页
 - Deployment environment uses `/tmp/workdir` as project path (not `/workspace/projects`)
 - Turbopack production build sometimes caches old chunks — if code changes don't take effect, do `rm -rf .next && pnpm build`
+- **NAS 生产环境安全更新**：Docker CMD 不会自动执行 `prisma db push`（避免启动时静默变更数据库结构）。Schema 变更需通过 Prisma Migration 工作流：本地生成迁移SQL → Git提交 → CI漂移检测 → NAS端 `migrate deploy`。详见 `.trae/skills/nas-deploy/SKILL.md` Phase 6
 
 ## \[CRITICAL] File Safety Rules（防文件清空）
 

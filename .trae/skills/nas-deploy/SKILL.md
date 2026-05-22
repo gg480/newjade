@@ -218,27 +218,42 @@ echo "E2E exit code: $?"
 
 ## Phase 2：镜像构建与推送
 
-### 2.1 项目现有 Docker 资产
+### 2.1 GitHub Actions 自动构建（推荐，已配置）
 
-项目已包含以下部署文件，可直接使用：
+> **核心流程：`git push main` → GitHub Actions 自动构建镜像 → 推送到 ACR + Docker Hub → NAS 上 `docker compose pull` 更新**
 
-| 文件 | 用途 |
-|------|------|
-| `Dockerfile` | 多阶段构建（deps → builder → runner），基于 `node:22-alpine` |
-| `docker-compose.yml` | 容器编排，含健康检查、自动重启、数据挂载 |
-| `.env.nas.example` | NAS 环境变量模板 |
-| `scripts/entrypoint.sh` | 容器入口：首次运行初始化 DB + seed，后续运行自动迁移 |
-| `scripts/nas-healthcheck.sh` | 部署后 API 可达性检查 |
-| `scripts/nas-rollback.sh` | 镜像回滚脚本 |
+代码推送到 `main` 分支后，`.github/workflows/docker-build.yml` 自动触发，无需手动执行 `docker build` / `docker push`。
 
-### 2.2 构建与推送
+**自动构建产物：**
+
+| 仓库 | 镜像地址 | 标签 |
+|------|---------|------|
+| **阿里云 ACR**（NAS 首选） | `crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp` | `latest`、`sha-{git_hash}`、`main` |
+| **Docker Hub**（备选） | `docker.io/lrunningmjgoat/jade-inventory` | `latest`、`sha-{git_hash}`、`main` |
+
+**触发条件：**
+- `push` 到 `main` 或 `master` 分支 → 自动构建
+- `workflow_dispatch` → 手动触发（GitHub Actions 页面点击 Run workflow）
+
+**使用的 GitHub Secrets：**
+| Secret | 用途 |
+|--------|------|
+| `DOCKERHUB_USERNAME` | Docker Hub 用户名 |
+| `DOCKERHUB_TOKEN` | Docker Hub Access Token |
+| `ACR_USERNAME` | 阿里云 ACR 账号 |
+| `ACR_PASSWORD` | 阿里云 ACR 密码（容器镜像服务 → 访问凭证） |
+
+**查看构建状态：** GitHub 仓库 → Actions 标签 → 查看 `Build and Push Docker Image` workflow
+
+### 2.2 手动构建（备用，网络受限时）
+
+当 GitHub Actions 不可用或需要在开发机本地构建时：
 
 ```bash
 # Step 1：登录阿里云容器镜像仓库
 docker login --username=<你的阿里云账号> crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com
 
 # Step 2：构建镜像（项目根目录）
-# 生成唯一 tag，避免 latest 漂移导致回滚困难
 TAG="sha-$(git rev-parse --short HEAD)"
 docker build -t crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:${TAG} .
 
@@ -250,7 +265,20 @@ echo "${TAG}" > .last-nas-tag
 echo "[INFO] 镜像构建完成: jadeerp:${TAG}"
 ```
 
-### 2.3 架构说明
+### 2.3 项目现有 Docker 资产
+
+| 文件 | 用途 |
+|------|------|
+| `Dockerfile` | 多阶段构建（deps → builder → runner），基于 `node:22-alpine` |
+| `docker-compose.yml` | 本地开发用 compose 配置（根目录） |
+| `nas-deploy/docker-compose.yml` | NAS 生产级 compose（不上传 Git，手动复制到极空间） |
+| `.github/workflows/docker-build.yml` | GitHub Actions 自动构建流水线 |
+| `.env.nas.example` | NAS 环境变量模板 |
+| `scripts/entrypoint.sh` | 容器入口：首次运行初始化 DB + seed，后续运行自动迁移 |
+| `scripts/nas-healthcheck.sh` | 部署后 API 可达性检查 |
+| `scripts/nas-rollback.sh` | 镜像回滚脚本 |
+
+### 2.4 架构说明
 
 `Dockerfile` 基于 `node:22-alpine`，自动适配 x86_64 和 ARM64。极空间 Z4/Z4S（x86_64）和 ARM 型号均可使用同一 Dockerfile。
 
@@ -259,6 +287,7 @@ echo "[INFO] 镜像构建完成: jadeerp:${TAG}"
 - **数据持久化**：`/app/data` 目录（含 db/images/logs）通过 Volume 挂载到 NAS 物理路径
 - **自动迁移**：entrypoint 检测已有数据库时自动执行 `prisma db push`
 - **权限兼容**：支持 PUID/PGID 环境变量适配 NAS 文件权限
+- **启动命令**：必须用 `npx next start`（pnpm 下 `.bin/next` 是 shell 脚本，`node` 直接执行会报 SyntaxError）
 
 ---
 
@@ -556,6 +585,14 @@ docker compose logs --tail=50 jade-inventory
 
 ### 5.1 数据库备份策略
 
+#### 为什么不能用 `cp` 直接复制？
+
+SQLite 在生产环境使用 **WAL（Write-Ahead Logging）模式**，数据分布在 `.db`、`.db-wal`、`.db-shm` 三个文件中。用 `cp` 直接复制主文件会导致：
+- WAL 中未写入主文件的近期事务丢失
+- 备份文件损坏（文件系统级别复制时 WAL 可能正在写入）
+
+**正确做法**：使用 `sqlite3 .backup` 命令，它会获取读锁确保事务一致性。
+
 #### 自动备份（推荐）
 
 在极空间 NAS 上配置定时任务：
@@ -566,24 +603,31 @@ docker compose logs --tail=50 jade-inventory
 
 ```bash
 #!/bin/sh
-# 每日备份 Jade ERP 数据库
-BACKUP_DIR="/volumeSSD/jade/backups"
-DB_PATH="/volumeSSD/jade/db/custom.db"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+# 每日备份 Jade ERP 数据库（使用 sqlite3 .backup，WAL 安全）
+BACKUP_DIR="/tmp/zfsv3/nvme12/13143360616/data/docker/Xing/backup"
+DB_NAME="custom-$(date +%Y%m%d-%H%M%S).db"
+BACKUP_PATH="${BACKUP_DIR}/${DB_NAME}"
 
-cp "${DB_PATH}" "${BACKUP_DIR}/custom_${TIMESTAMP}.db"
+# 使用 sqlite3 .backup 命令（而非 cp），确保 WAL 事务一致性
+docker exec jade-inventory sqlite3 /app/data/db/custom.db ".backup ${BACKUP_PATH}"
 
-# 仅保留最近 7 天的备份
-find "${BACKUP_DIR}" -name "custom_*.db" -mtime +7 -delete
+# gzip 压缩备份
+gzip "${BACKUP_PATH}"
 
-echo "[$(date)] Backup completed: custom_${TIMESTAMP}.db"
+# 验证备份完整性
+docker exec jade-inventory bash -c "zcat ${BACKUP_PATH}.gz | sqlite3 ':memory:' 'PRAGMA integrity_check'"
+
+# 仅保留最近 30 天的备份
+find "${BACKUP_DIR}" -name "custom-*.db.gz" -mtime +30 -delete
+
+echo "[$(date)] Backup completed: ${DB_NAME}.gz"
 ```
 
 #### 手动备份
 
 ```bash
-# 在 NAS 上执行
-docker compose exec jade-inventory cp /app/data/db/custom.db /app/backups/custom_$(date +%Y%m%d_%H%M%S).db
+# 在 NAS 上执行（WAL 安全方式）
+docker exec jade-inventory sqlite3 /app/data/db/custom.db ".backup /app/backups/custom-$(date +%Y%m%d-%H%M%S).db"
 ```
 
 ### 5.2 容器监控
@@ -656,6 +700,32 @@ sh scripts/nas-healthcheck.sh http://127.0.0.1:5000
 
 #### 镜像回滚
 
+有两种方式，**方式一（推荐，快速）通过 .env 版本号回滚**：
+
+**方式一（推荐）：通过 .env 版本号回滚**
+
+前提：`docker-compose.yml` 中使用 `${JADE_VERSION:-latest}` 引用 `.env` 中的版本号。
+
+```bash
+# 1. 备份当前 .env
+cp .env .env.bak
+
+# 2. 编辑 .env，将 JADE_VERSION 改回上一个稳定版本
+JADE_VERSION=sha-a1b2c3d  # 改为上一个已验证的 tag
+
+# 3. 拉取旧版本镜像并重启
+docker compose pull
+docker compose up -d
+
+# 4. 验证
+sh scripts/nas-healthcheck.sh http://127.0.0.1:5000
+
+# 5. 确认恢复后更新 .env
+JADE_VERSION=sha-a1b2c3d
+```
+
+**方式二：手动指定镜像拉取**
+
 ```bash
 # 使用 nas-rollback.sh 脚本回滚到指定版本
 sh scripts/nas-rollback.sh crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:sha-<之前的tag>
@@ -684,6 +754,258 @@ docker compose up -d
 
 # 建议：在 ERP 中避免上传大尺寸图片（单张 >5MB），控制流量消耗
 ```
+
+---
+
+## Phase 6：安全更新机制
+
+生产环境更新是高风险操作，本章提供从备份到回滚的完整安全防线。
+
+### 6.1 更新前备份（必须执行）
+
+每次更新镜像或修改数据库结构前，**必须先执行数据库备份**。跳过此步骤的后果：更新失败后无法恢复，丢失业务数据。
+
+#### 执行命令
+
+```bash
+# 在 NAS 终端执行（WAL 安全方式，详见 5.1）
+docker exec jade-inventory sqlite3 /app/data/db/custom.db ".backup /app/backups/custom-$(date +%Y%m%d-%H%M%S).db"
+```
+
+#### 备份完整性验证
+
+```bash
+# 验证刚生成的备份文件是否完好
+BACKUP_FILE="/app/backups/custom-20260522-030000.db"
+docker exec jade-inventory sqlite3 "${BACKUP_FILE}" "PRAGMA integrity_check"
+# 预期输出：ok
+```
+
+如果输出不是 `ok`，说明备份文件损坏，需要立即重新备份并排查磁盘健康状态。
+
+#### 为什么不能用 `cp` 直接复制？
+
+SQLite 生产环境使用 WAL（Write-Ahead Logging）模式。数据分布在三类文件中：
+
+| 文件 | 作用 |
+|------|------|
+| `custom.db` | 主数据库文件 |
+| `custom.db-wal` | 未合并的写操作日志 |
+| `custom.db-shm` | WAL 索引（共享内存） |
+
+用 `cp` 直接复制 `custom.db` 会导致：
+- WAL 中尚未写入主文件的事务永久丢失
+- `cp` 与 WAL checkpoint 竞争导致备份文件损坏
+
+**正确做法**：始终使用 `sqlite3 .backup` 命令，它会获取数据库读锁，确保事务一致性。
+
+### 6.2 镜像版本锁定
+
+#### 问题
+
+使用 `image: ...jadeerp:latest` 标签时，`docker compose pull` 无法知道本地运行的是哪个具体版本，也无法精确回滚。
+
+#### 方案：通过 `.env` 管理版本号
+
+**docker-compose.yml 修改**：
+
+```yaml
+services:
+  jade-inventory:
+    image: crpi-mhs13r1rv9emmqbi.cn-hangzhou.personal.cr.aliyuncs.com/jadeerp/jadeerp:${JADE_VERSION:-latest}
+    #                  ${JADE_VERSION:-latest} 表示：优先读 .env 中的 JADE_VERSION，未设置时默认 latest
+```
+
+**`.env` 文件**：
+
+```bash
+# Jade ERP 镜像版本（修改此值即可升级/回滚）
+JADE_VERSION=sha-a1b2c3d
+```
+
+#### 升级流程
+
+```bash
+# 1. 编辑 .env，更新版本号
+JADE_VERSION=sha-x9y8z7w
+
+# 2. 拉取新镜像并启动
+docker compose pull
+docker compose up -d
+```
+
+#### 回滚流程
+
+```bash
+# 1. 编辑 .env，改回旧版本号
+JADE_VERSION=sha-a1b2c3d
+
+# 2. 拉取旧镜像并启动
+docker compose pull
+docker compose up -d
+```
+
+### 6.3 更新脚本（nas-update.sh）
+
+一键安全更新脚本，包含全流程：备份 → 拉取 → 停旧 → 启新 → 健康检查 → 成功保留 / 失败回滚。
+
+#### 脚本内容
+
+```bash
+#!/bin/bash
+# nas-update.sh — Jade ERP 安全更新脚本
+# 用法：JADE_VERSION=sha-x9y8z7w sh nas-update.sh
+
+set -euo pipefail
+
+NEW_VERSION="${JADE_VERSION:-}"
+if [ -z "$NEW_VERSION" ]; then
+  echo "错误：请设置 JADE_VERSION 环境变量"
+  echo "用法：JADE_VERSION=sha-xxx sh nas-update.sh"
+  exit 1
+fi
+
+COMPOSE_DIR="/path/to/docker-compose"  # 修改为你的 compose 目录
+HEALTH_URL="http://127.0.0.1:5000/api/health"
+MAX_RETRIES=30           # 每 5s 一次，最多等 150s
+RETRY_INTERVAL=5
+
+echo "===== Jade ERP 安全更新 ====="
+echo "目标版本: ${NEW_VERSION}"
+echo ""
+
+# Step 1：拉取新镜像
+echo "[1/6] 拉取镜像 ${NEW_VERSION}..."
+cd "${COMPOSE_DIR}"
+JADE_VERSION="${NEW_VERSION}" docker compose pull
+
+# Step 2：备份当前版本号
+echo "[2/6] 备份当前版本号..."
+if [ -f .env ]; then
+  OLD_VERSION=$(grep JADE_VERSION .env | cut -d= -f2)
+  echo "当前版本: ${OLD_VERSION:-latest}"
+  cp .env .env.bak."$(date +%Y%m%d-%H%M%S)"
+else
+  OLD_VERSION="latest"
+  echo "未找到 .env，当前版本: latest"
+fi
+
+# Step 3：更新前备份数据库
+echo "[3/6] 更新前备份数据库..."
+docker exec jade-inventory sqlite3 /app/data/db/custom.db \
+  ".backup /app/backups/custom-pre-update-$(date +%Y%m%d-%H%M%S).db"
+
+# Step 4：停止旧容器并启动新容器
+echo "[4/6] 停止旧容器，启动新版本..."
+echo "JADE_VERSION=${NEW_VERSION}" > .env
+JADE_VERSION="${NEW_VERSION}" docker compose up -d
+
+# Step 5：健康检查
+echo "[5/6] 健康检查（最多等待 $((MAX_RETRIES * RETRY_INTERVAL)) 秒）..."
+for i in $(seq 1 ${MAX_RETRIES}); do
+  if curl -sf "${HEALTH_URL}" > /dev/null 2>&1; then
+    echo "  健康检查通过（第 ${i} 次）"
+    break
+  fi
+  if [ "$i" -eq "${MAX_RETRIES}" ]; then
+    echo "  健康检查失败！开始回滚..."
+    
+    # 失败自动回滚
+    echo "[回滚] 恢复旧版本号..."
+    if [ "${OLD_VERSION}" != "latest" ]; then
+      echo "JADE_VERSION=${OLD_VERSION}" > .env
+    else
+      rm -f .env
+    fi
+    
+    echo "[回滚] 停止问题容器，启动旧版本..."
+    docker compose down
+    docker compose up -d
+    
+    echo "[回滚] 验证旧版本健康..."
+    sleep 10
+    if curl -sf "${HEALTH_URL}" > /dev/null 2>&1; then
+      echo "[回滚] 成功！系统已恢复到 ${OLD_VERSION:-latest}"
+    else
+      echo "[回滚] 失败！请手动排查。检查备份文件："
+      ls -lt /tmp/zfsv3/nvme12/*/data/docker/Xing/backup/custom-pre-update-* 2>/dev/null | head -3
+    fi
+    exit 1
+  fi
+  sleep ${RETRY_INTERVAL}
+done
+
+# Step 6：更新成功
+echo "[6/6] 更新完成！当前版本: ${NEW_VERSION}"
+echo "确认无误后建议清理旧备份：find backups/ -name 'custom-pre-update-*' -mtime +7 -delete"
+```
+
+#### 使用方法
+
+```bash
+# 在 NAS 终端执行
+JADE_VERSION=sha-x9y8z7w sh nas-update.sh
+```
+
+### 6.4 数据库迁移策略
+
+#### 重要：Docker CMD 不会自动执行 `prisma db push`
+
+Jade ERP 的 Docker 镜像 CMD 已移除 `prisma db push`，**容器启动时不会自动变更数据库结构**。这是生产环境安全设计，避免：
+- 启动时静默修改数据库，操作者不知情
+- 新版本 Schema 变更与旧备份不兼容
+- 回滚时数据库已变更无法恢复
+
+#### 迁移工作流
+
+当 Prisma Schema 有变更时，必须通过正式的 Migration 流程：
+
+```
+本地开发 → 生成 Migration SQL → 审查 SQL → Git 提交 → CI 漂移检测 → NAS 端执行 migrate deploy
+```
+
+**Step 1：本地生成 Migration（开发者）**
+
+```bash
+# 在开发机执行
+npx prisma migrate dev --create-only --name describe_your_change
+# 此命令会在 prisma/migrations/ 下生成 SQL 文件
+```
+
+**Step 2：审查 Migration SQL**
+
+```bash
+# 查看生成的 SQL，确认无误
+cat prisma/migrations/*/migration.sql
+```
+
+**Step 3：提交到 Git**
+
+```bash
+git add prisma/migrations/
+git commit -m "db: describe your schema change"
+git push
+```
+
+**Step 4：NAS 端执行迁移（运维）**
+
+```bash
+# SSH 到 NAS 或通过终端执行
+docker compose exec jade-inventory npx prisma migrate deploy
+```
+
+**注意**：
+- `migrate deploy` 只执行尚未应用的 migration，不会生成新 migration
+- 迁移前务必执行 6.1 节的数据库备份
+- 迁移是单向操作，回滚需从备份恢复
+
+### 6.5 CI/CD 安全防线
+
+| 阶段 | 防线 | 状态 |
+|------|------|:---:|
+| **Phase 1（当前）** | GitHub Actions 自动构建 `sha-{hash}` 标签，推送到阿里云 ACR | 已实施 |
+| **Phase 2（规划中）** | PR 合并时自动检测 Schema 漂移：对比 `prisma/migrations/` 与 `schema.prisma`，如 schema 有变更但无对应 migration 文件则 CI 失败 | 规划中 |
+| **Phase 3（规划中）** | Smoke Test：构建完成后在 CI 中启动容器 → 等待健康检查 → 验证 `/api/health` 返回 200 → 通过后才推送镜像 | 规划中 |
 
 ---
 
@@ -857,7 +1179,181 @@ RUN npx next build
 
 ---
 
-## 附录 C：快速命令速查
+## 附录 C：Docker 启动故障排查
+
+> 2026-05-22 更新：NAS 部署时遇到的两个 Docker 启动 Bug + Git push 网络问题排查。
+
+本附录记录容器反复崩溃时的标准化排查流程，以及本次踩过的两个关键 Bug 的原理分析。
+
+---
+
+### C.1 容器反复崩溃 — 标准化排查流程
+
+当 `docker compose up -d` 后容器反复重启（STATUS 显示 `Restarting`），按以下步骤排查：
+
+```
+Step 1：查看容器日志
+──────────────────────────────────────────────────────────
+docker compose logs --tail=50 jade-inventory
+# 重点关注：
+#   - SyntaxError / EACCES / MODULE_NOT_FOUND → Bug 排查（见 C.2 / C.3）
+#   - "Schema migration had issues" → 数据库迁移失败（见附录 A Q8）
+#   - "Cannot find module" → pnpm deps 未安装或平台不匹配
+
+Step 2：确认容器能否启动到 entrypoint
+──────────────────────────────────────────────────────────
+docker compose exec jade-inventory sh
+# 如容器已崩溃无法 exec，先临时修改 CMD 为 tail -f /dev/null 后重新启动
+
+Step 3：在容器内手动执行 CMD 复现
+──────────────────────────────────────────────────────────
+# 进入容器后逐条执行：
+cd /app
+ls -la .next/                    # 确认 standalone 产物是否存在
+npx prisma generate              # 确认 Prisma 能正常生成
+npx next start -p 5000           # 手动启动，观察错误
+
+Step 4：确认 volume 挂载和权限
+──────────────────────────────────────────────────────────
+ls -la /app/data/db/             # 数据库文件是否存在、可读写
+whoami && id                     # 确认当前用户 uid/gid
+```
+
+**关键原则**：不要在宿主机猜测，必须进入容器内部逐条验证。
+
+---
+
+### C.2 Bug #1：`node node_modules/.bin/next` 报 SyntaxError
+
+**现象**：
+```
+SyntaxError: missing ) after argument list
+/app/node_modules/.bin/next:2
+basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
+```
+
+容器反复重启，每次 Prisma generate 成功，但 `next start` 失败。
+
+**根因**：pnpm 的 `.bin/` 目录下的可执行文件是 **shell wrapper 脚本**，不是 JS 文件。
+
+pnpm 在 `node_modules/.bin/` 下生成的文件格式：
+```bash
+#!/bin/sh
+basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
+# ... 实际调用 node_modules/xxx/dist/cli.js
+```
+
+这与 npm/yarn 不同 —— npm/yarn 的 `.bin/xxx` 通常是 `node_modules/.bin/../xxx/bin/xxx.js` 的符号链接或直接是 JS 文件，`node` 可直接执行。
+
+当 Dockerfile CMD 写成：
+```dockerfile
+CMD ["node", "node_modules/.bin/next", "start", "-p", "5000"]
+```
+`node` 尝试以 JavaScript 解析 shell 脚本，在 `basedir=$(...)` 处报 SyntaxError。
+
+**修复**：Dockerfile CMD 必须使用 `npx`：
+```dockerfile
+# 错误
+CMD ["node", "node_modules/.bin/next", "start", "-p", "5000"]
+
+# 正确
+CMD ["npx", "next", "start", "-p", "5000"]
+```
+
+**通用规则**：pnpm 项目 Docker 中启动命令必须用 npx，绝对不要 `node node_modules/.bin/xxx`。
+
+---
+
+### C.3 Bug #2：`COPY .next ./next` 路径错误导致 standalone 模式静默失败
+
+**现象**：Bug #1 修复后，容器能启动但 Next.js 服务无响应。`docker compose logs` 无异常输出，`docker compose ps` 显示正常，但浏览器访问返回 502 或长时间等待。
+
+容器内部检查：
+```bash
+$ ls /app/
+node_modules/  package.json  next/  # ← .next 被复制成了 next/！
+
+$ ls /app/.next/
+ls: /app/.next/: No such file or directory
+```
+
+**根因**：`COPY` 指令的路径语义。
+
+多阶段构建中：
+```dockerfile
+# 错误：把 .next 目录复制为 /app/next/
+COPY --from=builder /app/.next ./next
+```
+
+Docker `COPY` 的规则：如果目标不以 `/` 结尾，Docker 会将源复制为该名称的文件或目录。`./next` 被解释为"创建名为 `next` 的目录"，`.next` 的内容被放入 `/app/next/` 而非 `/app/.next/`。
+
+而 `next.config.ts` 中配置了 `output: "standalone"`，Next.js 启动时查找 `./.next` 目录来定位构建产物。找不到 `.next` 目录时，Next.js 会尝试重新编译，但在 `node:22-alpine` 无源码环境下静默失败。
+
+**修复**：目标路径必须包含 `.` 前缀：
+```dockerfile
+# 错误
+COPY --from=builder /app/.next ./next
+
+# 正确（目标必须是 ./.next，确保目录名为 .next）
+COPY --from=builder /app/.next ./.next
+```
+
+**教训**：
+- 涉及 `.next` / `.env` 等以 `.` 开头的隐藏文件/目录时，`COPY` 的目标路径必须显式写出 `.` 前缀
+- Dockerfile 多阶段构建的 `COPY --from` 路径建议全部使用 `./` 前缀明确相对路径
+- 容器启动后应第一时间 `ls -la /app/.next/` 验证构建产物在位
+
+---
+
+### C.4 Git Push 网络问题排查清单（Windows 环境）
+
+> 2026-05-22：NAS 更新后 `git push` 报 `Connection reset` / `Could not connect to server`。排查过程记录如下。
+
+**排查步骤**（逐层递进，从上到下）：
+
+| 步骤 | 命令 | 目的 | 本次结果 |
+|------|------|------|----------|
+| **1. DNS 解析** | `nslookup github.com` | 确认域名是否能解析 | 正常，解析到 `20.205.243.166` |
+| **2. TCP 443/22** | `Test-NetConnection github.com -Port 443` | 确认 TCP 层是否可达 | `TcpTestSucceeded: True`，TCP 层正常 |
+| **3. Git 代理配置** | `git config --list --global \| grep proxy` | 确认 Git 是否配置了代理 | 无输出 → Git 未配代理，直连 |
+| **4. 系统代理检查** | `[System.Net.WebRequest]::GetSystemWebProxy()` | 确认系统是否开启了代理软件 | **发现 `http://127.0.0.1:7897`（Clash）** |
+| **5. 根因判断** | — | 系统有代理但 Git 直连 → 代理/防火墙检测到无代理流量后 RST 重置连接 | — |
+| **6. 修复** | `git config --global http.proxy http://127.0.0.1:7897` | 让 Git 流量走系统代理 | Git push 成功 |
+
+**一图流排查决策树**：
+
+```
+git push 失败
+    │
+    ├─ nslookup 解析失败？
+    │   └─ 是 → DNS 问题：检查网络连接 / 更换 DNS
+    │
+    ├─ Test-NetConnection 端口不通？
+    │   └─ 是 → 网络被封：开 VPN / 换 SSH 协议
+    │
+    ├─ git config 已有 http.proxy？
+    │   └─ 是 → 代理失效：检查代理软件运行状态 / 端口
+    │
+    └─ 系统开了代理但 Git 未配？
+        └─ 是 → git config --global http.proxy http://127.0.0.1:<代理端口>
+```
+
+**Windows 环境常用代理软件端口**：
+| 软件 | 默认 HTTP 代理端口 |
+|------|:-----------------:|
+| Clash / Clash Verge | 7897 或 7890 |
+| V2Ray / V2RayN | 10809 |
+| Shadowsocks | 1080 |
+| 系统设置 → 网络代理 → 手动 | 查看设置页 |
+
+**CI/CD 影响说明**：本项目的 GitHub Actions 自动构建（`.github/workflows/docker-build.yml`）依赖 `git push` 成功。如果本地推送受阻，可：
+1. 配置 Git 代理（上述方法）
+2. 或使用 VPN 全局代理
+3. 或通过 GitHub Web 手动触发 workflow（Actions 页面 → Run workflow）
+
+---
+
+## 附录 D：快速命令速查
 
 ```bash
 # === 构建 ===

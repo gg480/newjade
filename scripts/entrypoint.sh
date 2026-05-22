@@ -70,9 +70,17 @@ if [ -f "${DB_PATH}" ]; then
   echo "[INFO] Preserving existing data, applying schema migration if needed..."
   
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} prisma db push 2>&1 || echo "[WARN] Schema migration had issues, continuing..."
+    ${RUN_AS} prisma db push 2>&1 || {
+      echo "[ERROR] Schema sync failed!"
+      echo "[ERROR] Check Prisma schema and database permissions."
+      exit 1
+    }
   else
-    prisma db push 2>&1 || echo "[WARN] Schema migration had issues, continuing..."
+    prisma db push 2>&1 || {
+      echo "[ERROR] Schema sync failed!"
+      echo "[ERROR] Check Prisma schema and database permissions."
+      exit 1
+    }
   fi
   echo "[INFO] Schema sync completed"
 else
