@@ -42,8 +42,8 @@ ENV NODE_ENV=production
 ENV DATABASE_URL=file:./db/custom.db
 
 # 从 Builder 复制必要文件
-# .next —— Next.js 构建产物
-COPY --from=builder /app/.next ./next
+# .next —— Next.js 构建产物（standalone 模式启动需要）
+COPY --from=builder /app/.next ./.next
 # prisma —— Schema + migration 文件（运行时 prisma generate 需要）
 COPY --from=builder /app/prisma ./prisma
 # node_modules —— 运行时依赖
@@ -60,5 +60,5 @@ RUN mkdir -p /app/db
 EXPOSE 5000
 
 # 启动：先确保 Prisma Client 就绪，再启动 Next.js 生产服务
-# DATABASE_URL 指向 volume 挂载的 SQLite 文件
-CMD ["sh", "-c", "npx prisma generate && DATABASE_URL=file:./db/custom.db node node_modules/.bin/next start -p 5000"]
+# pnpm 下 node_modules/.bin/next 是 shell 脚本，必须用 npx 调用
+CMD ["sh", "-c", "npx prisma generate && DATABASE_URL=file:./db/custom.db npx next start -p 5000"]
