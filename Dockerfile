@@ -28,9 +28,9 @@ RUN pnpm install --frozen-lockfile && \
 # 复制全部源代码
 COPY . .
 
-# 构建 Next.js 生产包
+# 构建 Next.js 生产包（npx next build 直调，避免 pnpm workspace 干扰）
 RUN npx prisma generate && \
-    pnpm build
+    npx next build
 
 # ---- Stage 2: Runner（最小运行时） ----
 FROM node:22-alpine AS runner
