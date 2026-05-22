@@ -25,6 +25,13 @@ echo "  DATA_DIR: ${DATA_DIR}"
 echo "  DATABASE: ${DB_PATH}"
 echo "  PUID: ${PUID}  PGID: ${PGID}"
 echo "========================================"
+
+# 0. Generate Prisma Client（每次启动必须，确保与当前 schema 一致）
+echo "[INFO] Generating Prisma Client..."
+npx prisma generate 2>&1 || {
+  echo "[ERROR] Prisma Client generation failed!"
+  exit 1
+}
 echo "[INFO] Prisma CLI: $(prisma -v 2>/dev/null | awk -F': ' '/Prisma CLI Version/{print $2}' || echo unknown)"
 
 # 1. Ensure directories exist (with permission fix)
@@ -111,10 +118,10 @@ if [ "${MATERIAL_COUNT}" = "0" ]; then
   node prisma/seed-base.js 2>&1 || echo "[WARN] Re-seed also failed"
 fi
 
-# 5. Start application (standalone mode)
+# 5. Start application
 echo "[INFO] Starting Jade Inventory server on port ${PORT:-5000}..."
 if [ -n "${RUN_AS}" ]; then
-  exec ${RUN_AS} node server.js
+  exec ${RUN_AS} npx next start -p ${PORT:-5000}
 else
-  exec node server.js
+  exec npx next start -p ${PORT:-5000}
 fi

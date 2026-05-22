@@ -37,9 +37,14 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+# 安装运行时工具
+# sqlite: 数据库一致性备份 (.backup API)
+# su-exec: PUID/PGID 用户切换（entrypoint.sh 需要）
+RUN apk add --no-cache sqlite su-exec
+
 # 设置环境变量
 ENV NODE_ENV=production
-ENV DATABASE_URL=file:./db/custom.db
+ENV DATA_DIR=/app/data
 
 # 从 Builder 复制必要文件
 # .next —— Next.js 构建产物（standalone 模式启动需要）
@@ -52,14 +57,13 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 # public —— 静态资源
 COPY --from=builder /app/public ./public
-
-# 创建数据库持久化目录（通过 volume 挂载）
-RUN mkdir -p /app/db
+# entrypoint —— 启动脚本（含备份/迁移/验证逻辑）
+COPY scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # 暴露服务端口
 EXPOSE 5000
 
-# 启动：Prisma Client 就绪后，先同步数据库结构再启动服务
-# db push 确保 schema 变更（如新增 users 表）应用到已有数据库
-# pnpm 下 node_modules/.bin/next 是 shell 脚本，必须用 npx 调用
-CMD ["sh", "-c", "npx prisma generate && npx prisma db push && DATABASE_URL=file:./data/db/custom.db npx next start -p 5000"]
+# 启动：由 entrypoint.sh 统一管理（prisma generate → db push → next start）
+# entrypoint 已内置：目录创建、数据库备份、schema 同步、基础数据验证
+CMD ["/app/entrypoint.sh"]
