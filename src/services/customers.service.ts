@@ -195,7 +195,7 @@ export async function getCustomers(params: GetCustomersParams) {
   const dbSortFields = new Set(['created_at', 'name']);
   const needsInMemorySort = !dbSortFields.has(sortBy);
 
-  let customers: Prisma.CustomerGetPayload<{}>[];
+  let customers: Prisma.CustomerGetPayload<Record<string, never>>[];
   if (needsInMemorySort) {
     // 内存排序：先查出所有匹配客户
     customers = await db.customer.findMany({

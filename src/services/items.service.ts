@@ -702,7 +702,7 @@ export async function batchCreateItems(body: BatchCreateInput) {
     throw new ValidationError('请输入有效的成本价（或选择批次自动分摊）');
   }
 
-  const created: Array<Prisma.ItemGetPayload<{}>> = [];
+  const created: Array<Prisma.ItemGetPayload<Record<string, never>>> = [];
   try {
     for (let i = 0; i < parsedQuantity; i++) {
       const seq = String(i + 1).padStart(3, '0');

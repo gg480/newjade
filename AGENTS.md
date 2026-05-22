@@ -127,7 +127,7 @@ tests/
 - HMR "Router action dispatched before initialization" error in dev mode (cosmetic, not functional)
 - barcode-scanner requires HTTPS for camera access (falls back to manual input)
 - After pulling fresh code or updating Prisma schema, MUST clear `.next` cache (`rm -rf .next`) and re-run `npx prisma generate` before starting dev server
-- 认证代码（`login-page.tsx`, `auth/route.ts`, `auth.ts`）存在但未启用，前端直接进入工作区，局域网无需登录
+- **认证已启用**（Sprint-007 多用户登录系统）：默认管理员 `admin` / `admin123`，支持角色权限，7天会话有效期。首次访问显示登录页
 - Deployment environment uses `/tmp/workdir` as project path (not `/workspace/projects`)
 - Turbopack production build sometimes caches old chunks — if code changes don't take effect, do `rm -rf .next && pnpm build`
 

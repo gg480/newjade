@@ -21,10 +21,12 @@ RUN npx prisma generate && \
     pnpm build
 
 # Pre-compile seed script to JS (no tsx needed at runtime)
+# bcrypt must be externalized (native C++ module, cannot be bundled)
 RUN npx esbuild prisma/seed-base.ts \
     --bundle --platform=node --format=cjs \
     --outfile=prisma/seed-base.js \
-    --external:@prisma/client
+    --external:@prisma/client \
+    --external:bcrypt
 
 # ---- Stage 3: Production (minimal) ----
 FROM node:22-alpine AS runner
@@ -46,6 +48,8 @@ ENV PGID=0
 
 # Copy standalone Next.js output (includes minimal node_modules for app)
 COPY --from=builder /app/.next/standalone ./
+# Copy bcrypt native module (used by seed-base.js at runtime, not in standalone)
+COPY --from=builder /app/node_modules/bcrypt ./node_modules/bcrypt
 # Copy static assets (not included in standalone)
 COPY --from=builder /app/.next/static ./.next/static
 # Copy public folder

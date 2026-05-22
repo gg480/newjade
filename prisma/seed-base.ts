@@ -1,14 +1,90 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+const ADMIN_PERMISSIONS = [
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
+  'tab:customers', 'tab:settings', 'tab:logs', 'tab:promotions',
+  'tab:restock', 'tab:stocktaking',
+  'action:user_manage', 'action:role_manage', 'action:export',
+  'action:delete_item', 'action:price_adjust',
+];
+
+const MANAGER_PERMISSIONS = [
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
+  'tab:customers', 'tab:logs', 'tab:promotions', 'tab:restock',
+  'tab:stocktaking',
+  'action:export', 'action:delete_item', 'action:price_adjust',
+];
+
+const STAFF_PERMISSIONS = [
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:customers',
+];
+
+async function seedRoles() {
+  console.log('🌱 初始化预置角色...');
+
+  const presetRoles = [
+    { name: 'admin', description: '系统管理员，拥有全部权限', permissions: ADMIN_PERMISSIONS, isSystem: true },
+    { name: 'manager', description: '经理，可管理大部分业务', permissions: MANAGER_PERMISSIONS, isSystem: true },
+    { name: 'staff', description: '普通员工，仅可浏览查看', permissions: STAFF_PERMISSIONS, isSystem: true },
+  ];
+
+  const roleIds: Record<string, number> = {};
+
+  for (const r of presetRoles) {
+    const role = await prisma.role.upsert({
+      where: { name: r.name },
+      update: {
+        description: r.description,
+        permissions: JSON.stringify(r.permissions),
+        isSystem: r.isSystem,
+      },
+      create: {
+        name: r.name,
+        description: r.description,
+        permissions: JSON.stringify(r.permissions),
+        isSystem: r.isSystem,
+      },
+    });
+    roleIds[r.name] = role.id;
+  }
+
+  console.log(`✅ 预置角色已插入/更新 (${presetRoles.length}个)`);
+  return roleIds;
+}
+
 /**
  * 基础种子数据 — 生产环境必需
- * 包含：系统配置、材质字典、器型字典、标签字典、初始贵金属市价
+ * 包含：预置角色、管理员用户、系统配置、材质字典、器型字典、标签字典、初始贵金属市价
  * 不包含：供应商、批次、货品、客户、销售记录等业务测试数据
  */
 async function main() {
   console.log('🌱 初始化基础配置数据...');
+
+  // 0. 预置角色 + 管理员用户
+  const roleIds = await seedRoles();
+
+  const defaultPasswordHash = bcrypt.hashSync('admin123', 10);
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    create: {
+      username: 'admin',
+      passwordHash: defaultPasswordHash,
+      mustChangePwd: false,
+      displayName: '系统管理员',
+      roleId: roleIds['admin'],
+      isActive: true,
+    },
+    update: {
+      passwordHash: defaultPasswordHash,
+      roleId: roleIds['admin'],
+      displayName: '系统管理员',
+      isActive: true,
+    },
+  });
+  console.log('✅ 管理员用户已创建（关联 admin 角色）');
 
   // 1. 系统配置
   const configs = [

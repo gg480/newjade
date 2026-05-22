@@ -70,3 +70,8 @@ prisma/*.sqlite3
 .trae/
 test-results/
 tests/screenshots/
+
+# Playwright CLI screenshots (saved to project root)
+screenshot-*.png
+screenshots/
+.playwright-cli/
