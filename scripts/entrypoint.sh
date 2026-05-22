@@ -32,7 +32,7 @@ npx prisma generate 2>&1 || {
   echo "[ERROR] Prisma Client generation failed!"
   exit 1
 }
-echo "[INFO] Prisma CLI: $(prisma -v 2>/dev/null | awk -F': ' '/Prisma CLI Version/{print $2}' || echo unknown)"
+echo "[INFO] Prisma CLI: $(npx prisma -v 2>/dev/null | awk -F': ' '/Prisma CLI Version/{print $2}' || echo unknown)"
 
 # 1. Ensure directories exist (with permission fix)
 mkdir -p "${DB_DIR}" "${IMG_DIR}" "${LOG_DIR}" 2>/dev/null || {
@@ -70,13 +70,13 @@ if [ -f "${DB_PATH}" ]; then
   echo "[INFO] Preserving existing data, applying schema migration if needed..."
   
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} prisma db push 2>&1 || {
+    ${RUN_AS} npx prisma db push 2>&1 || {
       echo "[ERROR] Schema sync failed!"
       echo "[ERROR] Check Prisma schema and database permissions."
       exit 1
     }
   else
-    prisma db push 2>&1 || {
+    npx prisma db push 2>&1 || {
       echo "[ERROR] Schema sync failed!"
       echo "[ERROR] Check Prisma schema and database permissions."
       exit 1
@@ -89,12 +89,12 @@ else
   # Create schema
   echo "[INFO] Creating database schema..."
   if [ -n "${RUN_AS}" ]; then
-    ${RUN_AS} prisma db push 2>&1 || {
+    ${RUN_AS} npx prisma db push 2>&1 || {
       echo "[ERROR] Failed to create database schema. Check Prisma schema and permissions."
       exit 1
     }
   else
-    prisma db push 2>&1 || {
+    npx prisma db push 2>&1 || {
       echo "[ERROR] Failed to create database schema. Check Prisma schema and permissions."
       exit 1
     }
