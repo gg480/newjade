@@ -19,6 +19,7 @@ node_modules
 
 # production
 /build
+/nas-deploy
 
 # misc
 .DS_Store
