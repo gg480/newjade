@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { db } from '@/lib/db';
+import { db, toUserFriendlyMessage } from '@/lib/db';
 import { validateToken } from '@/lib/auth';
 
 /**
@@ -52,7 +52,7 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ code: 0, data: null, message: '密码修改成功' });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = toUserFriendlyMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

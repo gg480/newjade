@@ -37,14 +37,14 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   const [materialCategory, setMaterialCategory] = useState('');
   const [quickMode, setQuickMode] = useState(false);
   const [form, setForm] = useState({
-    batchCode: '', materialId: '', typeId: '', quantity: 1, totalCost: 0,
+    batchCode: '', materialId: '', typeId: '', quantity: '' as string | number, totalCost: 0,
     costAllocMethod: 'equal', supplierId: '', purchaseDate: '', notes: '',
   });
 
   // Quick mode form
   const [quickCategory, setQuickCategory] = useState('');
   const [quickSupplierId, setQuickSupplierId] = useState('');
-  const [quickQuantity, setQuickQuantity] = useState(10);
+  const [quickQuantity, setQuickQuantity] = useState<number | ''>('');
   const [quickTotalCost, setQuickTotalCost] = useState(0);
 
   useEffect(() => {
@@ -103,7 +103,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   }, [quickCategory]);
 
   // Estimated per-unit cost for quick mode
-  const quickPerUnitCost = quickQuantity > 0 ? (quickTotalCost / quickQuantity) : 0;
+  const quickPerUnitCost = Number(quickQuantity) > 0 ? (quickTotalCost / Number(quickQuantity)) : 0;
 
   async function handleSave() {
     setSaving(true);
@@ -140,7 +140,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
     setSaving(true);
     try {
       if (!quickCategory) { toast.error('请选择材质大类'); setSaving(false); return; }
-      if (!quickQuantity || quickQuantity < 1) { toast.error('请输入有效数量'); setSaving(false); return; }
+      if (!quickQuantity || quickQuantity < 1) { toast.error('请输入数量'); setSaving(false); return; }
       // Find the first material in the selected category
       const mat = materials.find(m => m.category === quickCategory);
       if (!mat) { toast.error('该大类下没有可用材质'); setSaving(false); return; }
@@ -247,7 +247,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">数量 *</Label>
-                <Input type="number" value={quickQuantity} onChange={e => setQuickQuantity(parseInt(e.target.value) || 1)} className="h-9" min={1} />
+                <Input type="number" value={quickQuantity === '' ? '' : quickQuantity} onChange={e => setQuickQuantity(e.target.value === '' ? '' : parseInt(e.target.value))} className="h-9" placeholder="必填" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">总成本 *</Label>
@@ -263,8 +263,8 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">预估单件成本</span>
                 <span className="font-medium text-emerald-600">
-                  {quickQuantity > 0 && quickTotalCost > 0
-                    ? `¥${(quickTotalCost / quickQuantity).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                  {Number(quickQuantity) > 0 && quickTotalCost > 0
+                    ? `¥${(quickTotalCost / Number(quickQuantity)).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                     : '¥0'}
                 </span>
               </div>
@@ -308,7 +308,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
               </Select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">数量 *</Label><Input type="number" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: parseInt(e.target.value) || 1 }))} className="h-9" min={1} /></div>
+              <div className="space-y-1"><Label className="text-xs">数量 *</Label><Input type="number" value={form.quantity === '' ? '' : form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value === '' ? '' : parseInt(e.target.value) }))} className="h-9" placeholder="必填" /></div>
               <div className="space-y-1"><Label className="text-xs">总成本 *</Label><Input type="number" value={form.totalCost || ''} onChange={e => setForm(f => ({ ...f, totalCost: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

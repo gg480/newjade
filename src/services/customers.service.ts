@@ -419,6 +419,50 @@ export async function updateCustomer(id: number, data: UpdateCustomerInput) {
 }
 
 /**
+ * 查询最近有购买的客户（按最近购买日期排序，取前6条）
+ * 用于收银台快速选择
+ */
+export async function getRecentCustomers() {
+  // 按最近购买日期分组查询客户
+  const recentSales = await db.saleRecord.groupBy({
+    by: ['customerId'],
+    _max: { saleDate: true },
+    orderBy: { _max: { saleDate: 'desc' } },
+    take: 6,
+  });
+
+  const customerIds = recentSales
+    .filter((r) => r.customerId !== null)
+    .map((r) => ({ id: r.customerId!, lastPurchaseDate: r._max.saleDate }));
+
+  if (customerIds.length === 0) {
+    return { items: [], pagination: { total: 0, page: 1, size: 6, pages: 0 } };
+  }
+
+  // 批量查询客户基本信息
+  const customers = await db.customer.findMany({
+    where: { id: { in: customerIds.map((c) => c.id) }, isActive: true },
+    select: { id: true, name: true, phone: true },
+  });
+
+  const customerMap = new Map(customers.map((c) => [c.id, c]));
+
+  const items = customerIds.map((c) => {
+    const customer = customerMap.get(c.id);
+    return {
+      id: c.id,
+      name: customer?.name || '',
+      phone: customer?.phone || null,
+    };
+  });
+
+  return {
+    items,
+    pagination: { total: items.length, page: 1, size: 6, pages: 1 },
+  };
+}
+
+/**
  * 删除客户（软删除 isActive=false）
  * 存在有效销售记录时拒绝删除
  * @throws {NotFoundError} 客户不存在

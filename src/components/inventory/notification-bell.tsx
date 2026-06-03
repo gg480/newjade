@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Bell, AlertTriangle, Package, TrendingDown, ShoppingCart,
-  CheckCircle2, Eye, ChartBar, TrendingUp,
+  CheckCircle2, Eye, ChartBar, TrendingUp, ImageOff,
 } from 'lucide-react';
 import ReportDetailDialog from './report-detail-dialog';
 
@@ -19,7 +19,7 @@ import ReportDetailDialog from './report-detail-dialog';
 /** 后端返回的通知原始结构 */
 interface NotificationItem {
   id: number;
-  type: 'weekly_report' | 'monthly_report' | 'overdue' | 'batch_incomplete' | 'low_margin' | 'today_summary';
+  type: 'weekly_report' | 'monthly_report' | 'overdue' | 'batch_incomplete' | 'low_margin' | 'today_summary' | 'no_photo' | 'price_anomaly';
   title: string;
   content: string;
   isRead: boolean;
@@ -88,6 +88,20 @@ function getTypeMeta(type: NotificationItem['type']): TypeMeta {
         color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30',
         dotColor: 'bg-emerald-500',
         tab: 'dashboard',
+      };
+    case 'no_photo':
+      return {
+        icon: <ImageOff className="h-4 w-4" />,
+        color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/30',
+        dotColor: 'bg-sky-500',
+        tab: 'inventory',
+      };
+    case 'price_anomaly':
+      return {
+        icon: <TrendingDown className="h-4 w-4" />,
+        color: 'text-red-600 bg-red-50 dark:bg-red-950/30',
+        dotColor: 'bg-red-500',
+        tab: 'inventory',
       };
   }
 }

@@ -80,7 +80,9 @@ export type NotificationType =
   | 'overdue'
   | 'batch_incomplete'
   | 'low_margin'
-  | 'today_summary';
+  | 'today_summary'
+  | 'no_photo'
+  | 'price_anomaly';
 
 export interface GetNotificationsParams {
   page?: number;
@@ -597,6 +599,62 @@ async function generateTodaySummaryNotification(): Promise<{ title: string; cont
   };
 }
 
+/** 生成无图片货品提醒 */
+async function generateNoPhotoNotification(): Promise<{ title: string; content: string } | null> {
+  // 查询在库且无图片的货品
+  const itemsWithoutPhotos = await db.item.findMany({
+    where: {
+      status: 'in_stock',
+      isDeleted: false,
+      images: { none: {} },
+    },
+    select: { id: true, skuCode: true, name: true },
+  });
+
+  if (itemsWithoutPhotos.length === 0) return null;
+
+  return {
+    title: '缺图提醒',
+    content: JSON.stringify({
+      count: itemsWithoutPhotos.length,
+      skus: itemsWithoutPhotos.slice(0, 5).map((i) => i.skuCode),
+      description: `${itemsWithoutPhotos.length} 件在库货品缺少图片，建议尽快补拍上传`,
+    }),
+  };
+}
+
+/** 生成价格异常提醒（售价 ≤ 成本价） */
+async function generatePriceAnomalyNotification(): Promise<{ title: string; content: string } | null> {
+  const items = await db.item.findMany({
+    where: { status: 'in_stock', isDeleted: false },
+    select: {
+      id: true,
+      skuCode: true,
+      name: true,
+      sellingPrice: true,
+      costPrice: true,
+      allocatedCost: true,
+    },
+  });
+
+  const anomalies = items.filter((i) => {
+    const cost = i.allocatedCost ?? i.costPrice ?? 0;
+    const price = i.sellingPrice || 0;
+    return cost > 0 && price > 0 && price <= cost;
+  });
+
+  if (anomalies.length === 0) return null;
+
+  return {
+    title: '价格异常提醒',
+    content: JSON.stringify({
+      count: anomalies.length,
+      skus: anomalies.slice(0, 5).map((i) => i.skuCode),
+      description: `${anomalies.length} 件在库货品售价 ≤ 成本价，建议检查定价策略`,
+    }),
+  };
+}
+
 // ============================================================
 // 惰性生成检查
 // ============================================================
@@ -647,6 +705,8 @@ export async function checkAndGenerateReports(): Promise<{ generated: string[] }
     { type: 'batch_incomplete', fn: generateBatchIncompleteNotification },
     { type: 'low_margin', fn: generateLowMarginNotification },
     { type: 'today_summary', fn: generateTodaySummaryNotification },
+    { type: 'no_photo', fn: generateNoPhotoNotification },
+    { type: 'price_anomaly', fn: generatePriceAnomalyNotification },
   ];
 
   for (const { type, fn } of dynamicGenerators) {

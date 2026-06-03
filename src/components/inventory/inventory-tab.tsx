@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton, ConfirmDialog } from './shared';
 import ItemCreateDialog from './item-create-dialog';
+import FactoryModeWrapper from './create/factory-mode-wrapper';
 import ItemDetailDialog from './item-detail-dialog';
 import ItemEditDialog from './item-edit-dialog';
 import LabelPrintDialog from './label-print-dialog';
@@ -153,6 +154,10 @@ function InventoryTab() {
 
   // Slide-in detail panel
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+
+  // Factory mode (快速录货)
+  const [showFactoryMode, setShowFactoryMode] = useState(false);
+  const [factoryMode] = useState<'photo' | 'draft'>('photo');
 
   // Image lightbox gallery
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -824,6 +829,19 @@ function InventoryTab() {
         onClearFilter={(key: string) => setFilters(f => ({ ...f, [key]: '' }))}
       />
 
+      {/* 快速录货入口 — 移动端显示 */}
+      <div className="flex md:hidden items-center gap-2 px-1">
+        <Button
+          onClick={() => setShowFactoryMode(true)}
+          variant="default"
+          size="sm"
+          className="flex-1 h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <Camera className="h-4 w-4 mr-1" />
+          快速录货
+        </Button>
+      </div>
+
       {/* Items Table */}
       {sortedItems.length === 0 ? (
         <EmptyState icon={Package} title="暂无货品" desc="还没有入库任何货品，点击「新增入库」开始" />
@@ -1214,6 +1232,13 @@ function InventoryTab() {
 
       {/* Item Create Dialog */}
       <ItemCreateDialog open={showCreate} onOpenChange={setShowCreate} onSuccess={refresh} />
+
+      {/* Factory Mode Wrapper（快速录货） */}
+      {showFactoryMode && (
+        <FactoryModeWrapper
+          onClose={() => { setShowFactoryMode(false); refresh(); }}
+        />
+      )}
 
       {/* Item Detail Dialog */}
       <ItemDetailDialog itemId={detailItemId} open={detailItemId !== null} onOpenChange={open => { if (!open) setDetailItemId(null); }} />

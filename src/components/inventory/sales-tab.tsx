@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { salesApi, exportApi, dashboardApi } from '@/lib/api';
+import { salesApi, exportApi, dashboardApi, configApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton } from './shared';
@@ -30,6 +30,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
+import { CheckoutMode } from './checkout/checkout-mode';
 
 // Payment method config
 const PAYMENT_METHODS = [
@@ -101,6 +102,11 @@ function SalesTab() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showBundle, setShowBundle] = useState(false);
   const [datePreset, setDatePreset] = useState('all');
+
+  // 收银台模式
+  const [showCheckout, setShowCheckout] = useState(false);
+  // 功能开关：收银台模式（默认关闭，通过 SysConfig 控制）
+  const [checkoutEnabled, setCheckoutEnabled] = useState(false);
 
   // Return dialog state
   const [returnDialog, setReturnDialog] = useState<{ open: boolean; sale: SaleTableRow | null }>({ open: false, sale: null });
@@ -248,6 +254,16 @@ function SalesTab() {
     };
     loadSparkline();
     return () => { cancelled = true; };
+  }, []);
+
+  // 加载收银台功能开关
+  useEffect(() => {
+    configApi.getConfig()
+      .then(configs => {
+        const enabled = configs.find(c => c.key === 'feature_checkout_enabled');
+        setCheckoutEnabled(enabled?.value === 'true');
+      })
+      .catch(() => setCheckoutEnabled(false));
   }, []);
 
   if (loading && sales.length === 0) return <LoadingSkeleton />;
@@ -582,6 +598,46 @@ function SalesTab() {
         </Card>
       </div>
 
+      {/* 收银台/销售记录模式切换 */}
+      {checkoutEnabled && (
+        <Card>
+          <CardContent className="p-1">
+            <div className="flex gap-1" role="tablist">
+              <Button
+                size="sm"
+                variant={showCheckout ? 'default' : 'outline'}
+                className={`h-9 flex-1 text-sm ${showCheckout ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+                onClick={() => setShowCheckout(true)}
+                role="tab"
+                aria-selected={showCheckout}
+              >
+                <ShoppingCart className="h-4 w-4 mr-1.5" />
+                收银台模式
+              </Button>
+              <Button
+                size="sm"
+                variant={!showCheckout ? 'default' : 'outline'}
+                className={`h-9 flex-1 text-sm ${!showCheckout ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+                onClick={() => setShowCheckout(false)}
+                role="tab"
+                aria-selected={!showCheckout}
+              >
+                <BarChart3 className="h-4 w-4 mr-1.5" />
+                销售记录
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 条件渲染：收银台模式 or 销售列表 */}
+      {showCheckout ? (
+        <CheckoutMode
+          onClose={() => { setShowCheckout(false); refresh(); }}
+          onComplete={refresh}
+        />
+      ) : (
+        <>
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
@@ -1353,6 +1409,8 @@ function SalesTab() {
               </div>
             </div>
           </div>
+        </>
+      )}
         </>
       )}
     </div>

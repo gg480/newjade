@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { db } from '@/lib/db';
+import { db, toUserFriendlyMessage } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { updateLastLogin } from '@/services/user.service';
 import { parsePermissions } from '@/lib/auth';
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       message: 'ok',
     });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = toUserFriendlyMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

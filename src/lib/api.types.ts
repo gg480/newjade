@@ -621,6 +621,13 @@ export interface ImageUploadResult {
   isCover: boolean;
 }
 
+/** 独立照片上传（POST /api/images/upload）响应 */
+export interface ImageUploadResponse {
+  id: number;
+  url: string;
+  thumbnailUrl: string | null;
+}
+
 // ========== 查询参数类型 ==========
 
 export interface PaginationQueryParams {

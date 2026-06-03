@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { deleteSession } from '@/lib/auth';
+import { toUserFriendlyMessage } from '@/lib/db';
 
 /**
  * POST /api/auth/logout — 登出，删除 session
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ code: 0, data: null, message: 'ok' });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = toUserFriendlyMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

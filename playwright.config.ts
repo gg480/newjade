@@ -19,6 +19,18 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { browserName: 'chromium' },
+      testIgnore: ['playwright-walkthrough-mobile.spec.ts'],
+    },
+    {
+      name: 'mobile-chromium',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 375, height: 812 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      },
+      testMatch: ['playwright-walkthrough-mobile.spec.ts'],
     },
   ],
 });

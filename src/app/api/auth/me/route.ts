@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, toUserFriendlyMessage } from '@/lib/db';
 import { validateToken } from '@/lib/auth';
 import { parsePermissions } from '@/lib/auth';
 
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       message: 'ok',
     });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = toUserFriendlyMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

@@ -3,7 +3,7 @@ import type {
   DictMaterial, DictType, DictTag, SysConfig,
   Batch, ItemSummary, SkuLookupResult, SaleRecord, Customer, CustomerDetail,
   Supplier, SupplierStats, SupplierPurchase,
-  PaginatedData, ImageUploadResult,
+  PaginatedData, ImageUploadResult, ImageUploadResponse,
   DashboardSummary, BatchProfitItem, StockAging, TopSellerItem, MonthlyComparison,
   TrendDataPoint, SalesByChannelItem, ProfitByCategoryItem, ProfitByChannelItem,
   ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem,
@@ -362,6 +362,19 @@ export const itemsApiEnhanced = {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  },
+};
+
+// ========== Images ==========
+export const imagesApi = {
+  /** 上传单张照片（不关联货品，返回访问 URL） */
+  upload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/images/upload`, { method: 'POST', body: formData });
+    const json = await res.json();
+    if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '上传失败');
+    return json.data as ImageUploadResponse;
   },
 };
 

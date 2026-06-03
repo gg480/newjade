@@ -1,4 +1,4 @@
-import { db } from '@/lib/db';
+import { db, toUserFriendlyMessage } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -18,11 +18,11 @@ export async function GET() {
       message: 'ok',
     });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = toUserFriendlyMessage(e);
     return NextResponse.json({
       code: 500,
       data: { status: 'error' },
-      message: `health check failed: ${message}`,
+      message,
     }, { status: 500 });
   }
 }

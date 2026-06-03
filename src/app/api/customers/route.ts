@@ -4,6 +4,13 @@ import { withApiLogging } from '@/lib/api/with-api-logging';
 
 async function customersGET(req: Request) {
   const { searchParams } = new URL(req.url);
+
+  // 支持 sort=lastPurchaseAt 按最近购买日期取前6条
+  if (searchParams.get('sort') === 'lastPurchaseAt') {
+    const result = await customersService.getRecentCustomers();
+    return NextResponse.json({ code: 0, data: result, message: 'ok' });
+  }
+
   const page = parseInt(searchParams.get('page') || '1');
   const size = parseInt(searchParams.get('size') || '20');
   const keyword = searchParams.get('keyword');
