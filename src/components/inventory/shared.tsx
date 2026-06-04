@@ -12,40 +12,17 @@ import {
 import { Info, Gem } from 'lucide-react';
 
 // ========== CSS Keyframes ==========
-const fadeInStyle = typeof document !== 'undefined' && !document.getElementById('fade-in-keyframes')
-  ? (() => {
-      const style = document.createElement('style');
-      style.id = 'fade-in-keyframes';
-      style.textContent = `
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .tab-fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 8px 1px rgba(5, 150, 105, 0.15); } }
-        .card-glow:hover { animation: glowPulse 1.5s ease-in-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .card-slide-up { animation: slideUp 0.4s ease-out both; }
-        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .nav-tab-active {
-          background: linear-gradient(90deg, rgba(5,150,105,0.1), rgba(20,184,166,0.1), rgba(5,150,105,0.1));
-          background-size: 200% 100%;
-          animation: gradientShift 3s ease infinite;
-          border-bottom: 2px solid #059669;
-          box-shadow: 0 1px 3px 0 rgba(5,150,105,0.1);
-          transform: scale(1.02);
-        }
-        @keyframes dotPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
-        .loading-dot { animation: dotPulse 1.5s ease-in-out infinite; }
-      `;
-      document.head.appendChild(style);
-      return true;
-    })()
-  : true;
+// 所有全局关键帧动画已迁移到 globals.css
+// 保留 fadeInStyle/cardSlideUpStyle 为 no-op 以兼容 page.tsx 的 `void fadeInStyle; void cardSlideUpStyle;`
+const fadeInStyle = true;
+const cardSlideUpStyle = true;
 
 // ========== Shared Components ==========
 const CHART_COLORS = ['#059669', '#0ea5e9', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899', '#84cc16', '#f97316'];
 
 function formatPrice(v: number | null | undefined) {
-  if (v == null) return '¥0.00';
-  return `¥${v.toFixed(2)}`;
+  if (v == null) return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', minimumFractionDigits: 2 }).format(0);
+  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', minimumFractionDigits: 2 }).format(v);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -191,8 +168,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return this.props.children;
   }
 }
-
-const cardSlideUpStyle = fadeInStyle;
 
 // ========== Confirm Dialog ==========
 function ConfirmDialog({ open, onOpenChange, title, description, confirmText = '确认', cancelText = '取消', variant = 'default', onConfirm }: {

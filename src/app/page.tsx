@@ -119,7 +119,7 @@ function QuickStatsBar() {
                 <div className="card-slide-up flex items-center gap-1.5 text-sm cursor-default" style={{ animationDelay: `${i * 0.1}s` }}>
                   <s.icon className={`h-3.5 w-3.5 ${s.iconCls}`} />
                   <span className="text-muted-foreground">{s.label}</span>
-                  <span className={`font-semibold ${s.valCls}`}>{s.val}</span>
+                  <span className={`font-semibold stat-value ${s.valCls}`}>{s.val}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>{s.tip}</TooltipContent>
@@ -168,19 +168,19 @@ function MobileQuickStats({ className }: { className?: string }) {
         <div className="flex items-center gap-1">
           <Package className="h-3 w-3 text-emerald-600" />
           <span className="text-muted-foreground">在库</span>
-          <span className="font-bold">{inventoryValue ?? '...'}</span>
+          <span className="font-bold stat-value">{inventoryValue ?? '...'}</span>
         </div>
         <div className="w-px h-3 bg-border" />
         <div className="flex items-center gap-1">
           <ShoppingCart className="h-3 w-3 text-sky-600" />
           <span className="text-muted-foreground">今日</span>
-          <span className="font-bold">{todaySales}</span>
+          <span className="font-bold stat-value">{todaySales}</span>
         </div>
         <div className="w-px h-3 bg-border" />
         <div className="flex items-center gap-1">
           <Zap className="h-3 w-3 text-amber-600" />
           <span className="text-muted-foreground">营收</span>
-          <span className="font-bold text-emerald-600">¥{todayRevenue.toFixed(0)}</span>
+          <span className="font-bold stat-value text-emerald-600">¥{todayRevenue.toFixed(0)}</span>
         </div>
       </div>
     </div>
@@ -458,9 +458,9 @@ export default function JadeInventoryPage() {
       )}
       <DesktopNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" loading={apiLoading} onLogout={handleLogout} />
       {!isOnline && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 dark:bg-amber-600 text-white text-center text-sm py-1.5 px-4 animate-in slide-in-from-top-1 duration-200">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 dark:bg-amber-600 text-white text-center text-sm py-1.5 px-4 animate-in slide-in-from-top-1 duration-200" role="alert" aria-live="polite">
           <div className="flex items-center justify-center gap-2">
-            <WifiOff className="h-3.5 w-3.5" />
+            <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
             <span>网络连接已断开，部分功能可能不可用</span>
           </div>
         </div>
@@ -474,7 +474,7 @@ export default function JadeInventoryPage() {
       </main>
       <MobileNav activeTab={activeTab} onTabChange={handleTabChange} className="no-print" onLogout={handleLogout} />
       <MobileQuickStats className="no-print" />
-      <footer className="no-print mt-auto hidden md:block border-t border-border bg-card py-3">
+      <footer className="no-print mt-auto hidden md:block border-t border-border bg-card/80 backdrop-blur-sm py-3">
         <div className="container mx-auto px-4 flex items-center justify-between text-sm">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">

@@ -161,6 +161,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   onChange={e => setUsername(e.target.value)}
                   className="h-11"
                   autoFocus
+                  autoComplete="username"
+                  spellCheck={false}
                   disabled={loading}
                 />
               </div>
@@ -170,11 +172,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="输入密码"
+                    placeholder="输入密码…"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     className="pr-10 h-11"
-                    autoFocus
+                    autoComplete={showPassword ? 'off' : 'current-password'}
                     disabled={loading}
                   />
                   <button
@@ -211,42 +213,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </Card>
       </div>
 
-      {/* Inline styles for animations */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .animate-gradient-bg {
-          background-size: 200% 200%;
-          animation: gradientShift 15s ease infinite;
-        }
-        @keyframes pulseSlow {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.9; transform: scale(1.03); }
-        }
-        .animate-pulse-slow {
-          animation: pulseSlow 3s ease-in-out infinite;
-        }
-        @keyframes floatShape1 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-        }
-        @keyframes floatShape2 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(-8deg); }
-        }
-        @keyframes floatShape3 {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-25px) rotate(3deg); }
-        }
-        .jade-shape-1 { animation: floatShape1 8s ease-in-out infinite; }
-        .jade-shape-2 { animation: floatShape2 10s ease-in-out infinite 1s; }
-        .jade-shape-3 { animation: floatShape3 12s ease-in-out infinite 2s; }
-        .jade-shape-4 { animation: floatShape1 9s ease-in-out infinite 3s; }
-        .jade-shape-5 { animation: floatShape2 11s ease-in-out infinite 0.5s; }
-        .jade-shape-6 { animation: floatShape3 7s ease-in-out infinite 1.5s; }
-      ` }} />
     </div>
   );
 }

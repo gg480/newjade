@@ -42,10 +42,8 @@ const PAYMENT_METHODS = [
 ];
 
 function toLocalDateString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  // sv-SE 使用 ISO 8601 格式 YYYY-MM-DD（与 API 契约一致）
+  return new Intl.DateTimeFormat('sv-SE').format(date);
 }
 
 function getPaymentMethod(note: string | null | undefined): string | null {

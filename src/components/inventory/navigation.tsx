@@ -289,17 +289,21 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
 
   return (
     <>
-      <nav className={`hidden md:flex bg-card border-b border-border ${className || ''}`}>
+      <nav className={`hidden md:flex bg-card border-b border-border shadow-sm ${className || ''}`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center h-14">
-            <div className="flex items-center mr-8">
-              <img
-                src="/logo-xingshengyi.png"
-                alt="兴盛艺珠宝"
-                className={`h-6 w-6 rounded-sm object-cover mr-2 ${loading ? 'animate-pulse' : ''}`}
-                style={loading ? { animationDuration: '1.2s' } : undefined}
-              />
-              <span className="text-lg font-bold text-emerald-600">{storeName}</span>
+            <div className="flex items-center mr-8 gap-2">
+              <div className="relative">
+                <img
+                  src="/logo-xingshengyi.png"
+                  alt="兴盛艺珠宝"
+                  className={`h-7 w-7 rounded-md object-cover ring-1 ring-jade-200 dark:ring-jade-800 ${loading ? 'animate-pulse' : ''}`}
+                  style={loading ? { animationDuration: '1.2s' } : undefined}
+                />
+                {/* 翡翠绿色角标装饰 */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-jade-500 rounded-full ring-1 ring-background" />
+              </div>
+              <span className="text-lg font-bold bg-gradient-to-r from-jade-700 to-emerald-600 dark:from-jade-400 dark:to-emerald-400 bg-clip-text text-transparent">{storeName}</span>
             </div>
             <div className="flex space-x-1 flex-1">
               {navGroups.map(group => {
@@ -327,17 +331,17 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
                         aria-current={isActiveGroup ? 'page' : undefined}
                       >
                         <Icon className="h-4 w-4" />{group.label}
-                        <ChevronDown className="h-3.5 w-3.5 ml-0.5 text-muted-foreground/60" />
+                        <ChevronDown className={`h-3.5 w-3.5 ml-0.5 transition-transform duration-200 ${isActiveGroup ? 'rotate-180' : ''} text-muted-foreground/60`} />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[140px]">
+                    <DropdownMenuContent align="start" className="min-w-[150px] p-1.5">
                       {group.children.map(child => (
                         <DropdownMenuItem key={child.id} onClick={() => onTabChange(child.id)}
-                          className={`cursor-pointer ${activeTab === child.id ? 'text-emerald-600 font-medium' : ''}`}
+                          className={`cursor-pointer rounded-md transition-colors ${activeTab === child.id ? 'bg-jade-50 dark:bg-jade-950/40 text-emerald-600 font-medium' : ''}`}
                         >
                           {child.label}
                           {activeTab === child.id && (
-                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(5,150,105,0.4)]" />
                           )}
                         </DropdownMenuItem>
                       ))}
@@ -348,12 +352,12 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
-              <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setShowShortcuts(true)} title="快捷键">
-                <Keyboard className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setShowShortcuts(true)} title="快捷键" aria-label="快捷键">
+                <Keyboard className="h-4 w-4" aria-hidden="true" />
               </Button>
               {onLogout && (
-                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500" onClick={onLogout} title="退出登录">
-                  <LogOut className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground hover:text-red-500" onClick={onLogout} title="退出登录" aria-label="退出登录">
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}
               <ThemeToggle />

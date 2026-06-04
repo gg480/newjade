@@ -66,8 +66,9 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
         size="sm"
         className="absolute top-4 right-4 z-10 text-white hover:bg-white/20 h-10 w-10 rounded-full"
         onClick={onClose}
+        aria-label="关闭图片预览"
       >
-        <X className="h-6 w-6" />
+        <X className="h-6 w-6" aria-hidden="true" />
       </Button>
 
       {/* Counter */}
@@ -82,8 +83,9 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
           size="sm"
           className="absolute left-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20 h-12 w-12 rounded-full"
           onClick={e => { e.stopPropagation(); goPrev(); }}
+          aria-label="上一张图片"
         >
-          <ChevronLeft className="h-8 w-8" />
+          <ChevronLeft className="h-8 w-8" aria-hidden="true" />
         </Button>
       )}
 
@@ -105,6 +107,8 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
           className={`max-w-full max-h-[85vh] object-contain transition-opacity duration-300 ${loaded.has(currentIndex) ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setLoaded(prev => new Set(prev).add(currentIndex))}
           onError={e => { (e.target as HTMLImageElement).src = ''; }}
+          width={800}
+          height={800}
         />
       </div>
 
@@ -115,8 +119,9 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
           size="sm"
           className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20 h-12 w-12 rounded-full"
           onClick={e => { e.stopPropagation(); goNext(); }}
+          aria-label="下一张图片"
         >
-          <ChevronRight className="h-8 w-8" />
+          <ChevronRight className="h-8 w-8" aria-hidden="true" />
         </Button>
       )}
 
@@ -135,8 +140,9 @@ export default function ImageLightbox({ images, initialIndex = 0, open, onClose 
                   : 'border-white/30 opacity-60 hover:opacity-100'
               }`}
               onClick={() => setCurrentIndex(idx)}
+              aria-label={`查看第 ${idx + 1} 张图片`}
             >
-              <img src={img.url} alt="" className="w-full h-full object-cover" />
+              <img src={img.url} alt="" className="w-full h-full object-cover" width={48} height={48} />
             </button>
           ))}
         </div>
