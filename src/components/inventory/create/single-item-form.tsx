@@ -960,9 +960,9 @@ function SingleItemForm({ photos, defaultMaterial, onSubmitted, onSubmitAnother,
   // ========== 渲染 ==========
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-0 flex-1">
       {/* 步骤指示器 */}
-      <div className="flex items-center justify-between px-1 pt-4 pb-3">
+      <div className="flex items-center justify-between px-1 pt-4 pb-3 flex-shrink-0">
         {STEPS.map((s, i) => {
           const isActive = step === s.key;
           const isCompleted = stepIndex > i;
@@ -1001,10 +1001,10 @@ function SingleItemForm({ photos, defaultMaterial, onSubmitted, onSubmitAnother,
         })}
       </div>
 
-      <Separator />
+      <Separator className="flex-shrink-0" />
 
       {/* 步骤内容 */}
-      <div className="flex-1 overflow-y-auto px-1 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-1 py-4 space-y-4 min-h-0">
         {stepError && (
           <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
             {stepError}
@@ -1014,7 +1014,7 @@ function SingleItemForm({ photos, defaultMaterial, onSubmitted, onSubmitAnother,
       </div>
 
       {/* 底部按钮 */}
-      <div className="flex items-center gap-3 px-1 pt-3 pb-4 border-t">
+      <div className="flex items-center gap-3 px-1 pt-3 pb-4 border-t flex-shrink-0">
         {step === 'photos' ? (
           <Button
             type="button"

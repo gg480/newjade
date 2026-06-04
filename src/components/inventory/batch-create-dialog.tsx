@@ -176,8 +176,8 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90dvh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle>新建批次</DialogTitle>
@@ -186,7 +186,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
           </div>
         </DialogHeader>
         {/* Mode Toggle */}
-        <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+        <div className="flex items-center gap-2 p-1 bg-muted rounded-lg flex-shrink-0">
           <button
             type="button"
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${!quickMode ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
@@ -205,6 +205,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
           </button>
         </div>
 
+        <div className="flex-1 overflow-y-auto min-h-0 -mx-6 px-6">
         {quickMode ? (
           /* ===== Quick Mode ===== */
           <div className="space-y-4 py-2 animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
@@ -349,7 +350,8 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
             <div className="space-y-1"><Label className="text-xs">备注</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="h-16" placeholder="可选" /></div>
           </div>
         )}
-        <DialogFooter>
+        </div>
+        <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
           {quickMode ? (
             <Button onClick={handleQuickSave} className="bg-emerald-600 hover:bg-emerald-700" disabled={saving}>

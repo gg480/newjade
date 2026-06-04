@@ -426,18 +426,18 @@ export default function QuickEntryMode({ onComplete, onExit }: QuickEntryModePro
   if (mode === 'create_batch') {
     return (
       <>
-        <div className="flex flex-col h-full max-w-lg mx-auto w-full">
+        <div className="flex flex-col min-h-0 flex-1 max-w-lg mx-auto w-full">
           {/* 标题 */}
-          <div className="px-1 pt-4 pb-3">
+          <div className="px-1 pt-4 pb-3 flex-shrink-0">
             <h2 className="text-lg font-semibold">连续录入 · 创建批次</h2>
             <p className="text-sm text-muted-foreground mt-1">
               创建批次后，逐件录入货品信息
             </p>
           </div>
 
-          <Separator />
+          <Separator className="flex-shrink-0" />
 
-          <div className="flex-1 overflow-y-auto px-1 py-4 space-y-5">
+          <div className="flex-1 overflow-y-auto px-1 py-4 space-y-5 min-h-0">
             {/* 材质三级级联 */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">材质 <span className="text-red-500">*</span></Label>
@@ -614,7 +614,7 @@ export default function QuickEntryMode({ onComplete, onExit }: QuickEntryModePro
           </div>
 
           {/* 底部按钮 */}
-          <div className="flex items-center gap-3 px-1 pt-3 pb-4 border-t">
+          <div className="flex items-center gap-3 px-1 pt-3 pb-4 border-t flex-shrink-0">
             <Button
               type="button"
               variant="ghost"
@@ -671,9 +671,9 @@ export default function QuickEntryMode({ onComplete, onExit }: QuickEntryModePro
           />
         )}
 
-        <div className="flex flex-col h-full max-w-lg mx-auto w-full">
+        <div className="flex flex-col min-h-0 flex-1 max-w-lg mx-auto w-full">
           {/* 顶部信息栏 */}
-          <div className="px-1 pt-4 pb-3 space-y-2">
+          <div className="px-1 pt-4 pb-3 space-y-2 flex-shrink-0">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">连续录入</h2>
               <span className="text-xs text-muted-foreground">
@@ -707,9 +707,9 @@ export default function QuickEntryMode({ onComplete, onExit }: QuickEntryModePro
             </p>
           </div>
 
-          <Separator />
+          <Separator className="flex-shrink-0" />
 
-          <div className="flex-1 overflow-y-auto px-1 py-4 space-y-5">
+          <div className="flex-1 overflow-y-auto px-1 py-4 space-y-5 min-h-0">
             {/* 拍照区域 */}
             {photos.length === 0 ? (
               <div
@@ -840,7 +840,7 @@ export default function QuickEntryMode({ onComplete, onExit }: QuickEntryModePro
           </div>
 
           {/* 底部操作 */}
-          <div className="flex items-center gap-3 px-1 pt-3 pb-4 border-t">
+          <div className="flex items-center gap-3 px-1 pt-3 pb-4 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"
