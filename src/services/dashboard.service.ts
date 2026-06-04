@@ -184,13 +184,19 @@ export async function getAggregate(params: AggregateParams = {}) {
     };
   });
 
-  // 3. Stock Aging
-  const allInStockItems = await db.item.findMany({
+  // 3. Stock Aging (最多返回 100 条，避免响应超时)
+  const ALL_IN_STOCK = await db.item.findMany({
     where: { status: 'in_stock', isDeleted: false, purchaseDate: { not: null } },
-    include: { material: true, type: true },
+    select: {
+      id: true, skuCode: true, name: true, batchCode: true,
+      materialId: true, typeId: true,
+      costPrice: true, allocatedCost: true, sellingPrice: true,
+      purchaseDate: true, counter: true,
+      material: true, type: true,
+    },
   });
 
-  const agingItems = allInStockItems
+  const AGED = ALL_IN_STOCK
     .map(item => {
       const ageDays = item.purchaseDate
         ? Math.floor((now.getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 60 * 60 * 24))
@@ -200,10 +206,12 @@ export async function getAggregate(params: AggregateParams = {}) {
     .filter(item => item.ageDays >= agingDays)
     .sort((a, b) => b.ageDays - a.ageDays);
 
-  const agingTotalValue = agingItems.reduce((sum, i) => sum + (i.allocatedCost || i.costPrice || 0), 0);
+  const AGED_TOTAL = AGED.length;
+  const AGED_TOP = AGED.slice(0, 100);
+  const agingTotalValue = AGED_TOP.reduce((sum, i) => sum + (i.allocatedCost || i.costPrice || 0), 0);
 
   const stockAging: StockAgingResult = {
-    items: agingItems.map(item => ({
+    items: AGED_TOP.map(item => ({
       itemId: item.id,
       skuCode: item.skuCode,
       name: item.name ?? undefined,
@@ -217,7 +225,7 @@ export async function getAggregate(params: AggregateParams = {}) {
       ageDays: item.ageDays,
       counter: item.counter ?? undefined,
     })),
-    totalItems: agingItems.length,
+    totalItems: AGED_TOTAL,
     totalValue: Math.round(agingTotalValue * 100) / 100,
   };
 
@@ -495,15 +503,22 @@ export async function getBatchProfitReport(params: { materialId?: string; status
 }
 
 /**
- * 库存老化清单
+ * 库存老化清单（最多返回 100 条，避免响应超时）
  */
-export async function getStockAging(params: { minDays?: number } = {}) {
+export async function getStockAging(params: { minDays?: number; limit?: number } = {}) {
   const minDays = params.minDays ?? 90;
+  const limit = params.limit ?? 100;
   const today = new Date();
 
   const items = await db.item.findMany({
     where: { status: 'in_stock', isDeleted: false, purchaseDate: { not: null } },
-    include: { material: true, type: true },
+    select: {
+      id: true, skuCode: true, name: true, batchCode: true,
+      materialId: true, typeId: true,
+      costPrice: true, allocatedCost: true, sellingPrice: true,
+      purchaseDate: true, counter: true,
+      material: true, type: true,
+    },
   });
 
   const agingItems = items
@@ -516,7 +531,12 @@ export async function getStockAging(params: { minDays?: number } = {}) {
     .filter(item => item.ageDays >= minDays)
     .sort((a, b) => b.ageDays - a.ageDays);
 
-  const result: StockAgingItem[] = agingItems.map(item => ({
+  const totalItems = agingItems.length;
+
+  // 只返回 top N，避免响应体过大
+  const top = agingItems.slice(0, limit);
+
+  const result: StockAgingItem[] = top.map(item => ({
     itemId: item.id,
     skuCode: item.skuCode,
     name: item.name ?? undefined,
@@ -535,7 +555,7 @@ export async function getStockAging(params: { minDays?: number } = {}) {
 
   return {
     items: result,
-    totalItems: result.length,
+    totalItems,       // 真实总数（切片前的）
     totalValue: Math.round(totalValue * 100) / 100,
   };
 }

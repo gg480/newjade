@@ -96,9 +96,51 @@ function DashboardTab() {
   const [salesByChannel, setSalesByChannel] = useState<SalesByChannelItem[]>([]);
   const [recentSales, setRecentSales] = useState<RecentSaleItem[]>([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [chartsLoaded, setChartsLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // ===== Manual Refresh + Cache =====
+  const SNAPSHOT_KEY = 'dashboard_snapshot';
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  // On mount: restore cached data (so switching tabs back doesn't show empty)
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(SNAPSHOT_KEY);
+      if (cached) {
+        const snapshot = JSON.parse(cached);
+        setSummary(snapshot.summary ?? null);
+        setBatchProfit(snapshot.batchProfit ?? []);
+        setStockAging(snapshot.stockAging ?? { items: [], totalItems: 0, totalValue: 0 });
+        setTopSellers(snapshot.topSellers ?? []);
+        setMomData(snapshot.momData ?? null);
+        setChartsLoaded(snapshot.chartsLoaded ?? false);
+        setHasLoadedOnce(true);
+        // Restore chart data
+        if (snapshot.profitByCategory) setProfitByCategory(snapshot.profitByCategory);
+        if (snapshot.profitByChannel) setProfitByChannel(snapshot.profitByChannel);
+        if (snapshot.trend) setTrend(snapshot.trend);
+        if (snapshot.distByType) setDistByType(snapshot.distByType);
+        if (snapshot.distByMaterial) setDistByMaterial(snapshot.distByMaterial);
+        if (snapshot.profitByCounter) setProfitByCounter(snapshot.profitByCounter);
+        if (snapshot.priceRangeCost) setPriceRangeCost(snapshot.priceRangeCost);
+        if (snapshot.priceRangeSelling) setPriceRangeSelling(snapshot.priceRangeSelling);
+        if (snapshot.weightDist) setWeightDist(snapshot.weightDist);
+        if (snapshot.ageDist) setAgeDist(snapshot.ageDist);
+        if (snapshot.turnoverData) setTurnoverData(snapshot.turnoverData);
+        if (snapshot.heatmapData) setHeatmapData(snapshot.heatmapData);
+        if (snapshot.topCustomers) setTopCustomers(snapshot.topCustomers);
+        if (snapshot.salesByChannel) setSalesByChannel(snapshot.salesByChannel);
+        if (snapshot.customerFreq) setCustomerFreq(snapshot.customerFreq);
+        if (snapshot.inventoryValueByCategory) setInventoryValueByCategory(snapshot.inventoryValueByCategory);
+        if (snapshot.dailySalesSparkline) setDailySalesSparkline(snapshot.dailySalesSparkline);
+        if (snapshot.inventoryTrendSparkline) setInventoryTrendSparkline(snapshot.inventoryTrendSparkline);
+        if (snapshot.stockAgingTrend) setStockAgingTrend(snapshot.stockAgingTrend);
+        if (snapshot.recentSales) setRecentSales(snapshot.recentSales);
+      }
+    } catch (e) { console.error('[DashboardTab] cache restore error:', e); }
+  }, []);
   const [minDays, setMinDays] = useState(90);
   const [warningDaysLoaded, setWarningDaysLoaded] = useState(false);
   const [distFilter, setDistFilter] = useState<PeriodFilter>('year');
@@ -117,8 +159,13 @@ function DashboardTab() {
   // AbortController for cancelling pending requests on unmount
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load batch entry progress on mount
+  // Refresh key for manual reload triggers (declared early so all effects can reference it)
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
+
+  // Load batch entry progress — only on manual refresh
   useEffect(() => {
+    if (refreshKey === 0) return;
     const ac = new AbortController();
     batchesApi.getBatches({ size: 100 }).then((data: PaginatedData<Batch>) => {
       if (!ac.signal.aborted) {
@@ -126,7 +173,7 @@ function DashboardTab() {
       }
     }).catch(() => {});
     return () => ac.abort();
-  }, []);
+  }, [refreshKey]);
 
   const getDateRange = useCallback(() => {
     const now = new Date();
@@ -304,6 +351,7 @@ function DashboardTab() {
       }
 
       setChartsLoaded(true);
+      setHasLoadedOnce(true);
     } catch (e) { console.error('[DashboardTab]', e);
       if (!controller.signal.aborted) {
         toast.error('加载看板数据失败');
@@ -313,11 +361,8 @@ function DashboardTab() {
     }
   }, [minDays, getDateRange, warningDaysLoaded]);
 
-  // Refresh key for manual reload triggers
-  const [refreshKey, setRefreshKey] = useState(0);
-  const refresh = () => setRefreshKey(k => k + 1);
-
-  useEffect(() => { if (warningDaysLoaded) fetchData(); }, [warningDaysLoaded, refreshKey, distFilter, customStart, customEnd, minDays]);
+  // Only load on explicit refresh, never on mount
+  useEffect(() => { if (warningDaysLoaded && refreshKey > 0) fetchData(); }, [refreshKey]);
 
   // Abort pending requests on unmount
   useEffect(() => {
@@ -328,8 +373,32 @@ function DashboardTab() {
     };
   }, []);
 
-  // Fetch recent sales (separate, lighter call)
+  // Cache to sessionStorage whenever chartsLoaded flips to true
   useEffect(() => {
+    if (!chartsLoaded || !hasLoadedOnce) return;
+    try {
+      sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+        summary, batchProfit, stockAging, topSellers, momData,
+        chartsLoaded: true,
+        profitByCategory, profitByChannel, trend, distByType, distByMaterial,
+        profitByCounter, priceRangeCost, priceRangeSelling, weightDist, ageDist,
+        turnoverData, heatmapData, topCustomers, salesByChannel, customerFreq,
+        inventoryValueByCategory, dailySalesSparkline, inventoryTrendSparkline,
+        stockAgingTrend, recentSales,
+      }));
+    } catch (e) { /* sessionStorage may be full, silently ignore */ }
+  }, [chartsLoaded, hasLoadedOnce,
+    summary, batchProfit, stockAging, topSellers, momData,
+    profitByCategory, profitByChannel, trend, distByType, distByMaterial,
+    profitByCounter, priceRangeCost, priceRangeSelling, weightDist, ageDist,
+    turnoverData, heatmapData, topCustomers, salesByChannel, customerFreq,
+    inventoryValueByCategory, dailySalesSparkline, inventoryTrendSparkline,
+    stockAgingTrend, recentSales,
+  ]);
+
+  // Fetch recent sales — only on manual refresh
+  useEffect(() => {
+    if (refreshKey === 0) return;
     let cancelled = false;
     const loadRecentSales = async () => {
       try {
@@ -341,9 +410,8 @@ function DashboardTab() {
       } catch (e) { console.error('[DashboardTab]', e); /* silently fail */ }
     };
     loadRecentSales();
-    const interval = setInterval(loadRecentSales, 30000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   const handleManualRefresh = useCallback(() => {
     setRefreshing(true);
@@ -449,6 +517,29 @@ function DashboardTab() {
 
   if (loading) return <LoadingSkeleton />;
 
+  // Never loaded yet (no cache, no fresh data) — show refresh prompt
+  if (!hasLoadedOnce) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-6">
+        <div className="p-4 rounded-full bg-emerald-50 dark:bg-emerald-950/30">
+          <RefreshCw className="h-10 w-10 text-emerald-500" />
+        </div>
+        <h2 className="text-xl font-semibold text-foreground">看板数据未加载</h2>
+        <p className="text-sm text-muted-foreground max-w-sm text-center">
+          点击下方按钮加载看板数据。数据量较大时可能需要几秒钟。
+        </p>
+        <Button
+          size="lg"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-lg shadow-emerald-500/20"
+          onClick={handleManualRefresh}
+        >
+          <RefreshCw className="h-5 w-5" />
+          加载看板数据
+        </Button>
+      </div>
+    );
+  }
+
   // Check if dashboard has no data (all key metrics are 0)
   const isEmptyDashboard = summary && summary.totalItems === 0 && (summary.totalStockValue || 0) === 0 && (summary.monthRevenue || 0) === 0 && (summary.monthSoldCount || 0) === 0;
 
@@ -470,10 +561,31 @@ function DashboardTab() {
 
   return (
     <div className="space-y-6">
-      {/* ====== Real-Time Clock ====== */}
-      <div className="flex items-center justify-end gap-3">
-        <span className="text-sm text-muted-foreground tabular-nums">{clockDate}</span>
-        <span className="text-sm font-medium text-muted-foreground tabular-nums">{clockTime}</span>
+      {/* ====== Top Bar: Refresh Button + Clock ====== */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {hasLoadedOnce && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleManualRefresh}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? '刷新中...' : '刷新数据'}
+            </Button>
+          )}
+          {!loading && hasLoadedOnce && chartsLoaded && (
+            <span className="text-xs text-muted-foreground">
+              上次刷新: {new Date().toLocaleTimeString('zh-CN', { hour12: false })}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground tabular-nums">{clockDate}</span>
+          <span className="text-sm font-medium text-muted-foreground tabular-nums">{clockTime}</span>
+        </div>
       </div>
 
       {/* ====== Empty State ====== */}
