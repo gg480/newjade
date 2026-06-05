@@ -10,6 +10,7 @@ import { useAppStore } from '@/lib/store';
 import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton, ConfirmDialog } from './shared';
 import ItemCreateDialog from './item-create-dialog';
 import FactoryModeWrapper from './create/factory-mode-wrapper';
+import BatchPhotoMode from './create/batch-photo-mode';
 import ItemDetailDialog from './item-detail-dialog';
 import ItemEditDialog from './item-edit-dialog';
 import LabelPrintDialog from './label-print-dialog';
@@ -22,6 +23,7 @@ import InventoryDesktopTable from './inventory/inventory-desktop-table';
 import InventoryMobileCards from './inventory/inventory-mobile-cards';
 import InventoryScanSellSection from './inventory/inventory-scan-sell-section';
 import InventoryBatchPriceDialog from './inventory/inventory-batch-price-dialog';
+import InventoryBatchCompleteDialog from './inventory/inventory-batch-complete-dialog';
 import InventoryItemSlidePanel from './inventory/inventory-item-slide-panel';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +43,7 @@ import {
   Pencil, DollarSign as DollarSignIcon, RotateCcw, Trash2, FileDown, Barcode, Printer, ArrowUp, ArrowDown, ArrowUpDown, Camera, Layers,
   ShoppingCart, Tag, MapPin, X, Gem, CheckSquare, ChevronDown, ChevronUp, SlidersHorizontal,
   Info, FileText, FileCheck, CalendarDays, Target, MoreHorizontal, Copy, FileSpreadsheet, Loader2, Clock,
-  CircleDot,
+  CircleDot, AlertCircle,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -82,7 +84,7 @@ function InventoryTab() {
   const [allBatches, setAllBatches] = useState<Batch[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' });
+  const [filters, setFilters] = useState({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', has_tags: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' });
   const [searchField, setSearchField] = useState('all');
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set(['in_stock']));
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -124,6 +126,7 @@ function InventoryTab() {
   const [batchRestoreOpen, setBatchRestoreOpen] = useState(false);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchPriceOpen, setBatchPriceOpen] = useState(false);
+  const [batchCompleteOpen, setBatchCompleteOpen] = useState(false);
   const [batchCounterOpen, setBatchCounterOpen] = useState(false);
 
   // Batch sell form
@@ -158,6 +161,9 @@ function InventoryTab() {
   // Factory mode (快速录货)
   const [showFactoryMode, setShowFactoryMode] = useState(false);
   const [factoryMode] = useState<'photo' | 'draft'>('photo');
+
+  // Batch photo mode (批量补图)
+  const [showBatchPhoto, setShowBatchPhoto] = useState(false);
 
   // Image lightbox gallery
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -311,7 +317,7 @@ function InventoryTab() {
   // Reset to first page when server-side query conditions change.
   useEffect(() => {
     setPagination(prev => prev.page === 1 ? prev : { ...prev, page: 1 });
-  }, [activeStatuses, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, sortBy, sortOrder]);
+  }, [activeStatuses, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, filters.has_tags, sortBy, sortOrder]);
 
   // Auto-load items on mount and when deps change
   useEffect(() => {
@@ -331,6 +337,7 @@ function InventoryTab() {
         }
         if (filters.counter) params.counter = filters.counter;
         if (filters.batchId) params.batch_id = filters.batchId;
+        if (filters.has_tags) params.has_tags = filters.has_tags;
         params.sort_by = sortBy;
         params.sort_order = sortOrder;
         const data = await itemsApi.getItems(params);
@@ -348,7 +355,7 @@ function InventoryTab() {
     };
     loadData();
     return () => { cancelled = true; };
-  }, [pagination.page, pagination.size, refreshKey, activeStatuses, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, sortBy, sortOrder]);
+  }, [pagination.page, pagination.size, refreshKey, activeStatuses, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, filters.has_tags, sortBy, sortOrder]);
 
   // Clear selection when page/filters change
   useEffect(() => { setSelectedIds(new Set()); }, [pagination.page, filters.materialId, filters.typeId, filters.tagId, filters.keyword, searchField, filters.counter, filters.batchId, filters.status, activeStatuses, sortBy, sortOrder]);
@@ -704,6 +711,17 @@ function InventoryTab() {
     }
   }
 
+  /** 导出标签打印数据（德佟 P2 微打 App 兼容 CSV） */
+  async function handleBatchLabelExport() {
+    if (selectedIds.size === 0) return;
+    try {
+      await exportApi.exportLabels(Array.from(selectedIds));
+      toast.success(`已导出 ${selectedIds.size} 件货品标签数据`);
+    } catch (e: unknown) {
+      toast.error('导出失败: ' + (e instanceof Error ? e.message : '未知错误'));
+    }
+  }
+
   async function handleBatchCounter() {
     const counter = parseInt(batchCounterForm.counter);
     if (isNaN(counter)) {
@@ -829,6 +847,24 @@ function InventoryTab() {
         onClearFilter={(key: string) => setFilters(f => ({ ...f, [key]: '' }))}
       />
 
+      {/* 数据补全快捷筛选 */}
+      <div className="flex items-center gap-2 px-1 mb-2">
+        <Button
+          size="sm"
+          variant={filters.has_tags === 'false' ? 'default' : 'outline'}
+          className={`h-7 text-xs rounded-full ${filters.has_tags === 'false' ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500' : ''}`}
+          onClick={() => {
+            setFilters(f => ({
+              ...f,
+              has_tags: f.has_tags === 'false' ? '' : 'false',
+            }));
+          }}
+        >
+          <AlertCircle className="h-3 w-3 mr-1" />
+          待补全（缺标签）
+        </Button>
+      </div>
+
       {/* 快速录货入口 — 移动端显示 */}
       <div className="flex md:hidden items-center gap-2 px-1">
         <Button
@@ -839,6 +875,19 @@ function InventoryTab() {
         >
           <Camera className="h-4 w-4 mr-1" />
           快速录货
+        </Button>
+      </div>
+
+      {/* 批量补图入口 — 移动端 + 桌面端 */}
+      <div className="flex items-center gap-2 px-1 mb-2">
+        <Button
+          onClick={() => setShowBatchPhoto(true)}
+          variant="default"
+          size="sm"
+          className="h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <Camera className="h-4 w-4 mr-1" />
+          批量补图
         </Button>
       </div>
 
@@ -906,7 +955,9 @@ function InventoryTab() {
         onBatchRestore={() => setBatchRestoreOpen(true)}
         onBatchDelete={() => setBatchDeleteOpen(true)}
         onBatchPriceAdjust={() => setBatchPriceOpen(true)}
+        onBatchComplete={() => setBatchCompleteOpen(true)}
         onBatchLabelPrint={() => setBatchLabelPrintOpen(true)}
+        onBatchLabelExport={handleBatchLabelExport}
         onClearSelection={clearSelection}
       />
 
@@ -1148,6 +1199,14 @@ function InventoryTab() {
         onCancel={() => { setBatchPriceOpen(false); setBatchPriceForm({ mode: 'percent', target: 'sellingPrice', value: '', direction: 'increase' }); }}
       />
 
+      {/* Batch Complete Dialog */}
+      <InventoryBatchCompleteDialog
+        open={batchCompleteOpen}
+        onOpenChange={setBatchCompleteOpen}
+        onSuccess={() => { clearSelection(); refresh(); }}
+        selectedItemIds={Array.from(selectedIds)}
+      />
+
       {/* Batch Change Counter Dialog */}
       <Dialog open={batchCounterOpen} onOpenChange={setBatchCounterOpen}>
         <DialogContent className="max-w-sm">
@@ -1237,6 +1296,13 @@ function InventoryTab() {
       {showFactoryMode && (
         <FactoryModeWrapper
           onClose={() => { setShowFactoryMode(false); refresh(); }}
+        />
+      )}
+
+      {/* Batch Photo Mode（批量补图） */}
+      {showBatchPhoto && (
+        <BatchPhotoMode
+          onClose={() => { setShowBatchPhoto(false); refresh(); }}
         />
       )}
 

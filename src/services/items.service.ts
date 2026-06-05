@@ -21,6 +21,7 @@ export interface GetItemsParams {
   searchField?: string | null;
   sortBy?: string;
   sortOrder?: string;
+  hasTags?: string;
 }
 
 /** 创建货品参数 */
@@ -267,6 +268,12 @@ export async function getItems(params: GetItemsParams) {
   const where: Prisma.ItemWhereInput = { ...baseWhere };
   if (status) where.status = status;
 
+  if (params.hasTags === 'true') {
+    where.itemTags = { some: {} };
+  } else if (params.hasTags === 'false') {
+    where.itemTags = { none: {} };
+  }
+
   // 构建排序
   const validSortFields = ['created_at', 'selling_price', 'cost_price', 'purchase_date', 'sku_code', 'name'];
   const field = validSortFields.includes(sortBy) ? sortBy : 'created_at';
@@ -475,6 +482,66 @@ export async function createItem(body: CreateItemInput) {
     }
     throw e;
   }
+}
+
+/**
+ * 批量补全货品数据（标签、器型、柜台、名称、底价、产地、重量）
+ * 用于历史数据补全场景
+ */
+export async function batchCompleteItems(params: {
+  ids: number[];
+  materialId?: number | string;
+  typeId?: number | string;
+  name?: string;
+  tagIds?: (number | string)[];
+  counter?: number | string;
+  floorPrice?: number | string;
+  origin?: string;
+  weight?: number | string;
+}) {
+  const { ids, materialId, typeId, name, tagIds, counter, floorPrice, origin, weight } = params;
+  let success = 0;
+  let failed = 0;
+
+  for (const id of ids) {
+    try {
+      const updateData: Record<string, unknown> = {};
+      if (materialId != null) updateData.materialId = Number(materialId);
+      if (typeId != null) updateData.typeId = Number(typeId);
+      if (name != null) updateData.name = name;
+      if (counter != null) updateData.counter = Number(counter);
+      if (floorPrice != null) updateData.floorPrice = Number(floorPrice);
+      if (origin != null) updateData.origin = origin;
+
+      // 更新 tags（替换全部标签）
+      if (tagIds && tagIds.length > 0) {
+        updateData.tags = {
+          set: tagIds.map(id => ({ id: Number(id) })),
+        };
+      }
+
+      // 更新 item 基本信息
+      await db.item.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // 更新规格（重量）
+      if (weight != null) {
+        await db.itemSpec.upsert({
+          where: { itemId: id },
+          create: { itemId: id, weight: Number(weight) },
+          update: { weight: Number(weight) },
+        });
+      }
+
+      success++;
+    } catch (e) {
+      failed++;
+    }
+  }
+
+  return { success, failed };
 }
 
 /**

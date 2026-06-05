@@ -128,6 +128,7 @@ export async function createPriceRecord(data: CreatePriceInput) {
 
 /**
  * 重定价预览：计算按新克价批量重算后的售价
+ * 新公式：售价 = 重量 × (新行情价 × 纯度比 + 工费单价)
  * @throws {ValidationError} 参数校验失败时抛出
  * @throws {NotFoundError} 材质不存在时抛出
  */
@@ -144,7 +145,8 @@ export async function previewReprice(materialId: number, newPricePerGram: number
     throw new NotFoundError('材质不存在');
   }
 
-  const oldPrice = material.costPerGram || 0;
+  const ratio = material.marketRatio ?? 1;
+  const laborCostPerGram = material.laborCostPerGram ?? 0;
 
   const items = await db.item.findMany({
     where: { materialId, status: 'in_stock', isDeleted: false },
@@ -155,8 +157,8 @@ export async function previewReprice(materialId: number, newPricePerGram: number
     .filter(item => item.spec?.weight && item.spec.weight > 0)
     .map(item => {
       const weight = item.spec!.weight!;
-      const laborCost = item.sellingPrice - weight * oldPrice;
-      const newPrice = Math.round((weight * newPricePerGram + laborCost) * 100) / 100;
+      // 新公式：重量 × (行情价 × 纯度比 + 工费单价)
+      const newPrice = Math.round(weight * (newPricePerGram * ratio + laborCostPerGram) * 100) / 100;
       return {
         skuCode: item.skuCode,
         name: item.name,
@@ -171,6 +173,7 @@ export async function previewReprice(materialId: number, newPricePerGram: number
 
 /**
  * 确认重定价：更新货品售价 + 更新材质克价 + 新增价格历史
+ * 新公式：售价 = 重量 × (新行情价 × 纯度比 + 工费单价)
  * @throws {NotFoundError} 材质不存在时抛出
  */
 export async function confirmReprice(materialId: number, newPricePerGram: number): Promise<RepriceConfirmResult> {
@@ -179,7 +182,8 @@ export async function confirmReprice(materialId: number, newPricePerGram: number
     throw new NotFoundError('材质不存在');
   }
 
-  const oldPrice = material.costPerGram || 0;
+  const ratio = material.marketRatio ?? 1;
+  const laborCostPerGram = material.laborCostPerGram ?? 0;
 
   const items = await db.item.findMany({
     where: { materialId, status: 'in_stock', isDeleted: false },
@@ -190,8 +194,8 @@ export async function confirmReprice(materialId: number, newPricePerGram: number
   for (const item of items) {
     if (!item.spec?.weight || item.spec.weight <= 0) continue;
     const weight = item.spec.weight;
-    const laborCost = item.sellingPrice - weight * oldPrice;
-    const newPrice = Math.round((weight * newPricePerGram + laborCost) * 100) / 100;
+    // 新公式：重量 × (行情价 × 纯度比 + 工费单价)
+    const newPrice = Math.round(weight * (newPricePerGram * ratio + laborCostPerGram) * 100) / 100;
     await db.item.update({ where: { id: item.id }, data: { sellingPrice: newPrice } });
     updatedCount++;
   }
@@ -202,4 +206,22 @@ export async function confirmReprice(materialId: number, newPricePerGram: number
   await db.metalPrice.create({ data: { materialId, pricePerGram: newPricePerGram, effectiveDate: today } });
 
   return { updatedCount };
+}
+
+/**
+ * 更新材质的工费单价
+ * @param materialId 材质ID
+ * @param laborCostPerGram 工费单价（元/克）
+ * @throws {NotFoundError} 材质不存在时抛出
+ */
+export async function updateLaborCostPerGram(materialId: number, laborCostPerGram: number): Promise<void> {
+  const material = await db.dictMaterial.findUnique({ where: { id: materialId } });
+  if (!material) {
+    throw new NotFoundError('材质不存在');
+  }
+
+  await db.dictMaterial.update({
+    where: { id: materialId },
+    data: { laborCostPerGram },
+  });
 }

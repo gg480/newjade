@@ -556,6 +556,12 @@ function DashboardTab() {
     }, {})
   ).map(([name, value]) => ({ name, value: value as number }));
 
+  // 未回款批次 Top 10（按回本率降序，最接近回本的优先）
+  const unpaidTop10 = batchProfit
+    .filter((b) => b.paybackRate < 1)
+    .sort((a, b) => b.paybackRate - a.paybackRate)
+    .slice(0, 10);
+
   // Price range pie label
   const priceLabel = ({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`;
 
@@ -1721,12 +1727,12 @@ function DashboardTab() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">批次回本看板</CardTitle>
-                <Badge variant="outline">{batchProfit.length} 个批次</Badge>
+                <Badge variant="outline">未回款 Top {Math.min(10, unpaidTop10.length)} / 共 {batchProfit.length} 个批次</Badge>
               </div>
             </CardHeader>
             <CardContent>
-              {batchProfit.length === 0 ? (
-                <EmptyState icon={Layers} title="暂无批次" desc="还没有创建任何批次" />
+              {unpaidTop10.length === 0 ? (
+                <EmptyState icon={Layers} title="暂无未回款批次" desc="所有批次已回本或清仓" />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -1739,7 +1745,7 @@ function DashboardTab() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {batchProfit.map((bp, idx) => (
+                      {unpaidTop10.map((bp, idx) => (
                         <TableRow key={bp.batchCode} className={`${idx % 2 === 0 ? 'even:bg-muted/20' : ''} hover:bg-muted/50 transition-colors`}>
                           <TableCell className="font-mono text-sm">{bp.batchCode}</TableCell>
                           <TableCell>{bp.materialName}</TableCell>

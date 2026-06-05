@@ -30,7 +30,9 @@ model DictMaterial {
   subType      String?   @map("sub_type")
   origin       String?
   costPerGram  Float?    @map("cost_per_gram")
-  sortOrder    Int       @default(0) @map("sort_order")
+  marketRatio       Float?    @map("market_ratio")       // 行情价折算比例，如 0.75
+  laborCostPerGram  Float?    @map("labor_cost_per_gram") // 工费单价（元/克）
+  sortOrder         Int       @default(0) @map("sort_order")
   isActive     Boolean   @default(true) @map("is_active")
 
   batches         Batch[]

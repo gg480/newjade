@@ -10,8 +10,8 @@ import type {
   DistributionByType, DistributionByMaterial, TurnoverDataPoint, HeatmapData,
   CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem,
   DashboardAggregate, RecentSaleItem,
-  MetalPrice, RepricePreview, PricingResult, OperationLog, Notification,
-  ImportResult, BatchPriceAdjustResult, AuthToken, AuthSession, BackupResult,
+  MetalPrice, MarketPriceItem, CompetitorPrice, LocalReferenceResponse, RepricePreview, PricingResult, OperationLog, Notification,
+  ImportResult, BatchPriceAdjustResult, BatchCompleteResult, AuthToken, AuthSession, BackupResult,
   ItemsQueryParams, SalesQueryParams, BatchesQueryParams, CustomersQueryParams,
   SuppliersQueryParams, LogsQueryParams, NotificationsQueryParams,
   DashboardQueryParams, MetalPriceHistoryParams, SupplierStatsParams,
@@ -21,7 +21,7 @@ import type {
   CreateSaleBody, UpdateSaleBody, CreateBundleSaleBody, ReturnSaleBody,
   MergeCustomerBody, UpdateMetalPriceBody, RepriceBody, PricingBody,
   BatchPriceBody, UpdateConfigBody, ChangePasswordBody, ImportOptions,
-  CurrentUser, UserInfo, RoleInfo,
+  CurrentUser, UserInfo, RoleInfo, UpdateLaborCostBody,
 } from './api.types';
 
 const BASE = '/api';
@@ -297,6 +297,16 @@ export const metalApi = {
     const qs = params ? buildQueryString(params as Record<string, string | number | boolean | undefined | null>) : '';
     return request<MetalPrice[]>(`/metal-prices/history${qs}`);
   },
+  getMarketPrices: (source?: 'gzjn168' | 'tanshu' | 'auto') =>
+    request<MarketPriceItem[]>(`/metal-prices/market${source ? `?source=${source}` : ''}`),
+  /** 获取竞品金价列表 */
+  getCompetitors: () => request<CompetitorPrice[]>('/metal-prices/competitors'),
+  /** 获取本地参考行情（融通金 gzjn168.com） */
+  getLocalReference: () =>
+    request<LocalReferenceResponse>('/metal-prices/local-reference'),
+  /** 更新材质工费单价 */
+  updateLaborCost: (data: UpdateLaborCostBody) =>
+    request<null>('/metal-prices/labor-cost', { method: 'PUT', body: JSON.stringify(data) }),
   previewReprice: (data: RepriceBody) =>
     request<RepricePreview>('/metal-prices/reprice', { method: 'POST', body: JSON.stringify(data) }),
   confirmReprice: (data: RepriceBody) =>
@@ -355,10 +365,27 @@ export const restockApi = {
   },
 };
 
-// ========== Batch Price ==========
+// ========== Batch Price & Complete ==========
 export const itemsApiEnhanced = {
   batchPriceAdjust: async (data: BatchPriceBody) => {
     return request<BatchPriceAdjustResult>('/items/batch-price', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+  /** 批量补全货品数据（PATCH /api/items/batch-complete） */
+  batchComplete: async (data: {
+    ids: number[];
+    materialId?: number;
+    typeId?: number;
+    name?: string;
+    tagIds?: number[];
+    counter?: number;
+    floorPrice?: number;
+    origin?: string;
+    weight?: number;
+  }) => {
+    return request<{ success: number; failed: number }>('/items/batch-complete', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -451,5 +478,33 @@ export const exportApi = {
   batches: (params?: Record<string, string | number | boolean>) => {
     const qs = params ? buildQueryString(params) : '';
     return `${BASE}/export/batches${qs}`;
+  },
+  /** 导出标签打印数据（德佟 P2 微打 App 兼容 CSV） */
+  exportLabels: async (ids: number[]) => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${BASE}/export/labels`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        detail = errJson.message || detail;
+      } catch { /* ignore */ }
+      throw new Error('导出失败: ' + detail);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `labels_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 };

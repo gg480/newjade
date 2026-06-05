@@ -118,7 +118,7 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
                 setTimeout(() => setTapAnim(null), 100);
                 onTabChange('dashboard');
               }}
-                className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${isActiveGroup ? 'text-emerald-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
+                className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${isActiveGroup ? 'text-jade-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
                 aria-current={isActiveGroup ? 'page' : undefined}
               >
                 <div className={`relative transition-transform duration-150 ${isActiveGroup ? 'scale-110' : ''} ${isTapping ? 'scale-90' : ''}`}>
@@ -126,7 +126,7 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
                 </div>
                 <span>{group.label}</span>
                 {isActiveGroup && (
-                  <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-500 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-jade-500 rounded-full shadow-[0_0_6px_rgba(26,122,90,0.4)]" />
                 )}
               </button>
             );
@@ -137,7 +137,7 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
             <DropdownMenu key={group.id}>
               <DropdownMenuTrigger asChild>
                 <button
-                  className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${isActiveGroup ? 'text-emerald-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
+                  className={`flex-1 flex flex-col items-center justify-center h-full text-[10px] font-medium gap-0.5 ${isActiveGroup ? 'text-jade-600' : 'text-muted-foreground'} active:scale-95 transition-transform duration-75`}
                   aria-current={isActiveGroup ? 'page' : undefined}
                 >
                   <div className={`relative transition-transform duration-150 ${isActiveGroup ? 'scale-110' : ''}`}>
@@ -155,7 +155,7 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
                   </div>
                   <span>{group.label}</span>
                   {isActiveGroup && (
-                    <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-emerald-500 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                    <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 bg-jade-500 rounded-full shadow-[0_0_6px_rgba(26,122,90,0.4)]" />
                   )}
                 </button>
               </DropdownMenuTrigger>
@@ -166,11 +166,11 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
                     setTimeout(() => setTapAnim(null), 100);
                     onTabChange(child.id);
                   }}
-                    className={`cursor-pointer ${activeTab === child.id ? 'text-emerald-600 font-medium' : ''}`}
+                    className={`cursor-pointer ${activeTab === child.id ? 'text-jade-600 font-medium' : ''}`}
                   >
                     {child.label}
                     {activeTab === child.id && (
-                      <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="ml-2 h-1.5 w-1.5 rounded-full bg-jade-500" />
                     )}
                   </DropdownMenuItem>
                 ))}
@@ -303,7 +303,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
                 {/* 翡翠绿色角标装饰 */}
                 <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-jade-500 rounded-full ring-1 ring-background" />
               </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-jade-700 to-emerald-600 dark:from-jade-400 dark:to-emerald-400 bg-clip-text text-transparent">{storeName}</span>
+              <span className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--font-noto-serif), var(--font-geist-sans), serif' }}>{storeName}</span>
             </div>
             <div className="flex space-x-1 flex-1">
               {navGroups.map(group => {
@@ -314,7 +314,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
                 if (group.id === 'dashboard') {
                   return (
                     <button key={group.id} onClick={() => onTabChange('dashboard')}
-                      className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${isActiveGroup ? 'nav-tab-active text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                      className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-jade-500 focus-visible:ring-offset-2 ${isActiveGroup ? 'nav-tab-active text-jade-700 dark:text-jade-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                       aria-current={isActiveGroup ? 'page' : undefined}
                     >
                       <Icon className="h-4 w-4" />{group.label}
@@ -327,7 +327,7 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
                   <DropdownMenu key={group.id}>
                     <DropdownMenuTrigger asChild>
                       <button
-                        className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${isActiveGroup ? 'nav-tab-active text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                        className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-out flex items-center gap-1.5 active:scale-95 focus-visible:ring-2 focus-visible:ring-jade-500 focus-visible:ring-offset-2 ${isActiveGroup ? 'nav-tab-active text-jade-700 dark:text-jade-300' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                         aria-current={isActiveGroup ? 'page' : undefined}
                       >
                         <Icon className="h-4 w-4" />{group.label}
@@ -337,11 +337,11 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
                     <DropdownMenuContent align="start" className="min-w-[150px] p-1.5">
                       {group.children.map(child => (
                         <DropdownMenuItem key={child.id} onClick={() => onTabChange(child.id)}
-                          className={`cursor-pointer rounded-md transition-colors ${activeTab === child.id ? 'bg-jade-50 dark:bg-jade-950/40 text-emerald-600 font-medium' : ''}`}
+                          className={`cursor-pointer rounded-md transition-colors ${activeTab === child.id ? 'bg-jade-50 dark:bg-jade-950/40 text-jade-600 font-medium' : ''}`}
                         >
                           {child.label}
                           {activeTab === child.id && (
-                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(5,150,105,0.4)]" />
+                            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-jade-500 shadow-[0_0_4px_rgba(26,122,90,0.35)]" />
                           )}
                         </DropdownMenuItem>
                       ))}

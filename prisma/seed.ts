@@ -72,6 +72,7 @@ async function seedBase(adminRoleId: number) {
     { key: 'aging_threshold_days', value: '90', description: '压货预警天数(旧)' },
     { key: 'warning_days', value: '90', description: '压货预警天数' },
     { key: 'default_alloc_method', value: 'equal', description: '默认分摊算法' },
+    { key: 'tanshu_api_key', value: '', description: '探数API Key（贵金属行情价获取）' },
   ];
   for (const c of configs) {
     await prisma.sysConfig.upsert({
@@ -80,7 +81,7 @@ async function seedBase(adminRoleId: number) {
       create: c,
     });
   }
-  console.log('✅ 系统配置已插入/更新 (5条)');
+  console.log('✅ 系统配置已插入/更新 (6条)');
 
   // 管理员用户 — bcrypt 哈希存储默认密码，关联 admin 角色
   const defaultPasswordHash = bcrypt.hashSync('admin123', 10);
@@ -103,44 +104,81 @@ async function seedBase(adminRoleId: number) {
   });
   console.log('✅ 管理员用户已创建（关联 admin 角色）');
 
-  // 2. 材质 (36种)
+  // 2. 材质 (38种，含贵金属行情码)
+  // 先更新贵金属旧材质（重命名+补充字段），再创建新增材质
+  // 旧→新映射：黄金→黄金999足金，银→足银990，铂金→铂金999
+  const metalMigrations = [
+    { oldName: '黄金', oldSubType: 'k999', newName: '黄金999足金', newSubType: 'Au9999', marketRatio: 1.0, laborCostPerGram: 70, sortOrder: 1 },
+    { oldName: '铂金', oldSubType: null, newName: '铂金999', newSubType: 'PT9995', marketRatio: 1.0, laborCostPerGram: 80, sortOrder: 7 },
+  ];
+  for (const m of metalMigrations) {
+    const existing = await prisma.dictMaterial.findFirst({ where: { name: m.oldName, subType: m.oldSubType } });
+    if (existing) {
+      await prisma.dictMaterial.update({
+        where: { id: existing.id },
+        data: { name: m.newName, subType: m.newSubType, marketRatio: m.marketRatio, laborCostPerGram: m.laborCostPerGram, sortOrder: m.sortOrder, costPerGram: null },
+      });
+    }
+  }
+  // 更新不换名的材质（18K金、k铂金）
+  await prisma.dictMaterial.updateMany({
+    where: { name: '18K金' },
+    data: { subType: 'Au9999', marketRatio: 0.75, laborCostPerGram: 70 },
+  });
+  await prisma.dictMaterial.updateMany({
+    where: { name: 'k铂金' },
+    data: { subType: null, sortOrder: 8, marketRatio: null },
+  });
+  // 更新银为足银990（如存在）
+  const oldSilver = await prisma.dictMaterial.findFirst({ where: { name: '银', subType: '990' } });
+  if (oldSilver) {
+    await prisma.dictMaterial.update({
+      where: { id: oldSilver.id },
+      data: { name: '足银990', subType: 'AgT+D', marketRatio: 0.99, laborCostPerGram: 5, costPerGram: null, sortOrder: 5 },
+    });
+  }
+
+  // 全量材质列表（含贵金属行情码 + 工费单价）
   const materials = [
-    { name: '黄金', category: '贵金属', subType: 'k999', sortOrder: 1 },
-    { name: '银', category: '贵金属', subType: '990', costPerGram: 25, sortOrder: 2 },
-    { name: 'k铂金', category: '贵金属', sortOrder: 3 },
-    { name: '铂金', category: '贵金属', sortOrder: 4 },
-    { name: '18K金', category: '贵金属', costPerGram: 780, sortOrder: 5 },
-    { name: '翡翠', category: '玉', origin: '缅甸', sortOrder: 6 },
-    { name: '和田玉', category: '玉', sortOrder: 7 },
-    { name: '珍珠', category: '其他', subType: '淡水珠', origin: '浙江', sortOrder: 8 },
-    { name: '朱砂', category: '文玩', sortOrder: 9 },
-    { name: '蜜蜡', category: '文玩', sortOrder: 10 },
-    { name: '碧玺', category: '水晶', sortOrder: 11 },
-    { name: '青金石', category: '水晶', sortOrder: 12 },
-    { name: '黑曜石', category: '水晶', sortOrder: 13 },
-    { name: '金曜石', category: '水晶', sortOrder: 14 },
-    { name: '玛瑙', category: '水晶', sortOrder: 15 },
-    { name: '琥珀', category: '文玩', sortOrder: 16 },
-    { name: '锆石', category: '其他', origin: '梧州', sortOrder: 17 },
-    { name: '斑彩螺', category: '其他', origin: '意大利', sortOrder: 18 },
-    { name: '金虎眼', category: '水晶', sortOrder: 19 },
-    { name: '虎眼', category: '水晶', sortOrder: 20 },
-    { name: '粉晶', category: '水晶', sortOrder: 21 },
-    { name: '紫水晶', category: '水晶', sortOrder: 22 },
-    { name: '莹石', category: '水晶', sortOrder: 23 },
-    { name: '绿幽灵', category: '水晶', sortOrder: 24 },
-    { name: '白幽灵', category: '水晶', sortOrder: 25 },
-    { name: '彩幽灵', category: '水晶', sortOrder: 26 },
-    { name: '金发晶', category: '水晶', sortOrder: 27 },
-    { name: '钛晶', category: '水晶', sortOrder: 28 },
-    { name: '巴西黄水晶', category: '水晶', sortOrder: 29 },
-    { name: '人工黄水晶', category: '水晶', sortOrder: 30 },
-    { name: '红幽灵', category: '水晶', sortOrder: 31 },
-    { name: '蓝晶石', category: '水晶', sortOrder: 32 },
-    { name: '海蓝宝', category: '水晶', sortOrder: 33 },
-    { name: '天河石', category: '水晶', sortOrder: 34 },
-    { name: '红绿宝石共生', category: '水晶', sortOrder: 35 },
-    { name: '车花透辉石', category: '水晶', sortOrder: 36 },
+    { name: '黄金999足金', category: '贵金属', subType: 'Au9999', marketRatio: 1.0, laborCostPerGram: 70, sortOrder: 1 },
+    { name: '18K金', category: '贵金属', subType: 'Au9999', marketRatio: 0.75, laborCostPerGram: 70, costPerGram: 780, sortOrder: 2 },
+    { name: '玫瑰金', category: '贵金属', subType: 'Au9999', marketRatio: 0.75, laborCostPerGram: 70, sortOrder: 3 },
+    { name: 'K白金', category: '贵金属', subType: 'Au9999', marketRatio: 0.75, laborCostPerGram: 70, sortOrder: 4 },
+    { name: '足银990', category: '贵金属', subType: 'AgT+D', marketRatio: 0.99, laborCostPerGram: 5, sortOrder: 5 },
+    { name: '925银', category: '贵金属', subType: 'AgT+D', marketRatio: 0.925, laborCostPerGram: 5, sortOrder: 6 },
+    { name: '铂金999', category: '贵金属', subType: 'PT9995', marketRatio: 1.0, laborCostPerGram: 80, sortOrder: 7 },
+    { name: 'k铂金', category: '贵金属', sortOrder: 8 },
+    { name: '翡翠', category: '玉', origin: '缅甸', sortOrder: 9 },
+    { name: '和田玉', category: '玉', sortOrder: 10 },
+    { name: '珍珠', category: '其他', subType: '淡水珠', origin: '浙江', sortOrder: 11 },
+    { name: '朱砂', category: '文玩', sortOrder: 12 },
+    { name: '蜜蜡', category: '文玩', sortOrder: 13 },
+    { name: '碧玺', category: '水晶', sortOrder: 14 },
+    { name: '青金石', category: '水晶', sortOrder: 15 },
+    { name: '黑曜石', category: '水晶', sortOrder: 16 },
+    { name: '金曜石', category: '水晶', sortOrder: 17 },
+    { name: '玛瑙', category: '水晶', sortOrder: 18 },
+    { name: '琥珀', category: '文玩', sortOrder: 19 },
+    { name: '锆石', category: '其他', origin: '梧州', sortOrder: 20 },
+    { name: '斑彩螺', category: '其他', origin: '意大利', sortOrder: 21 },
+    { name: '金虎眼', category: '水晶', sortOrder: 22 },
+    { name: '虎眼', category: '水晶', sortOrder: 23 },
+    { name: '粉晶', category: '水晶', sortOrder: 24 },
+    { name: '紫水晶', category: '水晶', sortOrder: 25 },
+    { name: '莹石', category: '水晶', sortOrder: 26 },
+    { name: '绿幽灵', category: '水晶', sortOrder: 27 },
+    { name: '白幽灵', category: '水晶', sortOrder: 28 },
+    { name: '彩幽灵', category: '水晶', sortOrder: 29 },
+    { name: '金发晶', category: '水晶', sortOrder: 30 },
+    { name: '钛晶', category: '水晶', sortOrder: 31 },
+    { name: '巴西黄水晶', category: '水晶', sortOrder: 32 },
+    { name: '人工黄水晶', category: '水晶', sortOrder: 33 },
+    { name: '红幽灵', category: '水晶', sortOrder: 34 },
+    { name: '蓝晶石', category: '水晶', sortOrder: 35 },
+    { name: '海蓝宝', category: '水晶', sortOrder: 36 },
+    { name: '天河石', category: '水晶', sortOrder: 37 },
+    { name: '红绿宝石共生', category: '水晶', sortOrder: 38 },
+    { name: '车花透辉石', category: '水晶', sortOrder: 39 },
   ];
   for (const m of materials) {
     const existing = await prisma.dictMaterial.findFirst({
@@ -149,13 +187,13 @@ async function seedBase(adminRoleId: number) {
     if (existing) {
       await prisma.dictMaterial.update({
         where: { id: existing.id },
-        data: { category: m.category },
+        data: { category: m.category, marketRatio: m.marketRatio ?? null, laborCostPerGram: m.laborCostPerGram ?? null, origin: m.origin ?? null, costPerGram: m.costPerGram ?? null, sortOrder: m.sortOrder },
       });
     } else {
       await prisma.dictMaterial.create({ data: m });
     }
   }
-  console.log('✅ 材质已插入/更新 (36种, 含大类)');
+  console.log('✅ 材质已插入/更新 (含贵金属行情码 & 折算比例)');
 
   // 3. 器型 (9种)
   const types = [

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Package, Trash2, Tag, Printer } from 'lucide-react';
+import { ShoppingCart, Package, Trash2, Tag, Printer, Gem, FileSpreadsheet } from 'lucide-react';
 
 interface BatchOpsBarProps {
   selectedCount: number;
@@ -13,6 +13,8 @@ interface BatchOpsBarProps {
   onBatchDelete: () => void;
   onBatchPriceAdjust: () => void;
   onBatchLabelPrint: () => void;
+  onBatchLabelExport?: () => void;
+  onBatchComplete: () => void;
   onClearSelection: () => void;
 }
 
@@ -25,6 +27,8 @@ export default function InventoryBatchOpsBar({
   onBatchDelete,
   onBatchPriceAdjust,
   onBatchLabelPrint,
+  onBatchLabelExport,
+  onBatchComplete,
   onClearSelection,
 }: BatchOpsBarProps) {
   if (selectedCount === 0) return null;
@@ -69,10 +73,26 @@ export default function InventoryBatchOpsBar({
           <Button
             size="sm"
             className="h-7 bg-white/15 text-white hover:bg-white/25 border border-white/30"
+            onClick={onBatchComplete}
+          >
+            <Gem className="h-3 w-3 mr-1" />批量补全
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 bg-white/15 text-white hover:bg-white/25 border border-white/30"
             onClick={onBatchLabelPrint}
           >
             <Printer className="h-3 w-3 mr-1" />批量标签打印
           </Button>
+          {onBatchLabelExport && (
+            <Button
+              size="sm"
+              className="h-7 bg-white/15 text-white hover:bg-white/25 border border-white/30"
+              onClick={onBatchLabelExport}
+            >
+              <FileSpreadsheet className="h-3 w-3 mr-1" />导出标签数据
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"

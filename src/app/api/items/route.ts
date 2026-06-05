@@ -19,6 +19,7 @@ async function itemsListGet(req: Request) {
       searchField: searchParams.get('search_field'),
       sortBy: searchParams.get('sort_by') || 'created_at',
       sortOrder: searchParams.get('sort_order') || 'desc',
+      hasTags: searchParams.get('has_tags') || undefined,
     });
 
     return NextResponse.json({ code: 0, data: result, message: 'ok' });

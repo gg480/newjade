@@ -2,17 +2,13 @@
 // Sessions persist across server restarts via SQLite
 
 import { db } from '@/lib/db';
+import crypto from 'crypto';
 
 const SESSION_TTL_DAYS = 7; // 7-day session expiry
 
-/** Generate a random session token */
+/** 生成密码学安全的随机 session token（使用 crypto.randomBytes） */
 export function generateToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = 'session-';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return `session-${crypto.randomBytes(32).toString('base64url')}`;
 }
 
 /** Clean expired sessions from the database */

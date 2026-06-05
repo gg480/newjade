@@ -15,6 +15,10 @@ export interface ExportSalesParams {
   endDate?: string | null;
 }
 
+export interface LabelExportParams {
+  ids: number[];
+}
+
 // ============================================================
 // 导出方法
 // ============================================================
@@ -49,6 +53,36 @@ export async function getExportInventoryData(params: ExportInventoryParams) {
     item.counter?.toString() || '',
     item.certNo || '',
     item.purchaseDate || '',
+  ]);
+
+  return { headers, rows };
+}
+
+/**
+ * 获取标签打印CSV导出数据（行列结构）
+ * 查询指定的未删除货品，JOIN材质/器型/规格
+ * 用于德佟P2热敏标签打印机「微打」App导入
+ */
+export async function getLabelExportData(params: LabelExportParams) {
+  const { ids } = params;
+
+  const items = await db.item.findMany({
+    where: {
+      id: { in: ids },
+      isDeleted: false,
+    },
+    include: { material: true, type: true, spec: true },
+    orderBy: { skuCode: 'asc' },
+  });
+
+  const headers = ['SKU编码', '商品名称', '材质', '器型', '重量', '条码'];
+  const rows = items.map(item => [
+    item.skuCode,
+    item.name || '',
+    item.material?.name || '',
+    item.type?.name || '',
+    item.spec?.weight != null ? item.spec.weight.toString() : '',
+    item.skuCode,
   ]);
 
   return { headers, rows };

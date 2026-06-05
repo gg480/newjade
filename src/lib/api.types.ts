@@ -31,8 +31,10 @@ export interface DictMaterial {
   subType: string | null;
   origin: string | null;
   costPerGram: number | null;
+  laborCostPerGram: number | null;
   sortOrder: number;
   isActive: boolean;
+  marketRatio: number | null;
 }
 
 export interface DictType {
@@ -490,6 +492,51 @@ export interface RecentSaleItem {
 
 // ========== 贵金属价格 ==========
 
+/** 行情价条目（GET /api/metal-prices/market，含材质折算参考价 + 最终克价） */
+export interface MarketPriceItem {
+  code: string;              // 行情码: Au9999, Ag(T+D), Pt9995
+  price: number;             // 元/克
+  unit: string;
+  updatedAt: string;
+  materialId: number | null;
+  materialName: string | null;
+  marketRatio: number | null;
+  refPrice: number | null;   // 参考价 = 行情价 * marketRatio
+  laborCostPerGram: number | null; // 工费单价（元/克）
+  finalPrice: number | null;       // 最终克价 = refPrice + 工费单价
+}
+
+/** 竞品金价（GET /api/metal-prices/competitors） */
+export interface CompetitorPrice {
+  name: string;             // 品牌名，如 周大福
+  gold: number;             // 黄金金价（元/克）
+  platinum: string | null;  // 铂金价格
+  goldbar: string | null;   // 金条价格
+  unit: string;             // 单位
+  date: string;             // 发布日期
+}
+
+/** 更新工费请求体（PUT /api/metal-prices/labor-cost） */
+export interface UpdateLaborCostBody {
+  materialId: number;
+  laborCostPerGram: number;
+}
+
+/** 本地参考行情（gzjn168.com 融通金） */
+export interface LocalReferencePriceItem {
+  name: string;       // 商品名
+  buyPrice: number;   // 回购价
+  sellPrice: number;  // 销售价
+  updatedAt: string;  // 更新时间
+}
+
+export interface LocalReferenceResponse {
+  available: boolean;
+  items: LocalReferencePriceItem[];
+  message?: string;
+  fetchedAt: string;
+}
+
 export interface MetalPrice {
   id: number;
   materialId: number;
@@ -558,6 +605,25 @@ export interface BatchPriceAdjustResult {
   success: number;
   total: number;
   errors: string[];
+}
+
+// ========== 批量补全 ==========
+
+export interface BatchCompleteBody {
+  ids: number[];
+  materialId?: number;
+  typeId?: number;
+  name?: string;
+  tagIds?: number[];
+  counter?: number;
+  floorPrice?: number;
+  origin?: string;
+  weight?: number;
+}
+
+export interface BatchCompleteResult {
+  success: number;
+  failed: number;
 }
 
 // ========== 认证 ==========
@@ -638,13 +704,21 @@ export interface PaginationQueryParams {
 export interface ItemsQueryParams extends PaginationQueryParams {
   material_id?: string;
   type_id?: string;
+  tag_id?: string;
   status?: string;
   batch_id?: string;
   counter?: string;
   keyword?: string;
   search_field?: string;
+  has_tags?: string;  // 'true'=有标签 'false'=无标签
   sort_by?: string;
   sort_order?: string;
+}
+
+/** 批量补全结果 */
+export interface BatchCompleteResult {
+  success: number;
+  failed: number;
 }
 
 export interface SalesQueryParams extends PaginationQueryParams {

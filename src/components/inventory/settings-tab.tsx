@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, itemsApi, salesApi, batchesApi, customersApi } from '@/lib/api';
 import type { DictMaterial, DictType, DictTag, Supplier, MetalPrice, SysConfig, ImportResult } from '@/lib/api.types';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
@@ -24,13 +24,14 @@ import {
   Plus, Pencil, Trash2, Factory, Calculator, History, Download, Upload, Database,
   AlertTriangle, Loader2, FileSpreadsheet, FileDown, CheckCircle, XCircle, Clock,
   Phone, Gem, Box, Tag, DollarSign, Settings, ShieldCheck, Grid, Package, ShoppingCart,
-  Users, Layers, Search, X, Hash, Crown,
+  Users, Layers, Search, X, Hash, Crown, Lock,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Panel imports
 import SettingsDictsPanel from './settings/settings-dicts-panel';
 import SettingsMetalPanel from './settings/settings-metal-panel';
+import SettingsWeightPricingPanel from './settings/settings-weight-pricing-panel';
 import SettingsSuppliersPanel from './settings/settings-suppliers-panel';
 import SettingsConfigPanel from './settings/settings-config-panel';
 import SettingsBackupPanel from './settings/settings-backup-panel';
@@ -131,6 +132,27 @@ function SettingsTab() {
   const [showCreateMaterial, setShowCreateMaterial] = useState(false);
   const [editMaterial, setEditMaterial] = useState<any>(null);
   const [materialForm, setMaterialForm] = useState({ name: '', category: '', subType: '', origin: '', costPerGram: '' });
+
+  // 材质名称+子类冲突检测（新增/编辑时实时检查）
+  const materialNameConflict = useMemo(() => {
+    const name = materialForm.name.trim();
+    if (!name) return false;
+    const subType = (materialForm.subType || '').trim();
+    if (editMaterial) {
+      // 编辑模式：排除当前编辑的材质自身
+      return materials.some(m =>
+        (m.id ?? m.name) !== editMaterial.id &&
+        (m.name || '').trim() === name &&
+        (m.subType || '').trim() === subType
+      );
+    }
+    // 新增模式
+    return materials.some(m =>
+      (m.name || '').trim() === name &&
+      (m.subType || '').trim() === subType
+    );
+  }, [materialForm.name, materialForm.subType, materials, editMaterial]);
+
   const [showCreateType, setShowCreateType] = useState(false);
   const [editType, setEditType] = useState<any>(null);
   const [deleteType, setDeleteType] = useState<any>(null);
@@ -139,6 +161,9 @@ function SettingsTab() {
   const [tagForm, setTagForm] = useState({ name: '', groupName: '' });
   const [tagGroupFilter, setTagGroupFilter] = useState('');
   const [tagMaterialFilter, setTagMaterialFilter] = useState('');
+  const [materialCategoryFilter, setMaterialCategoryFilter] = useState('');
+  const [typeSearchFilter, setTypeSearchFilter] = useState('');
+  const [tagSearchFilter, setTagSearchFilter] = useState('');
   const [editTag, setEditTag] = useState<any>(null);
 
   // Metal reprice states
@@ -658,9 +683,10 @@ function SettingsTab() {
       </Card>
 
       <Tabs value={subTab} onValueChange={setSubTab}>
-        <TabsList className="grid grid-cols-4 sm:grid-cols-8 w-full">
+        <TabsList className="grid grid-cols-5 sm:grid-cols-9 w-full">
           <TabsTrigger value="dicts">字典管理</TabsTrigger>
-          <TabsTrigger value="metal">贵金属市价</TabsTrigger>
+          <TabsTrigger value="metal-precious">贵金属市价</TabsTrigger>
+          <TabsTrigger value="metal-weight">克重定价</TabsTrigger>
           <TabsTrigger value="suppliers">供应商</TabsTrigger>
           <TabsTrigger value="config">系统配置</TabsTrigger>
           <TabsTrigger value="backup">数据备份</TabsTrigger>
@@ -679,6 +705,12 @@ function SettingsTab() {
             setTagGroupFilter={setTagGroupFilter}
             tagMaterialFilter={tagMaterialFilter}
             setTagMaterialFilter={setTagMaterialFilter}
+            materialCategoryFilter={materialCategoryFilter}
+            setMaterialCategoryFilter={setMaterialCategoryFilter}
+            typeSearchFilter={typeSearchFilter}
+            setTypeSearchFilter={setTypeSearchFilter}
+            tagSearchFilter={tagSearchFilter}
+            setTagSearchFilter={setTagSearchFilter}
             onShowCreateMaterial={() => { setShowCreateMaterial(true); setMaterialForm({ name: '', category: '', subType: '', origin: '', costPerGram: '' }); }}
             onOpenEditMaterial={openEditMaterialDialog}
             onToggleMaterialActive={toggleMaterialActive}
@@ -691,12 +723,19 @@ function SettingsTab() {
           />
         </TabsContent>
 
-        <TabsContent value="metal" className="mt-4">
+        <TabsContent value="metal-precious" className="mt-4">
           <SettingsMetalPanel
             materials={materials}
             onMaterialsChange={setMaterials}
             onPreviewReprice={handlePreviewReprice}
             onPriceHistory={handlePriceHistory}
+          />
+        </TabsContent>
+
+        <TabsContent value="metal-weight" className="mt-4">
+          <SettingsWeightPricingPanel
+            materials={materials}
+            onMaterialsChange={setMaterials}
           />
         </TabsContent>
 
@@ -833,6 +872,7 @@ function SettingsTab() {
           <DialogHeader><DialogTitle>新增材质</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1"><Label>名称 *</Label><Input value={materialForm.name} onChange={e => setMaterialForm(f => ({ ...f, name: e.target.value }))} placeholder="如: 和田玉" /></div>
+            {materialNameConflict && <p className="text-red-500 text-sm mt-1">该材质名称+子类已存在</p>}
             <div className="space-y-1"><Label>大类</Label>
               <Select value={materialForm.category} onValueChange={v => setMaterialForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="选择大类" /></SelectTrigger>
@@ -856,7 +896,7 @@ function SettingsTab() {
           </datalist>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateMaterial(false)}>取消</Button>
-            <Button onClick={handleCreateMaterial} className="bg-emerald-600 hover:bg-emerald-700" disabled={!materialForm.name}>创建</Button>
+            <Button onClick={handleCreateMaterial} className="bg-emerald-600 hover:bg-emerald-700" disabled={!materialForm.name || materialNameConflict}>创建</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -864,9 +904,28 @@ function SettingsTab() {
       {/* Edit Material Dialog */}
       <Dialog open={editMaterial !== null} onOpenChange={open => { if (!open) setEditMaterial(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>编辑材质</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              编辑材质
+              {editMaterial?.category === '贵金属' && (
+                <span className="text-xs text-amber-600 font-normal flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  贵金属为系统标准分类，不可修改
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1"><Label>名称 *</Label><Input value={materialForm.name} onChange={e => setMaterialForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1">
+              <Label>名称 *</Label>
+              <Input
+                value={materialForm.name}
+                onChange={e => setMaterialForm(f => ({ ...f, name: e.target.value }))}
+                disabled={editMaterial?.category === '贵金属'}
+                className={editMaterial?.category === '贵金属' ? 'opacity-60' : ''}
+              />
+            </div>
+            {materialNameConflict && <p className="text-red-500 text-sm mt-1">该材质名称+子类已存在</p>}
             <div className="space-y-1"><Label>大类</Label>
               <Select value={materialForm.category} onValueChange={v => setMaterialForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="选择大类" /></SelectTrigger>
@@ -875,7 +934,16 @@ function SettingsTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>子类</Label><Input value={materialForm.subType} onChange={e => setMaterialForm(f => ({ ...f, subType: e.target.value }))} list="subTypeOptionsEdit" /></div>
+            <div className="space-y-1">
+              <Label>子类</Label>
+              <Input
+                value={materialForm.subType}
+                onChange={e => setMaterialForm(f => ({ ...f, subType: e.target.value }))}
+                list="subTypeOptionsEdit"
+                disabled={editMaterial?.category === '贵金属'}
+                className={editMaterial?.category === '贵金属' ? 'opacity-60' : ''}
+              />
+            </div>
             <div className="space-y-1"><Label>产地</Label><Input value={materialForm.origin} onChange={e => setMaterialForm(f => ({ ...f, origin: e.target.value }))} list="originOptionsEdit" /></div>
             <div className="space-y-1"><Label>克重单价</Label><Input type="number" value={materialForm.costPerGram} onChange={e => setMaterialForm(f => ({ ...f, costPerGram: e.target.value }))} /></div>
           </div>
@@ -890,7 +958,7 @@ function SettingsTab() {
           </datalist>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditMaterial(null)}>取消</Button>
-            <Button onClick={handleUpdateMaterial} className="bg-emerald-600 hover:bg-emerald-700" disabled={!materialForm.name}>保存修改</Button>
+            <Button onClick={handleUpdateMaterial} className="bg-emerald-600 hover:bg-emerald-700" disabled={!materialForm.name || materialNameConflict}>保存修改</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

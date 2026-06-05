@@ -1,13 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { DictMaterial, DictType, DictTag } from '@/lib/api.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Gem, Box, Tag, Hash, Layers, Crown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Pencil, Gem, Box, Tag, Hash, Layers, Crown, Search, Lock } from 'lucide-react';
 import { formatSpecFieldsDisplay } from '../settings-tab';
 
 interface DictsPanelProps {
@@ -19,6 +20,12 @@ interface DictsPanelProps {
   setTagGroupFilter: (v: string) => void;
   tagMaterialFilter: string;
   setTagMaterialFilter: (v: string) => void;
+  materialCategoryFilter: string;
+  setMaterialCategoryFilter: (v: string) => void;
+  typeSearchFilter: string;
+  setTypeSearchFilter: (v: string) => void;
+  tagSearchFilter: string;
+  setTagSearchFilter: (v: string) => void;
   onShowCreateMaterial: () => void;
   onOpenEditMaterial: (m: DictMaterial) => void;
   onToggleMaterialActive: (id: number, isActive: boolean) => void;
@@ -39,6 +46,12 @@ export default function SettingsDictsPanel({
   setTagGroupFilter,
   tagMaterialFilter,
   setTagMaterialFilter,
+  materialCategoryFilter,
+  setMaterialCategoryFilter,
+  typeSearchFilter,
+  setTypeSearchFilter,
+  tagSearchFilter,
+  setTagSearchFilter,
   onShowCreateMaterial,
   onOpenEditMaterial,
   onToggleMaterialActive,
@@ -49,6 +62,44 @@ export default function SettingsDictsPanel({
   onOpenEditTag,
   onToggleTagActive,
 }: DictsPanelProps) {
+  // 材质大类筛选
+  const filteredMaterials = useMemo(() => {
+    if (!materialCategoryFilter) return materials;
+    return materials.filter((m: DictMaterial) => m.category === materialCategoryFilter);
+  }, [materials, materialCategoryFilter]);
+
+  // 器型搜索筛选
+  const filteredTypes = useMemo(() => {
+    if (!typeSearchFilter.trim()) return types;
+    const keyword = typeSearchFilter.trim().toLowerCase();
+    return types.filter((t: DictType) =>
+      t.name.toLowerCase().includes(keyword)
+    );
+  }, [types, typeSearchFilter]);
+
+  // 标签搜索 + 分组 + 材质联动筛选
+  const filteredTagGroups = useMemo(() => {
+    let filtered = tags;
+
+    // 按搜索关键词过滤
+    if (tagSearchFilter.trim()) {
+      const keyword = tagSearchFilter.trim().toLowerCase();
+      filtered = filtered.filter((t: DictTag) =>
+        t.name.toLowerCase().includes(keyword)
+      );
+    }
+
+    // 按分组聚合（同时应用分组筛选）
+    const groups: Record<string, DictTag[]> = {};
+    for (const tag of filtered) {
+      const group = tag.groupName || '未分组';
+      if (tagGroupFilter && group !== tagGroupFilter) continue;
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(tag);
+    }
+    return groups;
+  }, [tags, tagSearchFilter, tagGroupFilter]);
+
   return (
     <div className="space-y-4">
       {/* Materials */}
@@ -57,7 +108,7 @@ export default function SettingsDictsPanel({
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Gem className="h-4 w-4 text-emerald-500" />
-              材质 ({materials.length})
+              材质 ({filteredMaterials.length})
             </CardTitle>
             <Button
               size="sm"
@@ -70,9 +121,30 @@ export default function SettingsDictsPanel({
           </div>
         </CardHeader>
         <CardContent>
+          {/* Category Filter */}
+          <div className="mb-3">
+            <Select
+              value={materialCategoryFilter || '_all'}
+              onValueChange={(v) =>
+                setMaterialCategoryFilter(v === '_all' ? '' : v)
+              }
+            >
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue placeholder="全部分类" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">全部分类</SelectItem>
+                <SelectItem value="玉">玉</SelectItem>
+                <SelectItem value="贵金属">贵金属</SelectItem>
+                <SelectItem value="水晶">水晶</SelectItem>
+                <SelectItem value="文玩">文玩</SelectItem>
+                <SelectItem value="其他">其他</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {/* Material Statistics Info Bar */}
           {(() => {
-            const activeMaterials = materials.filter((m: DictMaterial) => m.isActive);
+            const activeMaterials = filteredMaterials.filter((m: DictMaterial) => m.isActive);
             const materialsWithSubType = activeMaterials.filter(
               (m: DictMaterial) => m.subType
             ).length;
@@ -115,12 +187,19 @@ export default function SettingsDictsPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materials.map((m: DictMaterial) => (
+                {filteredMaterials.map((m: DictMaterial) => (
                   <TableRow
                     key={m.id}
                     className={!m.isActive ? 'opacity-50' : ''}
                   >
-                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-1.5">
+                        {m.name}
+                        {m.category === '贵金属' && (
+                          <Lock className="h-3 w-3 text-amber-500 inline-block" title="贵金属为系统标准分类，不可修改" />
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{m.category || '-'}</TableCell>
                     <TableCell>{m.subType || '-'}</TableCell>
                     <TableCell>{m.origin || '-'}</TableCell>
@@ -146,9 +225,14 @@ export default function SettingsDictsPanel({
                           variant="ghost"
                           className="h-7 w-7 p-0 text-amber-600"
                           onClick={() => onOpenEditMaterial(m)}
-                          title="编辑"
+                          title={m.category === '贵金属' ? '贵金属为系统标准分类，不可修改' : '编辑'}
+                          disabled={m.category === '贵金属'}
                         >
-                          <Pencil className="h-3 w-3" />
+                          {m.category === '贵金属' ? (
+                            <Lock className="h-3 w-3" />
+                          ) : (
+                            <Pencil className="h-3 w-3" />
+                          )}
                         </Button>
                         <Button
                           size="sm"
@@ -176,7 +260,7 @@ export default function SettingsDictsPanel({
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Box className="h-4 w-4 text-blue-500" />
-              器型 ({types.length})
+              器型 ({filteredTypes.length})
             </CardTitle>
             <Button
               size="sm"
@@ -189,6 +273,18 @@ export default function SettingsDictsPanel({
           </div>
         </CardHeader>
         <CardContent>
+          {/* Type Search */}
+          <div className="mb-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="搜索器型名称..."
+                value={typeSearchFilter}
+                onChange={(e) => setTypeSearchFilter(e.target.value)}
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+          </div>
           <div className="max-h-48 overflow-y-auto custom-scrollbar">
             <Table>
               <TableHeader>
@@ -200,7 +296,7 @@ export default function SettingsDictsPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {types.map((t: DictType) => (
+                {filteredTypes.map((t: DictType) => (
                   <TableRow
                     key={t.id}
                     className={!t.isActive ? 'opacity-50' : ''}
@@ -269,7 +365,7 @@ export default function SettingsDictsPanel({
           </div>
         </CardHeader>
         <CardContent>
-          {/* Material + Group filters */}
+          {/* Material + Group filters + Search */}
           <div className="mb-3 flex gap-2 flex-wrap">
             <Select
               value={tagMaterialFilter}
@@ -311,53 +407,58 @@ export default function SettingsDictsPanel({
                 </SelectContent>
               </Select>
             )}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="搜索标签..."
+                value={tagSearchFilter}
+                onChange={(e) => setTagSearchFilter(e.target.value)}
+                className="h-8 pl-8 text-xs w-36"
+              />
+            </div>
           </div>
           <div className="space-y-3">
-            {Object.entries(tagGroups)
-              .filter(
-                ([group]) => !tagGroupFilter || group === tagGroupFilter
-              )
-              .map(([group, groupTags]: [string, DictTag[]]) => (
-                <div key={group}>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">
-                    {group}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {groupTags.map((tag: DictTag) => (
-                      <div key={tag.id} className="group relative">
-                        <Badge
-                          variant={tag.isActive ? 'default' : 'secondary'}
-                          className={`${
-                            tag.isActive
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                              : 'opacity-50'
-                          } cursor-pointer pr-6`}
-                          onClick={() => onOpenEditTag(tag)}
-                          title="点击编辑"
-                        >
-                          {tag.name}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute -top-1 -right-1 h-4 w-4 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleTagActive(tag.id, tag.isActive);
-                          }}
-                          title={tag.isActive ? '停用' : '启用'}
-                        >
-                          {tag.isActive ? (
-                            <span className="text-[10px]">✕</span>
-                          ) : (
-                            <span className="text-[10px]">✓</span>
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+            {Object.entries(filteredTagGroups).map(([group, groupTags]: [string, DictTag[]]) => (
+              <div key={group}>
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  {group}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {groupTags.map((tag: DictTag) => (
+                    <div key={tag.id} className="group relative">
+                      <Badge
+                        variant={tag.isActive ? 'default' : 'secondary'}
+                        className={`${
+                          tag.isActive
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                            : 'opacity-50'
+                        } cursor-pointer pr-6`}
+                        onClick={() => onOpenEditTag(tag)}
+                        title="点击编辑"
+                      >
+                        {tag.name}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="absolute -top-1 -right-1 h-4 w-4 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleTagActive(tag.id, tag.isActive);
+                        }}
+                        title={tag.isActive ? '停用' : '启用'}
+                      >
+                        {tag.isActive ? (
+                          <span className="text-[10px]">✕</span>
+                        ) : (
+                          <span className="text-[10px]">✓</span>
+                        )}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

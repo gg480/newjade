@@ -6,11 +6,12 @@ export const runtime = 'nodejs';
 
 // 无需认证即可访问的公开路径
 // 注意：旧版 /api/auth 也保留公开（其内部 PUT/DELETE 有独立鉴权验证）
+// 注意：/api/config 需要认证（含 tanshu_api_key 等敏感配置）
+// 登录页预加载 store_name 走前端硬编码兜底 '兴盛艺珠宝'
 const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth',
   '/api/health',
-  '/api/config',
 ];
 
 function isPublicPath(pathname: string): boolean {
