@@ -7,7 +7,9 @@
 import type { LocalReferencePriceItem, LocalReferenceResponse } from '@/lib/api.types';
 
 // ============================================================
-// 内存缓存（5 分钟有效期，仅缓存成功结果）
+// 内存缓存
+// - 成功结果：5 分钟有效期
+// - 失败结果：30 秒冷却，防止重复请求封 IP
 // ============================================================
 
 interface CacheEntry {
@@ -16,7 +18,8 @@ interface CacheEntry {
 }
 
 let priceCache: CacheEntry | null = null;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟（成功缓存）
+const FAIL_COOLDOWN_MS = 30 * 1000; // 30 秒（失败冷却）
 
 // ============================================================
 // gzjn168.com PHP API CSV 解析
@@ -91,36 +94,34 @@ export async function fetchLocalReferencePrices(): Promise<LocalReferenceRespons
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      return {
-        available: false,
-        items: [],
-        message: `HTTP ${response.status}`,
-        fetchedAt: now,
-      };
+      const fail: LocalReferenceResponse = { available: false, items: [], message: `HTTP ${response.status}`, fetchedAt: now };
+      priceCache = { data: fail, expiresAt: Date.now() + FAIL_COOLDOWN_MS };
+      return fail;
     }
 
-    const csv = await response.text();
+    const rawText = await response.text();
 
-    if (!csv || csv.length < 20 || !csv.startsWith('price,')) {
-      return {
-        available: false,
-        items: [],
-        message: '数据格式异常',
-        fetchedAt: now,
-      };
+    // gzjn168.com 可能在 CSV 前输出 PHP Warning（如 <br /><b>Warning</b>...）
+    // 从响应中提取 price, 开头的那一行作为有效数据
+    const csvLine = rawText
+      .split('\n')
+      .map(s => s.trim())
+      .find(s => s.startsWith('price,'));
+
+    if (!csvLine || csvLine.length < 20) {
+      const fail: LocalReferenceResponse = { available: false, items: [], message: '数据格式异常', fetchedAt: now };
+      priceCache = { data: fail, expiresAt: Date.now() + FAIL_COOLDOWN_MS };
+      return fail;
     }
 
-    const { items, time } = parseCsvResponse(csv);
+    const { items, time } = parseCsvResponse(csvLine);
 
     // 检查数据有效性：至少黄金销售价 > 0
     const hasValidData = items.some(i => i.sellPrice > 0);
     if (!hasValidData) {
-      return {
-        available: false,
-        items: [],
-        message: '未获取到有效价格',
-        fetchedAt: now,
-      };
+      const fail: LocalReferenceResponse = { available: false, items: [], message: '未获取到有效价格', fetchedAt: now };
+      priceCache = { data: fail, expiresAt: Date.now() + FAIL_COOLDOWN_MS };
+      return fail;
     }
 
     const result: LocalReferenceResponse = {
@@ -137,8 +138,7 @@ export async function fetchLocalReferencePrices(): Promise<LocalReferenceRespons
 
     return result;
   } catch (err) {
-    // 不缓存失败结果，确保下次可以重试
-    return {
+    const failResult: LocalReferenceResponse = {
       available: false,
       items: [],
       message: (err as Error).name === 'AbortError'
@@ -146,6 +146,14 @@ export async function fetchLocalReferencePrices(): Promise<LocalReferenceRespons
         : `网络错误: ${(err as Error).message}`,
       fetchedAt: now,
     };
+
+    // 缓存失败结果 30 秒，防止重复请求被封 IP
+    priceCache = {
+      data: failResult,
+      expiresAt: Date.now() + FAIL_COOLDOWN_MS,
+    };
+
+    return failResult;
   }
 }
 
