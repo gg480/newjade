@@ -17,16 +17,16 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
-# 设置生产环境变量（影响 Next.js 构建优化路径）
-ENV NODE_ENV=production
-
 # 先复制依赖清单，利用 Docker 层缓存
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
-# 安装依赖 + 生成 Prisma Client
+# 安装依赖（含 devDeps，Next.js 构建需要 TypeScript）
 RUN pnpm install --no-frozen-lockfile && \
     npx prisma generate
+
+# 设置生产环境变量（影响 Next.js 构建优化路径）
+ENV NODE_ENV=production
 
 # 复制全部源代码
 COPY . .
