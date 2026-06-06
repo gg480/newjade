@@ -1,0 +1,233 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "newjade-erp",
+    "languages": ["css", "javascript", "json", "markdown", "prisma", "sql", "typescript", "yaml"],
+    "frameworks": ["Next.js", "React", "Prisma", "Tailwind CSS", "shadcn/ui", "Zustand", "React Hook Form", "Zod", "Recharts", "TanStack Table", "TanStack Query", "Playwright", "Docker", "GitHub Actions"],
+    "description": "珠宝玉器进销存ERP系统 — 基于 Next.js 16 的全栈单店珠宝管理应用，涵盖商品管理、批次追踪、销售退货、客户管理、仪表盘分析、贵金属定价、CSV导入导出等完整业务流程。",
+    "analyzedAt": "2026-06-06T08:00:00.000Z",
+    "gitCommitHash": "5c2695dfd33d8c638d8c2d937173fc90495178a6"
+  },
+  "nodes": [
+    {"id": "file:src/app/page.tsx", "type": "file", "name": "page.tsx", "filePath": "src/app/page.tsx", "summary": "应用主入口页面，集成库存、销售、仪表盘、批次等核心Tab导航", "tags": ["entry-point", "dashboard", "routing"]},
+    {"id": "file:src/app/layout.tsx", "type": "file", "name": "layout.tsx", "filePath": "src/app/layout.tsx", "summary": "根布局组件，配置国际化、主题、Provider", "tags": ["layout", "i18n", "theme"]},
+    {"id": "file:src/middleware.ts", "type": "file", "name": "middleware.ts", "filePath": "src/middleware.ts", "summary": "Next.js 中间件，处理认证和国际化路由", "tags": ["middleware", "auth", "i18n"]},
+    {"id": "file:src/instrumentation.ts", "type": "file", "name": "instrumentation.ts", "filePath": "src/instrumentation.ts", "summary": "应用启动时的初始化逻辑", "tags": ["startup", "init"]},
+
+    {"id": "file:src/lib/api.ts", "type": "file", "name": "api.ts", "filePath": "src/lib/api.ts", "summary": "API 客户端封装，统一请求/响应处理", "tags": ["api-client", "fetch", "auth"]},
+    {"id": "file:src/lib/api.types.ts", "type": "file", "name": "api.types.ts", "filePath": "src/lib/api.types.ts", "summary": "所有 API 接口的 TypeScript 类型定义", "tags": ["types", "api"]},
+    {"id": "file:src/lib/db.ts", "type": "file", "name": "db.ts", "filePath": "src/lib/db.ts", "summary": "Prisma 客户端单例导出", "tags": ["database", "prisma"]},
+    {"id": "file:src/lib/auth.ts", "type": "file", "name": "auth.ts", "filePath": "src/lib/auth.ts", "summary": "认证模块：密码哈希、JWT令牌签发与验证", "tags": ["auth", "jwt", "bcrypt"]},
+    {"id": "file:src/lib/store.ts", "type": "file", "name": "store.ts", "filePath": "src/lib/store.ts", "summary": "Zustand 全局状态管理", "tags": ["state", "zustand"]},
+    {"id": "file:src/lib/errors.ts", "type": "file", "name": "errors.ts", "filePath": "src/lib/errors.ts", "summary": "自定义错误类和错误处理工具", "tags": ["error-handling"]},
+    {"id": "file:src/lib/constants.ts", "type": "file", "name": "constants.ts", "filePath": "src/lib/constants.ts", "summary": "全局枚举值和常量定义", "tags": ["constants", "enums"]},
+    {"id": "file:src/lib/utils.ts", "type": "file", "name": "utils.ts", "filePath": "src/lib/utils.ts", "summary": "cn() 工具函数（Tailwind class 合并）", "tags": ["utils", "tailwind"]},
+    {"id": "file:src/lib/tag-utils.ts", "type": "file", "name": "tag-utils.ts", "filePath": "src/lib/tag-utils.ts", "summary": "标签相关工具函数", "tags": ["tags", "utils"]},
+    {"id": "file:src/lib/runtime-logger.ts", "type": "file", "name": "runtime-logger.ts", "filePath": "src/lib/runtime-logger.ts", "summary": "运行时日志记录", "tags": ["logging"]},
+    {"id": "file:src/lib/log.ts", "type": "file", "name": "log.ts", "filePath": "src/lib/log.ts", "summary": "操作日志服务", "tags": ["logging", "audit"]},
+    {"id": "file:src/lib/api/with-api-logging.ts", "type": "file", "name": "with-api-logging.ts", "filePath": "src/lib/api/with-api-logging.ts", "summary": "API 请求日志中间件包装器", "tags": ["logging", "api"]},
+    {"id": "file:src/config/error-codes.ts", "type": "file", "name": "error-codes.ts", "filePath": "src/config/error-codes.ts", "summary": "业务错误码定义", "tags": ["error-codes", "config"]},
+    {"id": "file:src/types/index.ts", "type": "file", "name": "index.ts", "filePath": "src/types/index.ts", "summary": "全局 TypeScript 类型导出入口", "tags": ["types"]},
+    {"id": "file:src/hooks/use-mobile.ts", "type": "file", "name": "use-mobile.ts", "filePath": "src/hooks/use-mobile.ts", "summary": "移动端检测 Hook", "tags": ["hooks", "responsive"]},
+    {"id": "file:src/hooks/use-toast.ts", "type": "file", "name": "use-toast.ts", "filePath": "src/hooks/use-toast.ts", "summary": "Toast 通知 Hook", "tags": ["hooks", "ui"]},
+    {"id": "file:src/hooks/use-error-handler.ts", "type": "file", "name": "use-error-handler.ts", "filePath": "src/hooks/use-error-handler.ts", "summary": "全局错误处理 Hook", "tags": ["hooks", "error-handling"]},
+
+    {"id": "file:src/services/config.service.ts", "type": "file", "name": "config.service.ts", "filePath": "src/services/config.service.ts", "summary": "系统配置 CRUD 服务", "tags": ["service", "config"]},
+    {"id": "file:src/services/backup.service.ts", "type": "file", "name": "backup.service.ts", "filePath": "src/services/backup.service.ts", "summary": "数据备份与恢复服务", "tags": ["service", "backup"]},
+    {"id": "file:src/services/batches.service.ts", "type": "file", "name": "batches.service.ts", "filePath": "src/services/batches.service.ts", "summary": "批次管理服务（创建、分配、完成）", "tags": ["service", "batches", "inventory"]},
+    {"id": "file:src/services/dicts.service.ts", "type": "file", "name": "dicts.service.ts", "filePath": "src/services/dicts.service.ts", "summary": "字典管理服务（材质、器型、标签等）", "tags": ["service", "dictionaries"]},
+    {"id": "file:src/services/dicts-tags.service.ts", "type": "file", "name": "dicts-tags.service.ts", "filePath": "src/services/dicts-tags.service.ts", "summary": "标签字典服务", "tags": ["service", "tags"]},
+    {"id": "file:src/services/dict-materials.service.ts", "type": "file", "name": "dict-materials.service.ts", "filePath": "src/services/dict-materials.service.ts", "summary": "材质字典服务", "tags": ["service", "materials"]},
+    {"id": "file:src/services/items.service.ts", "type": "file", "name": "items.service.ts", "filePath": "src/services/items.service.ts", "summary": "商品核心 CRUD 服务", "tags": ["service", "items", "inventory"]},
+    {"id": "file:src/services/items-extra.service.ts", "type": "file", "name": "items-extra.service.ts", "filePath": "src/services/items-extra.service.ts", "summary": "商品扩展属性服务", "tags": ["service", "items"]},
+    {"id": "file:src/services/import.service.ts", "type": "file", "name": "import.service.ts", "filePath": "src/services/import.service.ts", "summary": "CSV 数据导入服务", "tags": ["service", "import", "csv"]},
+    {"id": "file:src/services/export.service.ts", "type": "file", "name": "export.service.ts", "filePath": "src/services/export.service.ts", "summary": "数据导出服务", "tags": ["service", "export"]},
+    {"id": "file:src/services/customers.service.ts", "type": "file", "name": "customers.service.ts", "filePath": "src/services/customers.service.ts", "summary": "客户管理服务（CRUD、合并、搜索）", "tags": ["service", "customers"]},
+    {"id": "file:src/services/sales.service.ts", "type": "file", "name": "sales.service.ts", "filePath": "src/services/sales.service.ts", "summary": "销售与退货服务", "tags": ["service", "sales"]},
+    {"id": "file:src/services/supplier.service.ts", "type": "file", "name": "supplier.service.ts", "filePath": "src/services/supplier.service.ts", "summary": "供应商管理服务", "tags": ["service", "suppliers"]},
+    {"id": "file:src/services/user.service.ts", "type": "file", "name": "user.service.ts", "filePath": "src/services/user.service.ts", "summary": "用户管理服务", "tags": ["service", "users"]},
+    {"id": "file:src/services/role.service.ts", "type": "file", "name": "role.service.ts", "filePath": "src/services/role.service.ts", "summary": "角色与权限管理服务", "tags": ["service", "roles", "rbac"]},
+    {"id": "file:src/services/notification.service.ts", "type": "file", "name": "notification.service.ts", "filePath": "src/services/notification.service.ts", "summary": "消息通知服务", "tags": ["service", "notifications"]},
+    {"id": "file:src/services/pricing.service.ts", "type": "file", "name": "pricing.service.ts", "filePath": "src/services/pricing.service.ts", "summary": "定价与价格计算服务", "tags": ["service", "pricing"]},
+    {"id": "file:src/services/metal-prices.service.ts", "type": "file", "name": "metal-prices.service.ts", "filePath": "src/services/metal-prices.service.ts", "summary": "贵金属市价管理服务", "tags": ["service", "metal", "pricing"]},
+    {"id": "file:src/services/market-price.service.ts", "type": "file", "name": "market-price.service.ts", "filePath": "src/services/market-price.service.ts", "summary": "市场参考价抓取与对比服务", "tags": ["service", "market", "pricing"]},
+    {"id": "file:src/services/local-reference-price.service.ts", "type": "file", "name": "local-reference-price.service.ts", "filePath": "src/services/local-reference-price.service.ts", "summary": "本地参考价服务（gzjn168.com抓取）", "tags": ["service", "reference-price", "scraping"]},
+    {"id": "file:src/services/promotions.service.ts", "type": "file", "name": "promotions.service.ts", "filePath": "src/services/promotions.service.ts", "summary": "促销活动管理服务", "tags": ["service", "promotions"]},
+    {"id": "file:src/services/restock.service.ts", "type": "file", "name": "restock.service.ts", "filePath": "src/services/restock.service.ts", "summary": "智能补货建议服务", "tags": ["service", "restock", "inventory"]},
+    {"id": "file:src/services/stocktaking.service.ts", "type": "file", "name": "stocktaking.service.ts", "filePath": "src/services/stocktaking.service.ts", "summary": "库存盘点服务", "tags": ["service", "stocktaking"]},
+    {"id": "file:src/services/dashboard.service.ts", "type": "file", "name": "dashboard.service.ts", "filePath": "src/services/dashboard.service.ts", "summary": "仪表盘聚合数据服务（销售、利润、库存、客户分析）", "tags": ["service", "dashboard", "analytics"]},
+    {"id": "file:src/services/logs.service.ts", "type": "file", "name": "logs.service.ts", "filePath": "src/services/logs.service.ts", "summary": "操作日志查询服务", "tags": ["service", "logs", "audit"]},
+
+    {"id": "file:src/components/providers.tsx", "type": "file", "name": "providers.tsx", "filePath": "src/components/providers.tsx", "summary": "全局 Provider 包装（QueryClient、Theme、Auth）", "tags": ["providers", "react-query", "theme"]},
+    {"id": "file:src/components/inventory/navigation.tsx", "type": "file", "name": "navigation.tsx", "filePath": "src/components/inventory/navigation.tsx", "summary": "主导航组件（侧边栏/顶栏切换）", "tags": ["navigation", "sidebar"]},
+    {"id": "file:src/components/inventory/login-page.tsx", "type": "file", "name": "login-page.tsx", "filePath": "src/components/inventory/login-page.tsx", "summary": "登录页面组件", "tags": ["auth", "login"]},
+    {"id": "file:src/components/inventory/inventory-tab.tsx", "type": "file", "name": "inventory-tab.tsx", "filePath": "src/components/inventory/inventory-tab.tsx", "summary": "库存管理主Tab（商品列表、筛选、批量操作）", "tags": ["inventory", "tab", "items"]},
+    {"id": "file:src/components/inventory/sales-tab.tsx", "type": "file", "name": "sales-tab.tsx", "filePath": "src/components/inventory/sales-tab.tsx", "summary": "销售管理Tab（销售记录、退货、结账）", "tags": ["sales", "tab"]},
+    {"id": "file:src/components/inventory/dashboard-tab.tsx", "type": "file", "name": "dashboard-tab.tsx", "filePath": "src/components/inventory/dashboard-tab.tsx", "summary": "仪表盘Tab（图表、KPI、趋势分析）- 最大组件", "tags": ["dashboard", "tab", "charts"]},
+    {"id": "file:src/components/inventory/batches-tab.tsx", "type": "file", "name": "batches-tab.tsx", "filePath": "src/components/inventory/batches-tab.tsx", "summary": "批次管理Tab", "tags": ["batches", "tab"]},
+    {"id": "file:src/components/inventory/customers-tab.tsx", "type": "file", "name": "customers-tab.tsx", "filePath": "src/components/inventory/customers-tab.tsx", "summary": "客户管理Tab", "tags": ["customers", "tab"]},
+    {"id": "file:src/components/inventory/settings-tab.tsx", "type": "file", "name": "settings-tab.tsx", "filePath": "src/components/inventory/settings-tab.tsx", "summary": "系统设置Tab（多面板集成）", "tags": ["settings", "tab"]},
+    {"id": "file:src/components/inventory/promotions-tab.tsx", "type": "file", "name": "promotions-tab.tsx", "filePath": "src/components/inventory/promotions-tab.tsx", "summary": "促销活动管理Tab", "tags": ["promotions", "tab"]},
+    {"id": "file:src/components/inventory/restock-tab.tsx", "type": "file", "name": "restock-tab.tsx", "filePath": "src/components/inventory/restock-tab.tsx", "summary": "智能补货Tab", "tags": ["restock", "tab"]},
+    {"id": "file:src/components/inventory/logs-tab.tsx", "type": "file", "name": "logs-tab.tsx", "filePath": "src/components/inventory/logs-tab.tsx", "summary": "操作日志Tab", "tags": ["logs", "tab"]},
+    {"id": "file:src/components/inventory/stocktaking-tab.tsx", "type": "file", "name": "stocktaking-tab.tsx", "filePath": "src/components/inventory/stocktaking-tab.tsx", "summary": "库存盘点Tab", "tags": ["stocktaking", "tab"]},
+
+    {"id": "file:src/components/inventory/item-create-dialog.tsx", "type": "file", "name": "item-create-dialog.tsx", "filePath": "src/components/inventory/item-create-dialog.tsx", "summary": "商品创建对话框（多模式入口）", "tags": ["items", "create", "dialog"]},
+    {"id": "file:src/components/inventory/item-edit-dialog.tsx", "type": "file", "name": "item-edit-dialog.tsx", "filePath": "src/components/inventory/item-edit-dialog.tsx", "summary": "商品编辑对话框", "tags": ["items", "edit", "dialog"]},
+    {"id": "file:src/components/inventory/item-detail-dialog.tsx", "type": "file", "name": "item-detail-dialog.tsx", "filePath": "src/components/inventory/item-detail-dialog.tsx", "summary": "商品详情查看对话框", "tags": ["items", "detail", "dialog"]},
+    {"id": "file:src/components/inventory/batch-create-dialog.tsx", "type": "file", "name": "batch-create-dialog.tsx", "filePath": "src/components/inventory/batch-create-dialog.tsx", "summary": "批次创建对话框", "tags": ["batches", "create", "dialog"]},
+    {"id": "file:src/components/inventory/batch-detail-dialog.tsx", "type": "file", "name": "batch-detail-dialog.tsx", "filePath": "src/components/inventory/batch-detail-dialog.tsx", "summary": "批次详情对话框", "tags": ["batches", "detail", "dialog"]},
+    {"id": "file:src/components/inventory/checkout/checkout-mode.tsx", "type": "file", "name": "checkout-mode.tsx", "filePath": "src/components/inventory/checkout/checkout-mode.tsx", "summary": "收银结账模式（多步流程）", "tags": ["checkout", "pos", "sales"]},
+    {"id": "file:src/components/inventory/checkout/step-payment.tsx", "type": "file", "name": "step-payment.tsx", "filePath": "src/components/inventory/checkout/step-payment.tsx", "summary": "结账付款步骤", "tags": ["checkout", "payment"]},
+    {"id": "file:src/components/inventory/barcode-scanner.tsx", "type": "file", "name": "barcode-scanner.tsx", "filePath": "src/components/inventory/barcode-scanner.tsx", "summary": "条形码/二维码扫描组件", "tags": ["barcode", "scanner", "checkout"]},
+    {"id": "file:src/components/inventory/create/single-item-form.tsx", "type": "file", "name": "single-item-form.tsx", "filePath": "src/components/inventory/create/single-item-form.tsx", "summary": "单件商品录入表单（核心表单组件）", "tags": ["items", "create", "form"]},
+    {"id": "file:src/components/inventory/create/quick-entry-mode.tsx", "type": "file", "name": "quick-entry-mode.tsx", "filePath": "src/components/inventory/create/quick-entry-mode.tsx", "summary": "快速录入模式（批量条码拍照）", "tags": ["items", "quick-entry", "create"]},
+    {"id": "file:src/components/inventory/create/factory-mode-wrapper.tsx", "type": "file", "name": "factory-mode-wrapper.tsx", "filePath": "src/components/inventory/create/factory-mode-wrapper.tsx", "summary": "工厂模式包装器", "tags": ["items", "create", "factory"]},
+
+    {"id": "config:package.json", "type": "config", "name": "package.json", "filePath": "package.json", "summary": "项目依赖与脚本配置（Next.js 16 + Prisma + shadcn/ui）", "tags": ["config", "dependencies"]},
+    {"id": "config:tsconfig.json", "type": "config", "name": "tsconfig.json", "filePath": "tsconfig.json", "summary": "TypeScript 编译配置", "tags": ["config", "typescript"]},
+    {"id": "config:next.config.ts", "type": "config", "name": "next.config.ts", "filePath": "next.config.ts", "summary": "Next.js 配置（国际化、图片、重定向）", "tags": ["config", "nextjs"]},
+    {"id": "data:prisma/schema.prisma", "type": "schema", "name": "schema.prisma", "filePath": "prisma/schema.prisma", "summary": "Prisma 数据库 Schema（定义了所有数据模型）", "tags": ["database", "schema", "prisma", "sqlite"]},
+    {"id": "infra:Dockerfile", "type": "service", "name": "Dockerfile", "filePath": "Dockerfile", "summary": "Docker 镜像构建文件（极空间 NAS 部署）", "tags": ["docker", "deployment", "nas"]},
+    {"id": "infra:.github/workflows/docker-build.yml", "type": "pipeline", "name": "docker-build.yml", "filePath": ".github/workflows/docker-build.yml", "summary": "GitHub Actions CI: Docker 镜像构建与推送", "tags": ["ci", "docker", "github-actions"]},
+    {"id": "document:AGENT_BRIEFING.md", "type": "document", "name": "AGENT_BRIEFING.md", "filePath": "AGENT_BRIEFING.md", "summary": "项目Agent开发规范、Git规则、禁止事项", "tags": ["docs", "onboarding", "rules"]},
+    {"id": "document:TASK_QUEUE.md", "type": "document", "name": "TASK_QUEUE.md", "filePath": "TASK_QUEUE.md", "summary": "任务队列（功能开发、Bug修复追踪）", "tags": ["docs", "tasks", "planning"]},
+    {"id": "document:AGENTS.md", "type": "document", "name": "AGENTS.md", "filePath": "AGENTS.md", "summary": "项目结构与业务规则文档", "tags": ["docs", "architecture", "business-rules"]},
+    {"id": "document:CHANGELOG.md", "type": "document", "name": "CHANGELOG.md", "filePath": "CHANGELOG.md", "summary": "项目变更日志", "tags": ["docs", "changelog"]}
+  ],
+  "edges": [
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/navigation.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/inventory-tab.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/sales-tab.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/dashboard-tab.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/batches-tab.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/customers-tab.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/inventory/settings-tab.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/app/page.tsx", "target": "file:src/components/providers.tsx", "type": "imports", "weight": 0.7},
+
+    {"source": "file:src/lib/db.ts", "target": "data:prisma/schema.prisma", "type": "depends_on", "weight": 0.6},
+    {"source": "file:src/lib/api.ts", "target": "file:src/lib/auth.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/lib/api.ts", "target": "file:src/lib/api.types.ts", "type": "imports", "weight": 0.7},
+
+    {"source": "file:src/services/items.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/sales.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/customers.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/batches.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/dashboard.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/notification.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/import.service.ts", "target": "file:src/lib/db.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/import.service.ts", "target": "file:src/services/items.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/services/market-price.service.ts", "target": "file:src/services/local-reference-price.service.ts", "type": "imports", "weight": 0.7},
+
+    {"source": "file:src/components/inventory/inventory-tab.tsx", "target": "file:src/services/items.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/sales-tab.tsx", "target": "file:src/services/sales.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/dashboard-tab.tsx", "target": "file:src/services/dashboard.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/batches-tab.tsx", "target": "file:src/services/batches.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/customers-tab.tsx", "target": "file:src/services/customers.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/settings-tab.tsx", "target": "file:src/services/config.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/checkout/checkout-mode.tsx", "target": "file:src/services/sales.service.ts", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/checkout/checkout-mode.tsx", "target": "file:src/components/inventory/barcode-scanner.tsx", "type": "imports", "weight": 0.7},
+
+    {"source": "file:src/components/inventory/inventory-tab.tsx", "target": "file:src/components/inventory/item-create-dialog.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/inventory-tab.tsx", "target": "file:src/components/inventory/item-edit-dialog.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/inventory-tab.tsx", "target": "file:src/components/inventory/item-detail-dialog.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/item-create-dialog.tsx", "target": "file:src/components/inventory/create/single-item-form.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/batches-tab.tsx", "target": "file:src/components/inventory/batch-create-dialog.tsx", "type": "imports", "weight": 0.7},
+    {"source": "file:src/components/inventory/batches-tab.tsx", "target": "file:src/components/inventory/batch-detail-dialog.tsx", "type": "imports", "weight": 0.7},
+
+    {"source": "file:src/middleware.ts", "target": "file:src/lib/auth.ts", "type": "imports", "weight": 0.7},
+    {"source": "infra:Dockerfile", "target": "config:package.json", "type": "configures", "weight": 0.6},
+    {"source": "infra:Dockerfile", "target": "config:next.config.ts", "type": "configures", "weight": 0.6},
+    {"source": "infra:.github/workflows/docker-build.yml", "target": "infra:Dockerfile", "type": "deploys", "weight": 0.7},
+    {"source": "document:AGENT_BRIEFING.md", "target": "document:TASK_QUEUE.md", "type": "documents", "weight": 0.5},
+    {"source": "file:src/lib/store.ts", "target": "file:src/lib/api.ts", "type": "imports", "weight": 0.7}
+  ],
+  "layers": [
+    {
+      "id": "layer:entry-points",
+      "name": "入口与路由层",
+      "description": "应用入口、布局、中间件、Provider",
+      "nodeIds": ["file:src/app/page.tsx", "file:src/app/layout.tsx", "file:src/middleware.ts", "file:src/instrumentation.ts", "file:src/components/providers.tsx"]
+    },
+    {
+      "id": "layer:core-lib",
+      "name": "核心库层",
+      "description": "API客户端、认证、数据库、状态管理、类型定义、工具函数",
+      "nodeIds": ["file:src/lib/api.ts", "file:src/lib/api.types.ts", "file:src/lib/db.ts", "file:src/lib/auth.ts", "file:src/lib/store.ts", "file:src/lib/errors.ts", "file:src/lib/constants.ts", "file:src/lib/utils.ts", "file:src/lib/tag-utils.ts", "file:src/lib/runtime-logger.ts", "file:src/lib/log.ts", "file:src/lib/api/with-api-logging.ts", "file:src/config/error-codes.ts", "file:src/types/index.ts", "file:src/hooks/use-mobile.ts", "file:src/hooks/use-toast.ts", "file:src/hooks/use-error-handler.ts"]
+    },
+    {
+      "id": "layer:services",
+      "name": "业务服务层",
+      "description": "数据库操作封装、业务逻辑、外部服务集成",
+      "nodeIds": ["file:src/services/config.service.ts", "file:src/services/backup.service.ts", "file:src/services/batches.service.ts", "file:src/services/dicts.service.ts", "file:src/services/dicts-tags.service.ts", "file:src/services/dict-materials.service.ts", "file:src/services/items.service.ts", "file:src/services/items-extra.service.ts", "file:src/services/import.service.ts", "file:src/services/export.service.ts", "file:src/services/customers.service.ts", "file:src/services/sales.service.ts", "file:src/services/supplier.service.ts", "file:src/services/user.service.ts", "file:src/services/role.service.ts", "file:src/services/notification.service.ts", "file:src/services/pricing.service.ts", "file:src/services/metal-prices.service.ts", "file:src/services/market-price.service.ts", "file:src/services/local-reference-price.service.ts", "file:src/services/promotions.service.ts", "file:src/services/restock.service.ts", "file:src/services/stocktaking.service.ts", "file:src/services/dashboard.service.ts", "file:src/services/logs.service.ts"]
+    },
+    {
+      "id": "layer:ui-components",
+      "name": "UI组件层",
+      "description": "Tab页面、对话框、表单、结账流程、设置面板",
+      "nodeIds": ["file:src/components/inventory/navigation.tsx", "file:src/components/inventory/login-page.tsx", "file:src/components/inventory/inventory-tab.tsx", "file:src/components/inventory/sales-tab.tsx", "file:src/components/inventory/dashboard-tab.tsx", "file:src/components/inventory/batches-tab.tsx", "file:src/components/inventory/customers-tab.tsx", "file:src/components/inventory/settings-tab.tsx", "file:src/components/inventory/promotions-tab.tsx", "file:src/components/inventory/restock-tab.tsx", "file:src/components/inventory/logs-tab.tsx", "file:src/components/inventory/stocktaking-tab.tsx", "file:src/components/inventory/item-create-dialog.tsx", "file:src/components/inventory/item-edit-dialog.tsx", "file:src/components/inventory/item-detail-dialog.tsx", "file:src/components/inventory/batch-create-dialog.tsx", "file:src/components/inventory/batch-detail-dialog.tsx", "file:src/components/inventory/checkout/checkout-mode.tsx", "file:src/components/inventory/checkout/step-payment.tsx", "file:src/components/inventory/barcode-scanner.tsx", "file:src/components/inventory/create/single-item-form.tsx", "file:src/components/inventory/create/quick-entry-mode.tsx", "file:src/components/inventory/create/factory-mode-wrapper.tsx"]
+    },
+    {
+      "id": "layer:infrastructure",
+      "name": "基础设施层",
+      "description": "数据库Schema、Docker、CI/CD",
+      "nodeIds": ["data:prisma/schema.prisma", "infra:Dockerfile", "infra:.github/workflows/docker-build.yml"]
+    },
+    {
+      "id": "layer:configuration",
+      "name": "配置层",
+      "description": "项目配置文件",
+      "nodeIds": ["config:package.json", "config:tsconfig.json", "config:next.config.ts"]
+    },
+    {
+      "id": "layer:documentation",
+      "name": "文档层",
+      "description": "项目文档、开发规范、任务队列、变更日志",
+      "nodeIds": ["document:AGENT_BRIEFING.md", "document:TASK_QUEUE.md", "document:AGENTS.md", "document:CHANGELOG.md"]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "项目概览",
+      "description": "阅读 AGENT_BRIEFING.md 了解项目背景、技术栈和开发规范。这是一个珠宝玉器进销存ERP系统，基于 Next.js 16 + Prisma + SQLite 构建。",
+      "nodeIds": ["document:AGENT_BRIEFING.md", "config:package.json"]
+    },
+    {
+      "order": 2,
+      "title": "数据模型",
+      "description": "Prisma Schema 定义了所有核心数据模型：Item（商品）、Batch（批次）、Sale（销售）、Customer（客户）等，是理解业务的核心。",
+      "nodeIds": ["data:prisma/schema.prisma"]
+    },
+    {
+      "order": 3,
+      "title": "核心库与基础设施",
+      "description": "了解数据库连接（db.ts）、API客户端（api.ts）、认证（auth.ts）、状态管理（store.ts）和类型系统（api.types.ts）。",
+      "nodeIds": ["file:src/lib/db.ts", "file:src/lib/api.ts", "file:src/lib/auth.ts", "file:src/lib/store.ts", "file:src/lib/api.types.ts"]
+    },
+    {
+      "order": 4,
+      "title": "业务服务层",
+      "description": "理解核心业务逻辑：商品管理（items.service.ts）、销售（sales.service.ts）、批次（batches.service.ts）、客户（customers.service.ts）、仪表盘（dashboard.service.ts）。",
+      "nodeIds": ["file:src/services/items.service.ts", "file:src/services/sales.service.ts", "file:src/services/batches.service.ts", "file:src/services/customers.service.ts", "file:src/services/dashboard.service.ts"]
+    },
+    {
+      "order": 5,
+      "title": "应用入口与路由",
+      "description": "从 page.tsx 进入，了解 Tab 导航架构（inventory/sales/dashboard/batches/customers/settings），通过 layout.tsx 和 middleware.ts 理解认证和国际化流程。",
+      "nodeIds": ["file:src/app/page.tsx", "file:src/app/layout.tsx", "file:src/middleware.tsx"]
+    },
+    {
+      "order": 6,
+      "title": "核心UI组件",
+      "description": "深入了解核心业务组件：库存管理（inventory-tab.tsx）、仪表盘（dashboard-tab.tsx）、结账流程（checkout-mode.tsx）、商品创建表单（single-item-form.tsx）。",
+      "nodeIds": ["file:src/components/inventory/inventory-tab.tsx", "file:src/components/inventory/dashboard-tab.tsx", "file:src/components/inventory/checkout/checkout-mode.tsx", "file:src/components/inventory/create/single-item-form.tsx"]
+    },
+    {
+      "order": 7,
+      "title": "部署与运维",
+      "description": "Dockerfile 和 GitHub Actions 工作流定义了项目的部署方式（极空间 NAS Docker 部署）。",
+      "nodeIds": ["infra:Dockerfile", "infra:.github/workflows/docker-build.yml"]
+    }
+  ]
+}
