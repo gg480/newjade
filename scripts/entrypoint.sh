@@ -92,6 +92,14 @@ if [ -f "${DB_PATH}" ]; then
   else
     npx tsx prisma/seed-base.ts 2>&1 || echo "[WARN] Seed re-apply had issues, continuing..."
   fi
+
+  # Apply DictMaterial migration (old names → new names with Au9999/PT9995/AgT+D subTypes)
+  echo "[INFO] Applying DictMaterial migration (seed.ts)..."
+  if [ -n "${RUN_AS}" ]; then
+    ${RUN_AS} npx tsx prisma/seed.ts 2>&1 || echo "[WARN] seed.ts migration had issues, continuing..."
+  else
+    npx tsx prisma/seed.ts 2>&1 || echo "[WARN] seed.ts migration had issues, continuing..."
+  fi
 else
   echo "[INFO] No existing database found, initializing..."
   
@@ -124,6 +132,14 @@ else
       echo "[ERROR] The application may not work correctly without base data."
       echo "[ERROR] You can try running manually: npx tsx prisma/seed-base.ts"
     }
+  fi
+
+  # Apply DictMaterial migration for fresh databases too
+  echo "[INFO] Applying DictMaterial migration (seed.ts)..."
+  if [ -n "${RUN_AS}" ]; then
+    ${RUN_AS} npx tsx prisma/seed.ts 2>&1 || echo "[WARN] seed.ts migration had issues, continuing..."
+  else
+    npx tsx prisma/seed.ts 2>&1 || echo "[WARN] seed.ts migration had issues, continuing..."
   fi
 fi
 
