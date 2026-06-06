@@ -25,16 +25,15 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
 # 安装依赖 + 生成 Prisma Client
-RUN pnpm install --frozen-lockfile && \
+RUN pnpm install --no-frozen-lockfile && \
     npx prisma generate
 
 # 复制全部源代码
 COPY . .
 
-# 构建 Next.js 生产包（直接调用 node_modules/.bin 避免 npx 版本冲突）
-# 2026-06-06: fix Docker build cache staleness causing npx/npm resolution failures
-RUN node_modules/.bin/prisma generate && \
-    node_modules/.bin/next build
+# Build prisma client and next production bundle
+RUN npx prisma generate && \
+    npx next build
 
 # ---- Stage 2: Runner（最小运行时） ----
 FROM node:22-alpine AS runner
@@ -51,23 +50,23 @@ ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
 
 # 从 Builder 复制必要文件
-# .next —— Next.js 构建产物（standalone 模式启动需要）
+# .next — Next.js 构建产物（standalone 模式启动需要）
 COPY --from=builder /app/.next ./.next
-# prisma —— Schema + migration 文件（运行时 prisma generate 需要）
+# prisma — Schema + migration 文件（运行时 prisma generate 需要）
 COPY --from=builder /app/prisma ./prisma
-# node_modules —— 运行时依赖
+# node_modules — 运行时依赖
 COPY --from=builder /app/node_modules ./node_modules
-# package.json —— 脚本入口定义
+# package.json — 脚本入口定义
 COPY --from=builder /app/package.json ./package.json
-# public —— 静态资源
+# public — 静态资源
 COPY --from=builder /app/public ./public
-# entrypoint —— 启动脚本（含备份/迁移/验证逻辑）
+# entrypoint — 启动脚本（含备份/迁移/验证逻辑）
 COPY scripts/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # 暴露服务端口
 EXPOSE 5000
 
-# 启动：由 entrypoint.sh 统一管理（prisma generate → db push → next start）
+# 启动：由 entrypoint.sh 统一管理（prisma generate -> db push -> next start）
 # entrypoint 已内置：目录创建、数据库备份、schema 同步、基础数据验证
 CMD ["/app/entrypoint.sh"]
