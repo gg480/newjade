@@ -89,7 +89,15 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "bcrypt"
+      "bcrypt",
+      "prisma",
+      "@prisma/client",
+      "@prisma/engines",
+      "sharp",
+      "@swc/core",
+      "unrs-resolver",
+      "@parcel/watcher",
+      "es5-ext"
     ]
   },
   "devDependencies": {
