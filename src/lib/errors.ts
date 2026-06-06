@@ -30,6 +30,9 @@ export class NotFoundError extends AppError {
  * 参数校验失败 400
  */
 export class ValidationError extends AppError {
+  /** 校验失败的附加数据（如标签-材质不匹配详情） */
+  tagData?: Record<string, unknown>;
+
   constructor(message: string) {
     super(message, 400, 400);
     this.name = 'ValidationError';

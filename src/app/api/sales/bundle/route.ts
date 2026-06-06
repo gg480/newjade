@@ -7,7 +7,7 @@ async function bundleSalePOST(req: Request) {
   const { itemIds, totalPrice, allocMethod, channel, saleDate, customerId, note, chainItems } = body;
   const parsedTotalPrice = parseFloat(totalPrice);
   const parsedCustomerId = customerId && customerId !== 'none' ? parseInt(customerId) : null;
-  const parsedItemIds = Array.isArray(itemIds) ? itemIds.map((id: any) => parseInt(id)) : [];
+  const parsedItemIds = Array.isArray(itemIds) ? itemIds.map((id: string) => parseInt(id)) : [];
 
   // 参数校验（route 层职责）
   if (!itemIds || itemIds.length < 2) {

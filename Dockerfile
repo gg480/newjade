@@ -17,6 +17,9 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
+# 设置生产环境变量（影响 Next.js 构建优化路径）
+ENV NODE_ENV=production
+
 # 先复制依赖清单，利用 Docker 层缓存
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
@@ -28,9 +31,10 @@ RUN pnpm install --frozen-lockfile && \
 # 复制全部源代码
 COPY . .
 
-# 构建 Next.js 生产包（npx next build 直调，避免 pnpm workspace 干扰）
-RUN npx prisma generate && \
-    npx next build
+# 构建 Next.js 生产包（直接调用 node_modules/.bin 避免 npx 版本冲突）
+# 2026-06-06: fix Docker build cache staleness causing npx/npm resolution failures
+RUN node_modules/.bin/prisma generate && \
+    node_modules/.bin/next build
 
 # ---- Stage 2: Runner（最小运行时） ----
 FROM node:22-alpine AS runner

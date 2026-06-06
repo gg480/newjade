@@ -85,11 +85,11 @@ function QuickStatsBar() {
       if (salesData.status === 'fulfilled') {
         setTodaySales(salesData.value.pagination?.total || 0);
         const sales = salesData.value.items || [];
-        setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
+        setTodayRevenue(sales.reduce((sum: number, s: { actualPrice?: number }) => sum + (s.actualPrice || 0), 0));
       }
       if (batchesData.status === 'fulfilled') {
         const batches = batchesData.value.items || [];
-        setPendingBatches(batches.filter((b: any) => (b.itemsCount || 0) < (b.quantity || 0)).length);
+        setPendingBatches(batches.filter((b: { itemsCount?: number; quantity?: number }) => (b.itemsCount || 0) < (b.quantity || 0)).length);
       }
     } catch (e) { console.error('[Page]', e);
     }
@@ -150,7 +150,7 @@ function MobileQuickStats({ className }: { className?: string }) {
       if (salesData.status === 'fulfilled') {
         setTodaySales(salesData.value.pagination?.total || 0);
         const sales = salesData.value.items || [];
-        setTodayRevenue(sales.reduce((sum: number, s: any) => sum + (s.actualPrice || 0), 0));
+        setTodayRevenue(sales.reduce((sum: number, s: { actualPrice?: number }) => sum + (s.actualPrice || 0), 0));
       }
     } catch (e) { console.error('[Page]', e);
     }
@@ -246,7 +246,7 @@ export default function JadeInventoryPage() {
       .then(r => r.json())
       .then(data => {
         if (mounted && data.code === 0 && Array.isArray(data.data)) {
-          const cfg = data.data.find((c: any) => c.key === 'store_name');
+          const cfg = data.data.find((c: { key: string; value?: string }) => c.key === 'store_name');
           if (cfg?.value) setStoreName(cfg.value);
         }
       })

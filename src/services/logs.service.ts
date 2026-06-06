@@ -18,7 +18,7 @@ export interface GetLogsParams {
 
 /** 操作日志分页结果 */
 export interface PaginatedLogs {
-  items: any[];
+  items: Prisma.OperationLogGetPayload<Record<string, never>>[];
   pagination: {
     total: number;
     page: number;

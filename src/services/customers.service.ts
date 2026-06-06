@@ -177,7 +177,7 @@ export async function getCustomers(params: GetCustomersParams) {
   const sortOrder = params.sortOrder || 'desc';
   const direction = sortOrder === 'asc' ? 'asc' : 'desc';
 
-  const where: any = { isActive: true };
+  const where: Prisma.CustomerWhereInput = { isActive: true };
   if (keyword) {
     where.OR = [
       { name: { contains: keyword } },

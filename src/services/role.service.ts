@@ -27,7 +27,7 @@ export interface UpdateRoleInput {
 
 // ─── 内部辅助 ─────────────────────────────────────────────
 
-function formatRole(role: any, userCount = 0): RoleInfo {
+function formatRole(role: Prisma.RoleGetPayload<Record<string, never>>, userCount = 0): RoleInfo {
   return {
     id: role.id,
     name: role.name,

@@ -50,7 +50,7 @@ export interface UsersListResponse {
 
 // ─── 内部辅助 ─────────────────────────────────────────────
 
-function formatUser(user: any): UserInfo {
+function formatUser(user: Prisma.UserGetPayload<{ include: { role: true } }>): UserInfo {
   return {
     id: user.id,
     username: user.username,
@@ -74,7 +74,7 @@ export async function listUsers(params: UsersListParams = {}): Promise<UsersList
   const { page = 1, limit = 20, keyword, roleId, isActive } = params;
   const skip = (page - 1) * limit;
 
-  const where: any = {};
+  const where: Prisma.UserWhereInput = {};
 
   if (keyword) {
     where.OR = [

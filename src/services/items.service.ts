@@ -395,7 +395,7 @@ export async function createItem(body: CreateItemInput) {
   const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, finalMaterialId);
   if (invalidTagData) {
     const err = new ValidationError('TAG_MATERIAL_MISMATCH');
-    (err as any).tagData = invalidTagData;
+    err.tagData = invalidTagData;
     throw err;
   }
 
@@ -620,7 +620,7 @@ export async function updateItem(id: number, body: UpdateItemInput) {
     const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, effectiveMaterialId);
     if (invalidTagData) {
       const err = new ValidationError('TAG_MATERIAL_MISMATCH');
-      (err as any).tagData = invalidTagData;
+      err.tagData = invalidTagData;
       throw err;
     }
   }

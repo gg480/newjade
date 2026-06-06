@@ -40,6 +40,31 @@ export interface SeasonalFactorUpsert {
 }
 
 // ============================================================
+// 内部类型
+// ============================================================
+
+/** 生成入货建议时的中间聚合对象 */
+interface RawRestockRec {
+  itemId: number;
+  materialId: number;
+  materialName: string;
+  currentStock: number;
+  safetyStock: number;
+  recentSalesVelocity: number;
+  salesRank: number;
+  growthRate: number;
+  seasonalFactor: number;
+  recommendedQty: number;
+  estimatedCost: number;
+  estimatedSalesCycle: number;
+  confidence: number;
+  sigmaD: number;
+  avgCostPrice: number;
+  itemIds: number[];
+  exampleItemIds: number[];
+}
+
+// ============================================================
 // 工具函数
 // ============================================================
 
@@ -232,7 +257,7 @@ export async function generateRestockRecommendations(input: GenerateRestockInput
   );
 
   // 材质级聚合计算建议
-  const recommendations: any[] = [];
+  const recommendations: RawRestockRec[] = [];
   const Z = 1.645;
   const L = 7;
 
@@ -309,7 +334,7 @@ export async function generateRestockRecommendations(input: GenerateRestockInput
   // 按置信度降序 → 分配预算
   recommendations.sort((a, b) => b.confidence - a.confidence);
 
-  const selectedRecommendations: any[] = [];
+  const selectedRecommendations: RawRestockRec[] = [];
   let remainingBudget = budget || Infinity;
 
   for (const rec of recommendations) {

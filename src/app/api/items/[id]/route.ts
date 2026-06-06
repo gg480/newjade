@@ -27,9 +27,9 @@ async function itemByIdPut(req: Request, { params }: ItemParams) {
     const item = await itemsService.updateItem(parseInt(id), body);
     return NextResponse.json({ code: 0, data: item, message: 'ok' });
   } catch (e: any) {
-    if (e instanceof ValidationError && (e as any).tagData) {
+    if (e instanceof ValidationError && e.tagData) {
       return NextResponse.json(
-        { code: 400, data: (e as any).tagData, message: 'TAG_MATERIAL_MISMATCH' },
+        { code: 400, data: e.tagData, message: 'TAG_MATERIAL_MISMATCH' },
         { status: 400 },
       );
     }

@@ -66,12 +66,12 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          # TODO: remove no-cache after this build succeeds (2026-06-06 workaround)
+          no-cache: true
           tags: |
             ${{ steps.meta-dockerhub.outputs.tags }}
             ${{ steps.meta-acr.outputs.tags }}
           labels: ${{ steps.meta-dockerhub.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Publish image summary
         run: |
