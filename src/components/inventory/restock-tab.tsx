@@ -420,7 +420,7 @@ const RestockTab: React.FC = () => {
             <Button onClick={async () => {
               try {
                 const data = await restockApi.getSeasonalFactors({ materialId: selectedMaterial });
-                console.log('季节性因子:', data);
+                if (process.env.NODE_ENV !== 'production') console.log('季节性因子:', data);
                 // 这里可以添加图表展示
               } catch (error) {
                 console.error('获取季节性因子失败:', error);

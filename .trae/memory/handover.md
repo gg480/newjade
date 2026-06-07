@@ -1,6 +1,6 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-06 | 更新人：SOLO Coder
+> 最后更新：2026-06-07 | 更新人：前端工程师
 
 ---
 
@@ -93,6 +93,7 @@
 ---
 
 ## 最近完成
+| 2026-06-07 | BE+FE | **T-PM-01~T-PM-03 性能优化全部完成**：(1) Backend: dashboard.service.ts 5 项优化 — getSummary/addTrend/getTurnover 全表查询加 where 过滤 + getTurnover N+1 修复（`db.item.findMany()` 移出循环）+ 2 处嵌套循环改为 `Array.find()` 短路查找；(2) Frontend: inventory-tab.tsx 4 处批量操作 `Promise.allSettled()` 并行化；(3) 7 处生产 console.log 添加 `NODE_ENV` 保护。`pnpm build` ✅ 89/89，lint 零新增错误 ✅。|
 | 2026-06-07 | BE | **S10-03 外部数据请求 inflight 去重**：为 3 个外部请求函数添加统一的 inflight 去重机制。(1) `local-reference-price.service.ts` 提取 `doFetchLocalReference()` 内部函数，外层包装 inflight 去重（cacheKey=`gzjn168:local-reference`）；(2) `market-price.service.ts` 提取 `doFetchFromTanshu()`（cacheKey=`tanshu:market-prices`）和 `doFetchCompetitorGoldPrices()`（cacheKey=`tanshu:competitor-prices`）。所有函数保持原有签名和返回类型不变，`finally` 中清理 inflight 条目。`pnpm build` 编译成功 ✅。|
 | 2026-06-05 | 全员 | **技术债务集中清理**：P1 T-9-1 已静默修复 ✅；TD-006 认证已启用 ✅；后端 13 处 + 前端 4 处 any→具体类型（覆盖 11 个文件）；tech-debt.md 更新。any 收敛率：665→~6（99.1%）。lint 零错误 + build 通过 ✅。 |
 | 2026-06-05 | FE | **page.tsx any 类型清理**：4 处 `any` 替换为具体类型 — L88/L153 `s: any` → `{ actualPrice?: number }`，L92 `b: any` → `{ itemsCount?: number; quantity?: number }`，L249 `c: any` → `{ key: string; value?: string }`。纯类型注解修改，零逻辑变更。`npx eslint --quiet` 零错误 ✅，`pnpm build` 编译成功 ✅。|
@@ -258,3 +259,34 @@ Phase 2（工厂模式录货）和 Phase 3（补图/打印等）待当前 Sprint
 - `no_photo` — `{ count, skus, description }`
 - `price_anomaly` — `{ count, skus, description }`
 - 查询示例：`GET /api/notifications?type=no_photo`
+
+---
+
+## 2026-06-07 前端工程师 — T-PM-02 + T-PM-03 性能优化
+
+### T-PM-02：inventory-tab.tsx 批量操作并行化
+
+将 4 处串行 for 循环改为 `Promise.allSettled()` 并行执行：
+
+| 函数 | 位置 | 说明 |
+|------|------|------|
+| `handleBatchRestore` | L464-478 | 批量恢复库存到在库状态 |
+| `handleBatchSell` | L615-640 | 批量出库创建销售记录 |
+| `handleBatchDelete` | L655-681 | 批量删除（标记/彻底） |
+| `handleBatchCounter` | L725-756 | 批量修改柜台号 |
+
+**变更模式**：每个函数中 `let successCount/failCount + for 循环 + try/catch` → `Promise.allSettled() + filter`，`batchProgress` 保持非空，进度一次性设置为 total。
+**文件**：[inventory-tab.tsx](file:///d:/02工作/ERP/newjade/src/components/inventory/inventory-tab.tsx)
+
+### T-PM-03：生产代码 console.log 清理
+
+3 个文件共 7 处调试日志添加 `if (process.env.NODE_ENV !== 'production')` 保护：
+
+| 文件 | 行号 | 日志内容 |
+|------|------|---------|
+| [inventory-tab.tsx](file:///d:/02工作/ERP/newjade/src/components/inventory/inventory-tab.tsx) | L326, L344, L354 | `[InventoryTab] loadData` START/OK/FINALLY |
+| [sales-tab.tsx](file:///d:/02工作/ERP/newjade/src/components/inventory/sales-tab.tsx) | L151, L162, L167 | `[SalesTab] loadData` START/OK/FINALLY |
+| [restock-tab.tsx](file:///d:/02工作/ERP/newjade/src/components/inventory/restock-tab.tsx) | L423 | `季节性因子:` |
+
+**保留的日志**：`src/lib/api/with-api-logging.ts` L16 的 API 请求日志（有实际运维用途）
+**验证结果**：`pnpm lint --quiet` 零新增错误，`pnpm build` 编译通过（89 个页面）

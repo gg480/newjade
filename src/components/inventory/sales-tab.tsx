@@ -148,7 +148,7 @@ function SalesTab() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
-      console.log('[SalesTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
+      if (process.env.NODE_ENV !== 'production') console.log('[SalesTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
       setLoading(true);
       try {
         const params: SalesQueryParams = { page: pagination.page, size: pagination.size };
@@ -159,12 +159,12 @@ function SalesTab() {
         params.sort_by = sortBy;
         params.sort_order = sortOrder;
         const data = await salesApi.getSales(params);
-        console.log('[SalesTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
+        if (process.env.NODE_ENV !== 'production') console.log('[SalesTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
         if (!cancelled) {
           setSales(data.items || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
-      } catch (e) { console.error('[SalesTab] loadData FAILED:', e); if (!cancelled) toast.error('加载销售记录失败'); } finally { console.log('[SalesTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[SalesTab] loadData FAILED:', e); if (!cancelled) toast.error('加载销售记录失败'); } finally { if (process.env.NODE_ENV !== 'production') console.log('[SalesTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };

@@ -347,7 +347,10 @@ export async function getDashboardSummary(params: { agingDays?: number } = {}) {
   });
   const totalStockValue = inStockItems.reduce((sum, i) => sum + (i.allocatedCost || i.costPrice || 0), 0);
 
-  const allSales = await db.saleRecord.findMany({ include: { item: true } });
+  const allSales = await db.saleRecord.findMany({
+    where: { saleDate: { gte: monthStart, lte: todayStr } },
+    include: { item: true },
+  });
   const monthSales = allSales.filter(s => {
     const d = normalizeSaleDate(s.saleDate);
     return d && d >= monthStart && d <= todayStr;
@@ -378,7 +381,10 @@ export async function getSalesTrend(params: { months?: number } = {}) {
   const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
   const startDateStr = toLocalDateString(startDate);
 
-  const allSales = await db.saleRecord.findMany({ include: { item: true } });
+  const allSales = await db.saleRecord.findMany({
+    where: { saleDate: { gte: startDateStr } },
+    include: { item: true },
+  });
   const sales = allSales.filter(s => {
     const d = normalizeSaleDate(s.saleDate);
     return d && d >= startDateStr;
@@ -413,7 +419,17 @@ export async function getSalesTrend(params: { months?: number } = {}) {
 export async function getInventoryTurnover(params: { months?: number } = {}) {
   const months = params.months ?? 6;
   const now = new Date();
-  const allSales = await db.saleRecord.findMany({ include: { item: true } });
+  const allSalesStartDate = toLocalDateString(new Date(now.getFullYear(), now.getMonth() - months + 1, 1));
+  const allSales = await db.saleRecord.findMany({
+    where: { saleDate: { gte: allSalesStartDate } },
+    include: { item: true },
+  });
+
+  // 一次性查询所有 in_stock 货品，避免循环内 N+1 查询
+  const allInStockItems = await db.item.findMany({
+    where: { status: 'in_stock', isDeleted: false },
+    select: { costPrice: true, allocatedCost: true, createdAt: true },
+  });
 
   const result: { yearMonth: string; cogs: number; avgInventoryValue: number; turnoverRate: number }[] = [];
 
@@ -433,15 +449,10 @@ export async function getInventoryTurnover(params: { months?: number } = {}) {
       return sum + cost;
     }, 0);
 
-    const inStockItems = await db.item.findMany({
-      where: {
-        status: 'in_stock',
-        isDeleted: false,
-        createdAt: { lte: new Date(monthEndStr + 'T23:59:59') },
-      },
-      select: { costPrice: true, allocatedCost: true },
-    });
-    const avgInventoryValue = inStockItems.reduce((sum, item) => sum + (item.allocatedCost || item.costPrice || 0), 0);
+    // 从预加载的 allInStockItems 中按 createdAt 在 JS 侧过滤
+    const monthEndDate = new Date(monthEndStr + 'T23:59:59');
+    const itemsInMonth = allInStockItems.filter(item => item.createdAt <= monthEndDate);
+    const avgInventoryValue = itemsInMonth.reduce((sum, item) => sum + (item.allocatedCost || item.costPrice || 0), 0);
 
     const turnoverRate = avgInventoryValue > 0 ? Math.round((cogs / avgInventoryValue) * 100) / 100 : 0;
 
@@ -1060,11 +1071,9 @@ export async function getSellingPriceDistribution() {
   for (const r of sellingRanges) counts.set(r.range, 0);
   for (const item of items) {
     const price = item.sellingPrice || 0;
-    for (const r of sellingRanges) {
-      if (price >= r.min && price < r.max) {
-        counts.set(r.range, (counts.get(r.range) || 0) + 1);
-        break;
-      }
+    const matched = sellingRanges.find(r => price >= r.min && price < r.max);
+    if (matched) {
+      counts.set(matched.range, (counts.get(matched.range) || 0) + 1);
     }
   }
 
@@ -1098,11 +1107,9 @@ export async function getCostPriceDistribution() {
   for (const r of costRanges) counts.set(r.range, 0);
   for (const item of items) {
     const cost = item.allocatedCost || item.costPrice || 0;
-    for (const r of costRanges) {
-      if (cost >= r.min && cost < r.max) {
-        counts.set(r.range, (counts.get(r.range) || 0) + 1);
-        break;
-      }
+    const matched = costRanges.find(r => cost >= r.min && cost < r.max);
+    if (matched) {
+      counts.set(matched.range, (counts.get(matched.range) || 0) + 1);
     }
   }
 

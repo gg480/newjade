@@ -323,7 +323,7 @@ function InventoryTab() {
   useEffect(() => {
     let cancelled = false;
     const loadData = async () => {
-      console.log('[InventoryTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
+      if (process.env.NODE_ENV !== 'production') console.log('[InventoryTab] loadData START, page=', pagination.page, 'size=', pagination.size, 'refreshKey=', refreshKey);
       setLoading(true);
       try {
         const params: ItemsQueryParams = { page: pagination.page, size: pagination.size };
@@ -341,7 +341,7 @@ function InventoryTab() {
         params.sort_by = sortBy;
         params.sort_order = sortOrder;
         const data = await itemsApi.getItems(params);
-        console.log('[InventoryTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
+        if (process.env.NODE_ENV !== 'production') console.log('[InventoryTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
         if (!cancelled) {
           setItems(data.items || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
@@ -351,7 +351,7 @@ function InventoryTab() {
             totalMarketValue: 0,
           });
         }
-      } catch (e) { console.error('[InventoryTab] loadData FAILED:', e); if (!cancelled) toast.error('加载库存失败'); } finally { console.log('[InventoryTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
+      } catch (e) { console.error('[InventoryTab] loadData FAILED:', e); if (!cancelled) toast.error('加载库存失败'); } finally { if (process.env.NODE_ENV !== 'production') console.log('[InventoryTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
     };
     loadData();
     return () => { cancelled = true; };
@@ -463,19 +463,14 @@ function InventoryTab() {
       }
       setBatchLoading(true);
       setBatchProgress({ current: 0, total: selectedReturnedItems.length });
-      let successCount = 0;
-      let failCount = 0;
 
-      for (let i = 0; i < selectedReturnedItems.length; i++) {
-        const item = selectedReturnedItems[i];
-        try {
-          await itemsApi.updateItem(item.id, { status: 'in_stock' });
-          successCount++;
-        } catch {
-          failCount++;
-        }
-        setBatchProgress({ current: i + 1, total: selectedReturnedItems.length });
-      }
+      const results = await Promise.allSettled(
+        selectedReturnedItems.map(item => itemsApi.updateItem(item.id, { status: 'in_stock' }))
+      );
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failCount = results.filter(r => r.status === 'rejected').length;
+
+      setBatchProgress({ current: selectedReturnedItems.length, total: selectedReturnedItems.length });
 
       if (failCount === 0) toast.success(`批量恢复在库成功！共 ${successCount} 件`);
       else toast.warning(`批量恢复完成：成功 ${successCount} 件，失败 ${failCount} 件`);
@@ -614,18 +609,15 @@ function InventoryTab() {
     }
     setBatchLoading(true);
     setBatchProgress({ current: 0, total: selectedInStockItems.length });
-    let successCount = 0;
-    let failCount = 0;
     const selectedCustomer = customers.find((c: Customer) => String(c.id) === batchSellForm.customerId);
     const customerName = selectedCustomer?.name || '';
-    for (let i = 0; i < selectedInStockItems.length; i++) {
-      const item = selectedInStockItems[i];
-      setBatchProgress({ current: i + 1, total: selectedInStockItems.length });
-      try {
+
+    const results = await Promise.allSettled(
+      selectedInStockItems.map(item => {
         const price = batchSellForm.useCurrentPrice
           ? item.sellingPrice
           : (batchSellPrices[item.id] ?? item.sellingPrice);
-        await salesApi.createSale({
+        return salesApi.createSale({
           itemId: item.id,
           actualPrice: price,
           channel: batchSellForm.channel,
@@ -633,11 +625,12 @@ function InventoryTab() {
           customerId: batchSellForm.customerId ? Number(batchSellForm.customerId) : undefined,
           note: `批量出库${customerName ? ` - ${customerName}` : ''}`,
         });
-        successCount++;
-      } catch (e) { console.error('[InventoryTab]', e);
-        failCount++;
-      }
-    }
+      })
+    );
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failCount = results.filter(r => r.status === 'rejected').length;
+
+    setBatchProgress({ current: selectedInStockItems.length, total: selectedInStockItems.length });
     setBatchLoading(false);
     setBatchProgress(null);
     setBatchSellOpen(false);
@@ -655,18 +648,14 @@ function InventoryTab() {
   async function handleBatchDelete() {
     setBatchLoading(true);
     setBatchProgress({ current: 0, total: selectedItems.length });
-    let successCount = 0;
-    let failCount = 0;
-    for (let i = 0; i < selectedItems.length; i++) {
-      const item = selectedItems[i];
-      setBatchProgress({ current: i + 1, total: selectedItems.length });
-      try {
-        await itemsApi.deleteItem(item.id, batchDeleteHard);
-        successCount++;
-      } catch (e) { console.error('[InventoryTab]', e);
-        failCount++;
-      }
-    }
+
+    const results = await Promise.allSettled(
+      selectedItems.map(item => itemsApi.deleteItem(item.id, batchDeleteHard))
+    );
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failCount = results.filter(r => r.status === 'rejected').length;
+
+    setBatchProgress({ current: selectedItems.length, total: selectedItems.length });
     setBatchLoading(false);
     setBatchProgress(null);
     setBatchDeleteOpen(false);
@@ -730,18 +719,14 @@ function InventoryTab() {
     }
     setBatchLoading(true);
     setBatchProgress({ current: 0, total: selectedItems.length });
-    let successCount = 0;
-    let failCount = 0;
-    for (let i = 0; i < selectedItems.length; i++) {
-      const item = selectedItems[i];
-      setBatchProgress({ current: i + 1, total: selectedItems.length });
-      try {
-        await itemsApi.updateItem(item.id, { counter: String(counter) });
-        successCount++;
-      } catch (e) { console.error('[InventoryTab]', e);
-        failCount++;
-      }
-    }
+
+    const results = await Promise.allSettled(
+      selectedItems.map(item => itemsApi.updateItem(item.id, { counter: String(counter) }))
+    );
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failCount = results.filter(r => r.status === 'rejected').length;
+
+    setBatchProgress({ current: selectedItems.length, total: selectedItems.length });
     setBatchLoading(false);
     setBatchProgress(null);
     setBatchCounterOpen(false);
