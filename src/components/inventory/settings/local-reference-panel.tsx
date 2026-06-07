@@ -22,7 +22,6 @@ const METAL_COLORS: Record<string, string> = {
 };
 
 export default function LocalReferencePanel() {
-  const { handleError } = useErrorHandler();
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(false);
   const [items, setItems] = useState<LocalReferencePriceItem[]>([]);

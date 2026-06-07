@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { metalApi } from '@/lib/api';
@@ -35,14 +35,17 @@ export default function CompetitorCompareDialog({
   const containerRef = useRef<HTMLDivElement>(null);
   const [competitors, setCompetitors] = useState<CompetitorPrice[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [chartWidth, setChartWidth] = useState(0);
 
   async function loadCompetitors() {
     setLoading(true);
+    setError(null);
     try {
       const data = await metalApi.getCompetitors();
       setCompetitors(data || []);
     } catch (err) {
+      setError(err instanceof Error ? err.message : '加载竞品数据失败');
       handleError(err, { title: '加载竞品数据失败', silent: true });
     } finally {
       setLoading(false);
@@ -232,6 +235,14 @@ export default function CompetitorCompareDialog({
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">加载竞品数据中...</span>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center py-12 text-muted-foreground bg-gray-50 rounded-lg">
+            <AlertCircle className="h-6 w-6 mb-2 text-red-400" />
+            <span className="text-sm mb-2">{error}</span>
+            <Button variant="link" size="sm" onClick={loadCompetitors}>
+              重新加载
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">

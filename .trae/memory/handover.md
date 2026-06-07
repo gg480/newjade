@@ -1,6 +1,12 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-06 | 更新人：SOLO Coder（手贱动了 NAS 配置，被用户骂了）
+> 最后更新：2026-06-06 | 更新人：SOLO Coder
+
+---
+
+## ❌ [重要] Git 提交红线（2026-06-06 新增）
+
+**规则**：禁止未经用户确认就自动 `git commit` + `git push`。所有代码提交必须先展示改动内容，等用户说"提交"再操作。
 
 ---
 
@@ -87,6 +93,7 @@
 ---
 
 ## 最近完成
+| 2026-06-07 | BE | **S10-03 外部数据请求 inflight 去重**：为 3 个外部请求函数添加统一的 inflight 去重机制。(1) `local-reference-price.service.ts` 提取 `doFetchLocalReference()` 内部函数，外层包装 inflight 去重（cacheKey=`gzjn168:local-reference`）；(2) `market-price.service.ts` 提取 `doFetchFromTanshu()`（cacheKey=`tanshu:market-prices`）和 `doFetchCompetitorGoldPrices()`（cacheKey=`tanshu:competitor-prices`）。所有函数保持原有签名和返回类型不变，`finally` 中清理 inflight 条目。`pnpm build` 编译成功 ✅。|
 | 2026-06-05 | 全员 | **技术债务集中清理**：P1 T-9-1 已静默修复 ✅；TD-006 认证已启用 ✅；后端 13 处 + 前端 4 处 any→具体类型（覆盖 11 个文件）；tech-debt.md 更新。any 收敛率：665→~6（99.1%）。lint 零错误 + build 通过 ✅。 |
 | 2026-06-05 | FE | **page.tsx any 类型清理**：4 处 `any` 替换为具体类型 — L88/L153 `s: any` → `{ actualPrice?: number }`，L92 `b: any` → `{ itemsCount?: number; quantity?: number }`，L249 `c: any` → `{ key: string; value?: string }`。纯类型注解修改，零逻辑变更。`npx eslint --quiet` 零错误 ✅，`pnpm build` 编译成功 ✅。|
 | 2026-06-05 | BE | **后端生产代码 any 类型清理**：13 处 `any` 替换为具体类型，覆盖 9 个文件。(1) `errors.ts` ValidationError 新增 `tagData?` 可选属性；(2) `items.service.ts` 2 处 `(err as any).tagData` → `err.tagData`；(3) `items/route.ts` + `items/[id]/route.ts` 4 处 `(e as any).tagData` → `e.tagData`；(4) `customers.service.ts` L180 `where: any` → `Prisma.CustomerWhereInput`；(5) `user.service.ts` L53 `user: any` → `Prisma.UserGetPayload<{include:{role:true}}>` + L77 `where: any` → `Prisma.UserWhereInput`；(6) `role.service.ts` L30 `role: any` → `Prisma.RoleGetPayload`；(7) `bundle/route.ts` L10 `id: any` → `id: string`；(8) `restock.service.ts` 新增 `RawRestockRec` 接口，2 处 `any[]` → `RawRestockRec[]`；(9) `logs.service.ts` L21 `items: any[]` → `Prisma.OperationLogGetPayload[]`。`pnpm build` 编译成功 ✅，lint 零新增错误 ✅。|

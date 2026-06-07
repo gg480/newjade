@@ -3,6 +3,12 @@ import { AppError } from '@/lib/errors';
 import { fetchLocalReferencePrices } from '@/services/local-reference-price.service';
 
 // ============================================================
+// Inflight 请求去重：相同 cacheKey 的并发请求合并为一次
+// ============================================================
+
+const inflightRequests = new Map<string, Promise<any>>();
+
+// ============================================================
 // 类型定义
 // ============================================================
 
@@ -165,9 +171,29 @@ async function fetchFromEndpoint(
 /**
  * 从探数API获取贵金属行情价（私有函数，不管理缓存）
  * 按 endpoint 分组去重调用，返回行情价列表
+ * 含 inflight 去重：同一时刻的重复请求合并为一次
  * @throws {AppError} API不可用时抛出
  */
 async function fetchFromTanshu(): Promise<MarketPriceItem[]> {
+  // Inflight 去重
+  const cacheKey = 'tanshu:market-prices';
+  const inflight = inflightRequests.get(cacheKey);
+  if (inflight) return inflight;
+
+  const promise = doFetchFromTanshu();
+  inflightRequests.set(cacheKey, promise);
+
+  try {
+    return await promise;
+  } finally {
+    inflightRequests.delete(cacheKey);
+  }
+}
+
+/**
+ * 内部实际请求函数（不含 inflight 逻辑）
+ */
+async function doFetchFromTanshu(): Promise<MarketPriceItem[]> {
   // 1. 从 SysConfig 读取 API Key
   const config = await db.sysConfig.findUnique({ where: { key: 'tanshu_api_key' } });
   const apiKey = config?.value?.trim();
@@ -419,6 +445,7 @@ const HKTWD_UNITS = new Set(['港币/克', '台币/克', '港幣/克', '臺幣/�
 /**
  * 获取各品牌金店金价（探数API storegold2）
  * 1小时内存缓存，自动过滤港台店铺
+ * 含 inflight 去重：同一时刻的重复请求合并为一次
  * @returns 品牌金价列表
  * @throws {AppError} API不可用时抛出
  */
@@ -428,7 +455,26 @@ export async function fetchCompetitorGoldPrices(): Promise<CompetitorGoldPrice[]
     return competitorCache.data;
   }
 
-  // 2. 从 SysConfig 读取 API Key
+  // 2. Inflight 去重
+  const cacheKey = 'tanshu:competitor-prices';
+  const inflight = inflightRequests.get(cacheKey);
+  if (inflight) return inflight;
+
+  const promise = doFetchCompetitorGoldPrices();
+  inflightRequests.set(cacheKey, promise);
+
+  try {
+    return await promise;
+  } finally {
+    inflightRequests.delete(cacheKey);
+  }
+}
+
+/**
+ * 内部实际请求函数（不含缓存 & inflight 逻辑）
+ */
+async function doFetchCompetitorGoldPrices(): Promise<CompetitorGoldPrice[]> {
+  // 1. 从 SysConfig 读取 API Key
   const config = await db.sysConfig.findUnique({ where: { key: 'tanshu_api_key' } });
   const apiKey = config?.value?.trim();
   if (!apiKey) {

@@ -7,6 +7,12 @@
 import type { LocalReferencePriceItem, LocalReferenceResponse } from '@/lib/api.types';
 
 // ============================================================
+// Inflight 请求去重：相同 cacheKey 的并发请求合并为一次
+// ============================================================
+
+const inflightRequests = new Map<string, Promise<LocalReferenceResponse>>();
+
+// ============================================================
 // 内存缓存
 // - 成功结果：5 分钟有效期
 // - 失败结果：30 秒冷却，防止重复请求封 IP
@@ -77,13 +83,33 @@ function parseCsvResponse(csv: string): { items: LocalReferencePriceItem[]; time
 /**
  * 从 gzjn168.com PHP API 获取贵金属参考行情
  * 内部 5 分钟内存缓存（仅缓存成功结果）
+ * 含 inflight 去重：同一时刻的重复请求合并为一次
  */
 export async function fetchLocalReferencePrices(): Promise<LocalReferenceResponse> {
-  // 检查缓存
+  // 1. 检查缓存
   if (priceCache && Date.now() < priceCache.expiresAt) {
     return priceCache.data;
   }
 
+  // 2. Inflight 去重：相同 cacheKey 的并发请求共享同一个 Promise
+  const cacheKey = 'gzjn168:local-reference';
+  const inflight = inflightRequests.get(cacheKey);
+  if (inflight) return inflight;
+
+  const promise = doFetchLocalReference();
+  inflightRequests.set(cacheKey, promise);
+
+  try {
+    return await promise;
+  } finally {
+    inflightRequests.delete(cacheKey);
+  }
+}
+
+/**
+ * 内部实际请求函数（不含缓存 & inflight 逻辑）
+ */
+async function doFetchLocalReference(): Promise<LocalReferenceResponse> {
   const now = new Date().toISOString();
 
   try {
