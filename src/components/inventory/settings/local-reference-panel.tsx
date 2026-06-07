@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
-import { useErrorHandler } from '@/hooks/use-error-handler';
 import { metalApi } from '@/lib/api';
 import type { LocalReferencePriceItem } from '@/lib/api.types';
 
@@ -43,12 +42,11 @@ export default function LocalReferencePanel() {
     } catch (err) {
       setAvailable(false);
       setItems([]);
-      setMessage('请求失败，请稍后重试');
-      handleError(err, '获取本地参考行情');
+      setMessage('行情源暂时不可用');
     } finally {
       setLoading(false);
     }
-  }, [handleError]);
+  }, []); // 仅组件挂载时获取一次，handleError 不在依赖中避免无限循环
 
   useEffect(() => {
     fetchData();
