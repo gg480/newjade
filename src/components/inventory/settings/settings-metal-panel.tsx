@@ -44,7 +44,7 @@ export default function SettingsMetalPanel({
   // 竞品对比弹窗状态（页面级，不绑定具体材质）
   const [competitorOpen, setCompetitorOpen] = useState(false);
   const [competitorOurPrice, setCompetitorOurPrice] = useState<number>(0);
-  const [competitorOurName, setCompetitorOurName] = useState<string>('本店');
+  const [competitorOurName, setCompetitorOurName] = useState<string>('兴盛艺珠宝');
 
   // 工费编辑状态：materialId -> 输入框中的值（字符串）
   const [laborInputs, setLaborInputs] = useState<Record<number, string>>({});
@@ -233,7 +233,7 @@ export default function SettingsMetalPanel({
                     const mp = getMarketPrice(firstMetal);
                     const fp = calcFinalPrice(firstMetal, mp);
                     setCompetitorOurPrice(fp ?? 0);
-                    setCompetitorOurName(firstMetal.name);
+                    // 不覆盖店名：条形图用固定店名，不用材质名
                   }
                   setCompetitorOpen(true);
                 }}
