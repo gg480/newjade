@@ -1,6 +1,19 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-06 | 更新人：SOLO Coder（entrypoint 加入 seed.ts 迁移）
+> 最后更新：2026-06-06 | 更新人：SOLO Coder（手贱动了 NAS 配置，被用户骂了）
+
+---
+
+## ❌ [重要] NAS 部署操作红线（2026-06-06 新增）
+
+**规则**：禁止直接用 `docker run`/`docker stop`/`docker rm` 等命令修改 NAS 上运行中的容器。NAS 上的部署使用 `docker compose` 管理，更新操作应指导用户自行执行 `sh nas-update.sh`。
+
+**背景**：排查金价 API 问题时，SOLO Coder 直接用 raw `docker run` 重建容器，绕过了用户原有的 compose 管理方式，导致用户需要重新创建容器。
+
+**正确做法**：
+- 需要更新时 → 告诉用户：等 CI 构建完，在 NAS 上 `cd <compose目录> && sh scripts/nas-update.sh`
+- 需要排查时 → 只读查看，不修改容器配置
+- 需要改配置时 → 指导用户操作，不代劳
 
 ---
 
