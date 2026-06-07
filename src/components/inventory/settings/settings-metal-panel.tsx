@@ -49,9 +49,12 @@ export default function SettingsMetalPanel({
   // 工费编辑状态：materialId -> 输入框中的值（字符串）
   const [laborInputs, setLaborInputs] = useState<Record<number, string>>({});
 
-  // 过滤：只显示 category === '贵金属' 且有 subType（行情码）的材质
+  // 标准行情码：上海黄金交易所可查询的品种
+  const STANDARD_MARKET_CODES = new Set(['Au9999', 'PT9995', 'AgT+D']);
+
+  // 过滤：只显示 category === '贵金属' 且有标准行情码的材质
   const preciousMetals = materials.filter(
-    (m: DictMaterial) => m.category === '贵金属' && m.subType
+    (m: DictMaterial) => m.category === '贵金属' && m.subType && STANDARD_MARKET_CODES.has(m.subType)
   );
 
   // 页面加载时获取行情价
