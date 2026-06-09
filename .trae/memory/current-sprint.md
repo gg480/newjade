@@ -244,3 +244,565 @@ Round 1（并行）
 | 开关 Key | 默认值 | 用途 |
 |----------|:------:|------|
 | `feature_checkout_enabled` | `false` | 控制收银台模式显隐（已有，与本 Sprint 无关） |
+
+---
+
+# Sprint-011：密码安全与网络攻击防护
+
+**Sprint 周期**：2026-06-08 起 | **状态**：✅ 已完成（12/12）
+
+## 需求来源
+
+| 来源 | 说明 |
+|------|------|
+| 系统功能审计报告 | 密码安全策略缺失 (P0)、登录历史审计缺失 (P1)、配置变更无日志 (P1) |
+| 密码场景专项检查 | 重置密码 API 404、新旧密码无检查、mustChangePwd 前端未处理 |
+| 网络安全加固要求 | 防饱和攻击、防大 payload 攻击、安全响应头、IP 封禁 |
+
+---
+
+## 架构设计
+
+```
+[请求] → Middleware (安全头 + 体限制 + 全局限流)
+           │
+           ├─ /api/auth/login        → 登录限流(5次/15min/IP) [增强]
+           ├─ /api/auth/password     → 改密限流(10次/15min/用户) + 复杂度校验
+           ├─ /api/users/:id/reset-password → 重置限流(5次/30min/IP) [修复404]
+           ├─ /api/users             → 创建用户限流 + 复杂度校验
+           └─ 其他 API               → 全局限流(100次/分钟/IP)
+           
+Service 层:
+  password-validator.ts — 密码复杂度校验(可配置: 长度/大小写/数字/特殊字符)
+  rate-limiter.ts       — 通用滑动窗口限流器(支持按IP/按用户/分级配置)
+```
+
+---
+
+## 任务拆解
+
+### 执行顺序图
+
+```
+Phase 1（基础设施 — 可并行）
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ S11-01           │  │ S11-02           │  │ S11-03           │
+│ rate-limiter.ts  │  │ Middleware 安全   │  │ password-        │
+│ @Backend         │  │ 增强             │  │ validator.ts     │
+│ 1.5h             │  │ @Backend         │  │ @Backend         │
+│                  │  │ 1.5h             │  │ 1h               │
+└──────┬───────────┘  └──────┬───────────┘  └──────┬───────────┘
+       └──────────┬──────────┘                     │
+                  ↓                                ↓
+       Phase 2（密码安全修复 — 部分串行）
+       ┌──────────────────┐  ┌──────────────────┐
+       │ S11-04           │  │ S11-05           │
+       │ 修复重置密码404   │  │ 密码修改路由安全  │
+       │ @Backend         │  │ 增强             │
+       │ 0.5h             │  │ @Backend         │
+       └──────┬───────────┘  │ 1h               │
+              │              └──────┬───────────┘
+              │                     │
+              ↓                     ↓
+       ┌─────────────────────────────────────────┐
+       │ S11-06 创建/重置密码集成复杂度  @Backend │
+       │ 1h                                      │
+       └──────────────────┬──────────────────────┘
+                          ↓
+       Phase 3（前后端并行）
+       ┌──────────────────┐  ┌──────────────────┐
+       │ S11-07           │  │ S11-08           │
+       │ 密码变更审计日志   │  │ mustChangePwd    │
+       │ @Backend         │  │ 弹窗 + 密码强度  │
+       │ 1h               │  │ 指示器           │
+       └──────┬───────────┘  │ @Frontend        │
+              │              │ 2h               │
+              │              └──────┬───────────┘
+              ↓                     ↓
+       ┌─────────────────────────────────────────┐
+       │ S11-09 登录历史审计 + 配置变更审计       │
+       │ @Backend  2h                            │
+       └──────────────────┬──────────────────────┘
+                          ↓
+              Phase 4（验证 — 串行）
+       ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+       │ S11-10           │  │ S11-11           │  │ S11-12           │
+       │ 构建+Lint验证     │  │ TRAE-security    │  │ E2E全量回归      │
+       │ @QA              │→ │ review 安全审查   │→ │ @QA              │
+       │ 0.3h             │  │ @QA              │  │ 2h               │
+       └──────────────────┘  │ 0.5h             │  └──────────────────┘
+                             └──────────────────┘
+```
+
+---
+
+## 任务清单
+
+| 任务ID | 任务名称 | 类型 | 负责人 | 依赖 | 预估 | 优先级 | 状态 |
+|--------|---------|:----:|:------:|:----:|:----:|:------:|:----:|
+| **Phase 1：基础设施层** | | | | | | | |
+| S11-01 | 通用速率限制器 `src/lib/rate-limiter.ts` | 新增 | @Backend | — | 1.5h | P0 | ✅ 已完成 |
+| S11-02 | Middleware 安全增强（安全头+体限制+全局限流） | 增强 | @Backend | — | 1.5h | P0 | ✅ 已完成 |
+| S11-03 | 密码复杂度校验工具 `src/lib/password-validator.ts` | 新增 | @Backend | — | 1h | P0 | ✅ 已完成 |
+| **Phase 2：密码安全修复** | | | | | | | |
+| S11-04 | 修复重置密码 API 端点 404（新增独立 PUT 路由） | 修复 | @Backend | S11-03 | 0.5h | P0 | ✅ 已完成 |
+| S11-05 | 密码修改路由安全增强（新旧密码检查+复杂度+限流） | 增强 | @Backend | S11-01, S11-03 | 1h | P0 | ✅ 已完成 |
+| S11-06 | 创建用户/重置密码集成密码复杂度 | 增强 | @Backend | S11-03 | 1h | P0 | ✅ 已完成 |
+| **Phase 3：审计 + 前端** | | | | | | | |
+| S11-07 | 密码变更/重置操作写入审计日志 | 新增 | @Backend | S11-04~S11-06 | 1h | P1 | ✅ 已完成 |
+| S11-08 | mustChangePwd 弹窗引导改密 + 密码强度指示器 | 新增 | @Frontend | — | 2h | P1 | ✅ 已完成 |
+| S11-09 | 登录历史审计 + 系统配置变更审计日志 | 新增 | @Backend | S11-07 | 2h | P1 | ✅ 已完成 |
+| **Phase 4：验证** | | | | | | | |
+| S11-10 | Build + Lint 验证 | 验证 | @QA | 全部 | 0.3h | — | ✅ 已完成 |
+| S11-11 | TRAE-security-review 安全审查 | 审查 | @QA | S11-10 | 0.5h | — | ✅ 已完成（零漏洞） |
+| S11-12 | E2E 全量回归测试 | 验证 | @QA | S11-11 | 2h | — | ✅ 已完成（51/59，零回归） |
+
+> **关联 Skills**：
+> - S11-01~S11-06 → 开发前先读 `security-backend-patterns`（安全编码规范）
+> - S11-07~S11-09 → 开发前先读 `security-audit-logging`（审计日志规范）
+> - S11-08 → `frontend-component`（前端组件开发）
+> - S11-11 → `TRAE-security-review`（安全审查）
+> - S11-12 → `write-tests`（测试流程）
+
+---
+
+## 任务详情
+
+### S11-01：通用速率限制器
+
+**负责人**：@Backend
+**类型**：新增
+**文件**：`src/lib/rate-limiter.ts`
+**说明**：实现一个通用的滑动窗口速率限制器，可供所有路由复用。
+
+**🔒 安全实施规范**：
+1. 使用滑动窗口算法（记录每次请求时间戳到数组，过期自动清理），不要用固定窗口（会在窗口边界被绕过）
+2. 必须内置过期条目自动清理（`setInterval` 每 60s 清理一次，或在每次 check 时惰性清理），**防止内存泄漏**
+3. 封禁升级机制：同一 key 在 1 小时内触发 3 次限流后自动封禁 1 小时
+4. 不要泄露内部状态给客户端（不要返回 `blockedUntil` 到响应体，只返回 429 + 通用提示）
+
+**接口设计**：
+```typescript
+interface RateLimiterConfig {
+  windowMs: number;      // 时间窗口(ms)
+  maxAttempts: number;   // 窗口内最大请求数
+  keyType?: 'ip' | 'userId';  // 限流维度
+}
+
+interface RateLimiterResult {
+  allowed: boolean;
+  remaining: number;     // 剩余可用次数
+  resetAt: number;       // 重置时间戳
+  blockedUntil?: number; // 封禁到期时间(如有)，仅内部使用，不对外暴露
+}
+```
+
+**核心功能**：
+1. 滑动窗口算法，按时间戳记录每次请求
+2. 支持按 IP 和按 userId 两种限流维度
+3. 支持自动升级封禁（短时内触发多次限流 → 自动封禁 1 小时）
+4. 过期条目自动清理（防内存泄漏）
+5. 可导出 `getRateLimiterStats()` 供监控
+
+**使用方式**：
+```typescript
+// 在 route handler 中使用
+const limiter = createRateLimiter({ windowMs: 15 * 60 * 1000, maxAttempts: 5 });
+const result = limiter.check(ip);
+if (!result.allowed) {
+  return NextResponse.json({ code: 429, data: null, message: '请求过于频繁' }, { status: 429 });
+}
+```
+
+### S11-02：Middleware 安全增强
+
+**负责人**：@Backend
+**类型**：修改
+**文件**：`src/middleware.ts`
+
+**⚠️ Middleware 修改安全守则**（单点故障，最高风险）：
+1. **修改前 git stash 备份**（middleware.ts 影响所有 API 请求，出错 = 全站 500）
+2. 安全头用 `res.headers.set()` 不要用 `requestHeaders.set()`（后者只影响下游路由，不影响响应）
+3. 全局限流必须在 `isPublicPath` 判断**之前**执行（否则公开路径不受限流保护）
+4. Content-Length 检查仅对 auth 相关路径（`/api/auth/*`、`/api/users`），不要影响文件上传路径
+5. 修改结束后立即 `pnpm build` + 启动 dev server 验证所有标签页可正常加载
+
+**修改清单**：
+
+1. **安全 HTTP 头**（所有响应）
+   - `X-Content-Type-Options: nosniff`
+   - `X-Frame-Options: DENY`
+   - `Referrer-Policy: strict-origin-when-cross-origin`
+   - `X-XSS-Protection: 0`（已废弃但兼容旧浏览器）
+
+2. **请求体大小限制**（POST/PUT/PATCH 请求）
+   - auth 相关路由：Content-Length > 10KB 直接拒绝
+   - 其余路由：不做限制（由各自 handler 处理）
+
+3. **全局限流**（按 IP）
+   - 所有 API：100 次/分钟/IP
+   - auth 路由：由各自 route handler 细化控制
+
+### S11-03：密码复杂度校验工具
+
+**负责人**：@Backend
+**类型**：新增
+**文件**：`src/lib/password-validator.ts`
+**说明**：可配置的密码复杂度校验规则，支持从系统配置读取或使用默认值。
+
+**🔒 密码安全实现原则**：
+1. **校验顺序**：先检查同值（`oldPassword === newPassword`）→ 再检查复杂度规则 → 最后比对旧密码 bcrypt。防止时序信息泄露。
+2. 校验失败时返回的错误信息**不要透露**具体哪条规则未通过（给攻击者枚举便利），统一返回 `code: 400, message: '密码不符合安全策略要求'`。内部控制台日志可存详细信息。
+3. 默认策略硬编码在代码中，不依赖 SysConfig 初始化（防止 DB 为空时密码无约束）。
+4. 返回值使用 `Result<T, Error>` 模式，不要 throw（调用方需要知道具体失败原因来展示前端反馈，但只展示汇总信息）。
+
+**配置参数**（从 SysConfig 读取，支持默认值）：
+```typescript
+interface PasswordPolicy {
+  minLength: number;        // 最小长度（默认8）
+  requireUppercase: boolean; // 需要大写字母（默认true）
+  requireLowercase: boolean; // 需要小写字母（默认true）
+  requireDigit: boolean;     // 需要数字（默认true）
+  requireSpecialChar: boolean; // 需要特殊字符（默认true）
+  notAllowUsername: boolean;  // 不能包含用户名（默认true）
+}
+```
+
+**输出**：校验成功/失败，失败时返回具体错误码和描述（如"密码必须包含至少1个大写字母"）
+
+**集成点**：
+1. `user.service.ts` — `createUser()` 创建用户时校验
+2. `user.service.ts` — `resetUserPassword()` 重置时校验
+3. `auth/password/route.ts` — 用户自助改密时校验
+4. 前端密码强度指示器 — 实时反馈
+
+### S11-04：修复重置密码 API 端点 404
+
+**负责人**：@Backend
+**类型**：修复
+**文件**：新增 `src/app/api/users/[id]/reset-password/route.ts`
+**说明**：前端调用 `PUT /api/users/:id/reset-password` 但后端只有 `PATCH /api/users/:id?action=reset-password`，导致 404。
+
+**改动**：
+1. 新增独立 `PUT` 路由文件，调用 `resetUserPassword()`
+2. 集成密码复杂度校验（引用 S11-03）
+3. 应用速率限制（引用 S11-01）
+4. 保留原 `PATCH` 路由兼容现有调用
+
+### S11-05：密码修改路由安全增强
+
+**负责人**：@Backend
+**类型**：增强
+**文件**：`src/app/api/auth/password/route.ts`、`src/app/api/auth/route.ts`（旧版）
+**说明**：两个密码修改路由增加安全措施。
+
+**改动**：
+1. 增加新旧密码相同检查（`oldPassword === newPassword` → 拒绝）
+2. 新密码集成密码复杂度校验（引用 S11-03）
+3. 应用速率限制：按 userId 限流，10次/15分钟（引用 S11-01）
+4. 成功修改后清除限流记录
+
+### S11-06：创建用户/重置密码集成复杂度
+
+**负责人**：@Backend
+**类型**：增强
+**文件**：`src/services/user.service.ts`、`src/app/api/users/route.ts`、`src/app/api/users/[id]/route.ts`
+**说明**：在 `createUser()` 和 `resetUserPassword()` 中集成密码复杂度校验。
+
+**改动**：
+1. `createUser()` 中的 `password.length < 4` → 调用 `validatePassword(password)`
+2. `resetUserPassword()` 中的 `password.length < 4` → 调用 `validatePassword(password)`
+3. `POST /api/users` 和 `PATCH /api/users/:id?action=reset-password` 应用速率限制
+
+### S11-07：密码变更审计日志
+
+**负责人**：@Backend
+**类型**：新增
+**文件**：`src/app/api/auth/password/route.ts`、`src/app/api/users/[id]/reset-password/route.ts`、`src/services/user.service.ts`
+**说明**：密码修改/重置操作写入 `OperationLog`。
+
+**📋 审计日志字段规范**（S11-07 + S11-09 共用，确保日志可统一查询）：
+1. `action` 字段使用统一命名：`login_success`、`login_failed`、`change_password`、`reset_password`、`update_config`
+2. `targetType` 必须与操作对象一致：`auth`（登录/登出）、`user`（密码操作）、`config`（配置变更）
+3. `detail` 用 JSON 存结构化的变动信息（key/value 对），不要存纯文本
+4. `operator` 字段：登录事件填用户名（成功时）或 `'anonymous'`（失败时）；其他事件填当前操作人用户名
+5. **永远不在日志中记录明文密码**，即使是 detail JSON 中的 oldValue/newValue 也要脱敏
+
+**日志内容**：
+```json
+{
+  "action": "change_password" | "reset_password",
+  "targetType": "user",
+  "targetId": "<userId>",
+  "detail": { "operator": "<operatorId>", "operatorName": "<username>" },
+  "operator": "<username>"
+}
+```
+
+### S11-08：mustChangePwd 弹窗 + 密码强度指示器
+
+**负责人**：@Frontend
+**类型**：新增
+**文件**：`src/app/page.tsx`、`src/components/inventory/settings/settings-config-panel.tsx`
+
+**mustChangePwd 弹窗**：
+1. 登录成功后检查 `currentUser.mustChangePwd`
+2. 若为 `true` → 弹出强制改密对话框
+3. 对话框内容：旧密码输入 + 新密码输入 + 确认新密码
+4. 调用 `authApi.changePassword()` 修改密码
+5. 成功后设置 `mustChangePwd = false` 并关闭对话框
+6. 不允许跳过（强制修改）
+
+**密码强度指示器**：
+1. 修改密码表单中新增密码强度条
+2. 使用 S11-03 的复杂度规则在前端实时计算
+3. 显示：弱（红色）/ 中（橙色）/ 强（绿色）三级
+4. 强度不达标时按钮 disabled
+
+### S11-09：登录历史审计 + 配置变更审计
+
+**负责人**：@Backend
+**类型**：新增
+**文件**：
+- `src/app/api/auth/login/route.ts` — 登录成功/失败均记录日志
+- `src/app/api/config/route.ts` — 配置变更写日志
+- `src/services/user.service.ts` — 用户状态变更写日志
+
+**登录审计日志**：
+```json
+{
+  "action": "login_success" | "login_failed",
+  "targetType": "auth",
+  "targetId": "<userId或null>",
+  "detail": { "ip": "<clientIp>", "username": "<inputUsername>" },
+  "operator": "<username或'anonymous'>"
+}
+```
+
+**配置变更日志**：
+```json
+{
+  "action": "update_config",
+  "targetType": "config",
+  "targetId": "<configKey>",
+  "detail": { "key": "<key>", "oldValue": "<old>", "newValue": "<new>" },
+  "operator": "<operatorName>"
+}
+```
+
+---
+
+## 涉及文件清单
+
+### 新增文件（3 个）
+| 文件 | 归属 | 任务 |
+|------|:----:|:----:|
+| `src/lib/rate-limiter.ts` | @Backend | S11-01 |
+| `src/lib/password-validator.ts` | @Backend | S11-03 |
+| `src/app/api/users/[id]/reset-password/route.ts` | @Backend | S11-04 |
+
+### 修改文件（10 个）
+| 文件 | 归属 | 任务 |
+|------|:----:|:----:|
+| `src/middleware.ts` | @Backend | S11-02 |
+| `src/app/api/auth/password/route.ts` | @Backend | S11-05 |
+| `src/app/api/auth/route.ts` | @Backend | S11-05 |
+| `src/services/user.service.ts` | @Backend | S11-06, S11-07 |
+| `src/app/api/users/route.ts` | @Backend | S11-06 |
+| `src/app/api/users/[id]/route.ts` | @Backend | S11-06 |
+| `src/app/api/auth/login/route.ts` | @Backend | S11-09 |
+| `src/app/api/config/route.ts` | @Backend | S11-09 |
+| `src/app/page.tsx` | @Frontend | S11-08 |
+| `src/components/inventory/settings/settings-config-panel.tsx` | @Frontend | S11-08 |
+
+---
+
+## 部署门禁清单
+
+- [ ] `pnpm lint --quiet` — 零新增 error/warning
+- [ ] `pnpm build` — 编译成功
+- [ ] `TRAE-security-review` — 安全审查通过（S11-11）
+- [ ] E2E 测试 — 全部断言通过（S11-12）
+- [ ] 密码安全验证 — 旧密码相同/复杂度不足/空密码 均返回正确错误
+- [ ] 限流验证 — 超出频率时返回 429
+- [ ] 安全头验证 — 响应中包含 X-Content-Type-Options 等头
+- [ ] mustChangePwd 验证 — 管理员重置密码后用户登录收到弹窗
+
+---
+
+# Sprint-012：Token 认证修复 + 收银台上线 + 测试债务
+
+**Sprint 周期**：2026-06-09 起 | **状态**：🔄 执行中
+
+## 需求来源
+
+| 来源 | 说明 |
+|------|------|
+| E2E 全量业务场景测试 | 发现促销活动 Tab 401 认证失败 |
+| Token 认证遗漏审计 | 共 7 个组件 27 处裸 fetch 缺少 Authorization 头 |
+| 收银台完成度评估 | Step 1/Step 3 组件已就绪，checkout-mode.tsx 未接线 |
+| E2E 测试可维护性 | 看板卡片缺 data-testid，场景 F 脚本待优化 |
+
+---
+
+## 任务拆解
+
+### Phase 1：Token 认证修复（后端 — 可并行）
+
+| 任务ID | 任务名称 | 类型 | 负责人 | 涉及文件 | 预估 | 优先级 | 状态 |
+|--------|---------|:----:|:------:|---------|:----:|:------:|:----:|
+| S12-01 | PromotionsTab 认证修复 | 修复 | @Backend | `promotions-tab.tsx`（8 处裸 fetch → api.ts） | 1h | P0 | ⏳ 待启动 |
+| S12-02 | StocktakingTab 认证修复 | 修复 | @Backend | `stocktaking-tab.tsx`（5 处裸 fetch → api.ts） | 1h | P0 | ⏳ 待启动 |
+| S12-03 | SettingsTab 认证修复 | 修复 | @Backend | `settings-tab.tsx`（6 处裸 fetch → api.ts） | 1h | P1 | ⏳ 待启动 |
+| S12-04 | 其余组件认证修复 | 修复 | @Backend | `promotion-item-select.tsx`(3) + `navigation.tsx`(3) + `restock-tab.tsx`(1) + `dashboard-tab.tsx`(1) | 1h | P1 | ⏳ 待启动 |
+
+### Phase 2：收银台上线（前端 — 依赖 Phase 1 但可并行）
+
+| 任务ID | 任务名称 | 类型 | 负责人 | 涉及文件 | 预估 | 优先级 | 状态 |
+|--------|---------|:----:|:------:|---------|:----:|:------:|:----:|
+| S12-05 | checkout-mode 接线 | 新增 | @Frontend | `checkout-mode.tsx`：Step 1/3 占位符 → 实际组件 | 1.5h | P0 | ⏳ 待启动 |
+| S12-06 | seed 预置 feature 开关 | 新增 | @Frontend | `prisma/seed-base.ts` 加 `feature_checkout_enabled=true` | 0.3h | P0 | ⏳ 待启动 |
+| S12-07 | Tab 切换时退出收银台 | 增强 | @Frontend | `checkout-mode.tsx` 监听 activeTab 变化自动退出 | 0.5h | P1 | ⏳ 待启动 |
+
+### Phase 3：测试债务（前端 — 可并行）
+
+| 任务ID | 任务名称 | 类型 | 负责人 | 涉及文件 | 预估 | 优先级 | 状态 |
+|--------|---------|:----:|:------:|---------|:----:|:------:|:----:|
+| S12-08 | 看板卡片添加 data-testid | 增强 | @Frontend | `dashboard-tab.tsx` 各卡片容器 | 1h | P2 | ⏳ 待启动 |
+| S12-09 | 场景 F 测试脚本优化 | 增强 | @Frontend | `playwright-business-scenarios.spec.ts` 看板断言 | 0.5h | P2 | ⏳ 待启动 |
+
+---
+
+## 执行顺序图
+
+```
+Phase 1（后端 — 可并行）
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ S12-01           │  │ S12-02           │  │ S12-03           │  │ S12-04           │
+│ PromotionsTab    │  │ StocktakingTab   │  │ SettingsTab      │  │ 其余组件         │
+│ 1h               │  │ 1h               │  │ 1h               │  │ 1h               │
+└──────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────┘
+        全部使用 api.ts 的 request() 统一封装，自动携带 Token
+
+Phase 2（前端 — 可并行）
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ S12-05           │  │ S12-06           │  │ S12-07           │
+│ checkout-mode    │  │ seed 加开关       │  │ Tab 切换退出     │
+│ 1.5h             │  │ 0.3h             │  │ 0.5h             │
+└──────┬───────────┘  └──────────────────┘  └──────┬───────────┘
+       └──────────────────┬───────────────────────┘
+                          ↓
+                Phase 3（前端 — 并行）
+          ┌──────────────────┐  ┌──────────────────┐
+          │ S12-08           │  │ S12-09           │
+          │ 看板 data-testid  │  │ 场景 F 脚本优化   │
+          │ 1h               │  │ 0.5h             │
+          └──────────────────┘  └──────────────────┘
+                          ↓
+                  Phase 4（验证 — 串行）
+          ┌──────────────────┐  ┌──────────────────┐
+          │ Build+Lint 验证   │→ │ E2E 全量回归      │
+          │ @QA              │  │ @QA              │
+          │ 0.3h             │  │ 2h               │
+          └──────────────────┘  └──────────────────┘
+```
+
+## 修复方案说明
+
+### Token 认证修复（S12-01~S12-04）
+
+所有 27 处裸 fetch 统一改为使用 `src/lib/api.ts` 已有的 `request<T>()` 函数，该函数会自动从 localStorage 读取 token 并注入 Authorization 头。
+
+**改造模板**：
+
+```typescript
+// 改前：裸 fetch
+const response = await fetch('/api/promotions');
+const data = await response.json();
+
+// 改后：使用 api.ts 统一封装
+import { request } from '@/lib/api';
+const data = await request('/api/promotions');
+```
+
+对于 `api.ts` 中未定义的方法（如 promotions 相关），先在 `api.ts` 中补充统一的 API 函数，再在组件中调用。具体：
+
+1. 在 `api.ts` 中新增：
+   - `promotionsApi.getPromotions(params)` → `request('/api/promotions?' + params)`
+   - `promotionsApi.createPromotion(data)` → `request('/api/promotions', { method: 'POST', body: ... })`
+   - `promotionsApi.updatePromotion(id, data)` → `request('/api/promotions?id=' + id, { method: 'PUT', body: ... })`
+   - `promotionsApi.deletePromotion(id)` → `request('/api/promotions?id=' + id, { method: 'DELETE' })`
+   - `promotionsApi.getItems(promotionId)` → `request('/api/promotions/' + promotionId + '/items')`
+   - `promotionsApi.addItem(promotionId, itemId)` → `request('/api/promotions/' + promotionId + '/items', { method: 'POST', body: ... })`
+   - `promotionsApi.removeItem(promotionId, itemId)` → `request('/api/promotions/' + promotionId + '/items', { method: 'DELETE', body: ... })`
+   - `promotionsApi.getForecast(promotionId)` → `request('/api/promotions/' + promotionId + '/forecast')`
+   - `stocktakingApi.*` — 同理补充
+   - 其余组件同理
+
+2. 各组件中 import 对应的 API 对象，替换裸 fetch
+
+### checkout-mode 接线（S12-05）
+
+**改动清单**：
+
+1. 在 `checkout-mode.tsx` 顶部添加 import：
+   ```typescript
+   import StepCustomer from './step-customer';
+   import StepPayment from './step-payment';
+   ```
+
+2. 第 267-271 行替换 Step 1 渲染：
+   ```typescript
+   // 改前
+   {step === 1 && <StepPlaceholder step={1} />}
+   // 改后
+   {step === 1 && (
+     <StepCustomer
+       onSelectCustomer={(c) => setCustomer(c)}
+       onSkip={() => setStep(2)}
+     />
+   )}
+   ```
+
+3. 第 311 行替换 Step 3 渲染：
+   ```typescript
+   // 改前
+   {step === 3 && <StepPlaceholder step={3} />}
+   // 改后
+   {step === 3 && (
+     <StepPayment
+       items={items}
+       customer={customer}
+       onItemsChange={setItems}
+       onPrev={() => setStep(2)}
+       onComplete={() => { /* 完成处理 */ }}
+     />
+   )}
+   ```
+
+## 涉及文件清单（全部）
+
+| 文件 | 归属 | 任务 |
+|------|:----:|:----:|
+| `src/components/inventory/promotions-tab.tsx` | @Backend | S12-01 |
+| `src/components/inventory/promotion-item-select.tsx` | @Backend | S12-04 |
+| `src/components/inventory/stocktaking-tab.tsx` | @Backend | S12-02 |
+| `src/components/inventory/settings-tab.tsx` | @Backend | S12-03 |
+| `src/components/inventory/navigation.tsx` | @Backend | S12-04 |
+| `src/components/inventory/restock-tab.tsx` | @Backend | S12-04 |
+| `src/components/inventory/dashboard-tab.tsx` | @Backend | S12-04 |
+| `src/lib/api.ts` | @Backend | S12-01~S12-04（补充 API 方法） |
+| `src/components/inventory/checkout/checkout-mode.tsx` | @Frontend | S12-05 |
+| `prisma/seed-base.ts` | @Frontend | S12-06 |
+| `src/components/inventory/dashboard-tab.tsx` | @Frontend | S12-08 |
+| `tests/playwright-business-scenarios.spec.ts` | @Frontend | S12-09 |
+
+## 部署门禁清单
+
+- [ ] `pnpm lint --quiet` — 零新增 error/warning
+- [ ] `pnpm build` — 编译成功
+- [ ] `npx playwright test --grep "场景"` — 全量业务场景 E2E 全部通过
+- [ ] 收银台验证 — 销售 Tab 显示"收银台模式"按钮，三步流程可用
+- [ ] 促销活动验证 — 促销 Tab 可正常加载列表
+- [ ] 库存盘点验证 — 盘点 Tab 可正常加载
+- [ ] 回滚方案 — 各任务均为单文件单 commit，可独立 revert

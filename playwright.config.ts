@@ -2,14 +2,14 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: ['playwright-exhaustive.spec.ts', 'playwright-walkthrough-*.spec.ts'],
+  testMatch: ['playwright-exhaustive.spec.ts', 'playwright-walkthrough-*.spec.ts', 'playwright-user-chain.spec.ts', 'playwright-business-*.spec.ts'],
   timeout: 120000,
   expect: { timeout: 10000 },
   fullyParallel: false,
   retries: 0,
   workers: 1,
   use: {
-    baseURL: 'http://127.0.0.1:5000',
+    baseURL: 'http://127.0.0.1:9677',
     headless: true,
     viewport: { width: 1920, height: 1080 },
     actionTimeout: 10000,
