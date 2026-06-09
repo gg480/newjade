@@ -4,6 +4,7 @@ import { db, toUserFriendlyMessage } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { updateLastLogin } from '@/services/user.service';
 import { parsePermissions } from '@/lib/auth';
+import { logAction } from '@/lib/log';
 
 // In-memory rate limiting: max 5 failed attempts per 15 minutes per IP
 const loginAttempts = new Map<string, { count: number; firstAttemptTime: number }>();
@@ -70,11 +71,13 @@ export async function POST(req: Request) {
 
     if (!user) {
       recordFailedAttempt(clientIp);
+      await logAction('login_failed', 'auth', null, JSON.stringify({ ip: clientIp, username, reason: 'user_not_found' }), 'anonymous');
       return NextResponse.json({ code: 401, data: null, message: '用户名或密码错误' }, { status: 401 });
     }
 
     // 检查用户是否被禁用
     if (!user.isActive) {
+      await logAction('login_failed', 'auth', null, JSON.stringify({ ip: clientIp, username: user.username, reason: 'user_disabled' }), 'anonymous');
       return NextResponse.json({ code: 401, data: null, message: '账户已被禁用' }, { status: 401 });
     }
 
@@ -82,6 +85,7 @@ export async function POST(req: Request) {
     const isValid = bcrypt.compareSync(password, user.passwordHash);
     if (!isValid) {
       recordFailedAttempt(clientIp);
+      await logAction('login_failed', 'auth', null, JSON.stringify({ ip: clientIp, username: user.username, reason: 'wrong_password' }), 'anonymous');
       return NextResponse.json({ code: 401, data: null, message: '用户名或密码错误' }, { status: 401 });
     }
 
@@ -92,6 +96,9 @@ export async function POST(req: Request) {
 
     // 更新最后登录时间
     await updateLastLogin(user.id);
+
+    // 写入登录成功审计日志
+    await logAction('login_success', 'auth', user.id, JSON.stringify({ ip: clientIp, username: user.username }), user.username);
 
     // 解析权限
     const permissions = user.role ? parsePermissions(user.role.permissions) : [];

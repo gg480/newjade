@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { NotFoundError, ValidationError, ConflictError } from '@/lib/errors';
+import { validatePassword } from '@/lib/password-validator';
 
 // ─── 类型定义 ─────────────────────────────────────────────
 
@@ -140,8 +141,9 @@ export async function createUser(data: CreateUserInput): Promise<UserInfo> {
   if (!username || username.trim().length === 0) {
     throw new ValidationError('用户名不能为空');
   }
-  if (!password || password.length < 4) {
-    throw new ValidationError('密码长度不能少于4位');
+  const pwdValidation = validatePassword(password, undefined, username);
+  if (!pwdValidation.valid) {
+    throw new ValidationError('密码不符合安全策略要求');
   }
   if (!roleId) {
     throw new ValidationError('请选择用户角色');
@@ -255,16 +257,18 @@ export async function updateUserRole(id: number, roleId: number): Promise<void> 
 /**
  * 重置用户密码
  * @throws NotFoundError 用户不存在
- * @throws ValidationError 密码长度不足
+ * @throws ValidationError 密码不符合安全策略
  */
 export async function resetUserPassword(id: number, newPassword: string): Promise<void> {
-  if (!newPassword || newPassword.length < 4) {
-    throw new ValidationError('密码长度不能少于4位');
-  }
-
+  // 先查用户（密码复杂度校验需要 username 做包含检查）
   const user = await db.user.findUnique({ where: { id } });
   if (!user) {
     throw new NotFoundError('用户不存在');
+  }
+
+  const pwdValidation = validatePassword(newPassword, undefined, user.username);
+  if (!pwdValidation.valid) {
+    throw new ValidationError('密码不符合安全策略要求');
   }
 
   const passwordHash = bcrypt.hashSync(newPassword, 10);

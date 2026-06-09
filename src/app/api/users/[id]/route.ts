@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getUser, updateUser, deleteUser, updateUserRole, resetUserPassword } from '@/services/user.service';
 import { AppError } from '@/lib/errors';
+import { createLimiter } from '@/lib/rate-limiter';
+
+// 重置密码限流：每 IP 30分钟最多5次
+const resetPasswordLimiter = createLimiter({
+  windowMs: 30 * 60 * 1000,
+  maxAttempts: 5,
+  keyType: 'ip',
+});
+
+/** 获取请求来源 IP */
+function getClientIP(req: Request): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown';
+}
 
 /**
  * GET /api/users/:id — 用户详情
@@ -93,6 +108,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     if (action === 'reset-password') {
+      // 速率限制检查
+      const ip = getClientIP(req);
+      const limitResult = resetPasswordLimiter.check(ip);
+      if (!limitResult.allowed) {
+        return NextResponse.json(
+          { code: 429, data: null, message: '请求过于频繁，请稍后再试' },
+          { status: 429 },
+        );
+      }
+
       const body = await req.json();
       await resetUserPassword(id, body.newPassword);
       return NextResponse.json({ code: 0, data: null, message: '密码重置成功' });

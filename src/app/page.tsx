@@ -53,11 +53,19 @@ const StocktakingTab = dynamic(
   { ssr: false, loading: () => <LoadingSkeleton /> }
 );
 import { MobileNav, DesktopNav, ShortcutsHelpDialog } from '@/components/inventory/navigation';
-import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff } from 'lucide-react';
-import { itemsApi, salesApi, batchesApi } from '@/lib/api';
+import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff, ShieldAlert, Loader2 } from 'lucide-react';
+import { itemsApi, salesApi, batchesApi, authApi } from '@/lib/api';
 import {
   Tooltip, TooltipTrigger, TooltipContent, TooltipProvider,
 } from '@/components/ui/tooltip';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 
 
 // Ensure keyframes are injected
@@ -189,7 +197,8 @@ function MobileQuickStats({ className }: { className?: string }) {
 
 // ========== Main Page ==========
 export default function JadeInventoryPage() {
-  const { activeTab, setActiveTab, isAuthenticated, isAuthLoading, checkSession, setAuth, clearAuth, logout } = useAppStore();
+  const { activeTab, setActiveTab, isAuthenticated, isAuthLoading, checkSession, setAuth, clearAuth, logout, currentUser } = useAppStore();
+  const { handleError } = useErrorHandler();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isOnline, setIsOnline] = useState(() => typeof window !== 'undefined' ? navigator.onLine : true);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -206,6 +215,60 @@ export default function JadeInventoryPage() {
     } catch (e) { console.error('[Page]', e);}
     return '兴盛艺珠宝';
   });
+
+  // ========== 强制改密弹窗状态 ==========
+  const [showMustChangePwd, setShowMustChangePwd] = useState(false);
+  const [pwdOld, setPwdOld] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [pwdChanging, setPwdChanging] = useState(false);
+
+  /** 密码强度计算（与后端 DEFAULT_POLICY 的 5 条规则对齐） */
+  function calcPasswordStrength(pwd: string): { score: number; label: string; color: string } {
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[a-z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+    if (score <= 2) return { score, label: '弱', color: 'text-red-500' };
+    if (score <= 3) return { score, label: '中', color: 'text-orange-500' };
+    return { score, label: '强', color: 'text-green-500' };
+  }
+
+  // 检测 currentUser.mustChangePwd 变化，弹出强制改密弹窗
+  useEffect(() => {
+    if (currentUser?.mustChangePwd) {
+      setShowMustChangePwd(true);
+    }
+  }, [currentUser]);
+
+  /** 强制改密提交 */
+  async function handleForceChangePassword() {
+    if (!pwdOld) { toast.error('请输入旧密码'); return; }
+    if (!pwdNew) { toast.error('请输入新密码'); return; }
+    const strength = calcPasswordStrength(pwdNew);
+    if (strength.score <= 2) { toast.error('密码强度太弱，请设置更强的密码'); return; }
+    if (pwdNew !== pwdConfirm) { toast.error('两次输入的新密码不一致'); return; }
+
+    setPwdChanging(true);
+    try {
+      await authApi.changePassword(pwdOld, pwdNew);
+      toast.success('密码修改成功');
+      // 刷新用户信息（mustChangePwd 应为 false）
+      await checkSession();
+      // 关闭弹窗 + 清空表单
+      setShowMustChangePwd(false);
+      setPwdOld('');
+      setPwdNew('');
+      setPwdConfirm('');
+    } catch (error) {
+      handleError(error, { title: '密码修改失败' });
+    } finally {
+      setPwdChanging(false);
+    }
+  }
 
   // 登录状态检查 — 使用 store 的 checkSession
   useEffect(() => {
@@ -516,6 +579,121 @@ export default function JadeInventoryPage() {
       >
         <ArrowUp className="h-4 w-4" />
       </button>
+
+      {/* 强制改密弹窗 — 不允许关闭/跳过 */}
+      <Dialog open={showMustChangePwd} onOpenChange={(open) => {
+        if (!open) return; // 不允许通过点击遮罩或按 Escape 关闭
+        setShowMustChangePwd(open);
+      }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <ShieldAlert className="h-5 w-5" />
+              首次登录，请修改密码
+            </DialogTitle>
+            <DialogDescription>
+              出于安全考虑，您需要在首次登录时设置一个新密码。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* 旧密码 */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">旧密码</Label>
+              <Input
+                type="password"
+                value={pwdOld}
+                onChange={(e) => setPwdOld(e.target.value)}
+                placeholder="输入当前密码"
+                className="h-9"
+              />
+            </div>
+
+            {/* 新密码 */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">新密码</Label>
+              <Input
+                type="password"
+                value={pwdNew}
+                onChange={(e) => setPwdNew(e.target.value)}
+                placeholder="至少8位，含大小写字母、数字、特殊字符"
+                className="h-9"
+              />
+              {/* 密码强度指示条 */}
+              {pwdNew && (() => {
+                const strength = calcPasswordStrength(pwdNew);
+                const barWidth = (strength.score / 5) * 100;
+                const barColor = strength.score <= 2
+                  ? 'bg-red-500'
+                  : strength.score <= 3 ? 'bg-orange-500' : 'bg-green-500';
+                return (
+                  <div className="mt-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted-foreground">密码强度</span>
+                      <span className={`text-xs font-semibold ${strength.color}`}>
+                        {strength.label}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+                    <ul className="mt-1.5 space-y-0.5">
+                      {[
+                        { met: pwdNew.length >= 8, label: '至少 8 位' },
+                        { met: /[A-Z]/.test(pwdNew), label: '大写字母' },
+                        { met: /[a-z]/.test(pwdNew), label: '小写字母' },
+                        { met: /[0-9]/.test(pwdNew), label: '数字' },
+                        { met: /[^A-Za-z0-9]/.test(pwdNew), label: '特殊字符' },
+                      ].map((rule, i) => (
+                        <li key={i} className="flex items-center gap-1.5 text-xs">
+                          <span className={`inline-block w-1 h-1 rounded-full ${rule.met ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
+                          <span className={rule.met ? 'text-green-600' : 'text-muted-foreground'}>
+                            {rule.label}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 确认新密码 */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">确认新密码</Label>
+              <Input
+                type="password"
+                value={pwdConfirm}
+                onChange={(e) => setPwdConfirm(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleForceChangePassword(); }}
+                placeholder="再次输入新密码"
+                className="h-9"
+              />
+              {pwdConfirm && pwdNew !== pwdConfirm && (
+                <p className="text-xs text-red-500 mt-1">两次输入的密码不一致</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleForceChangePassword}
+              disabled={pwdChanging || !pwdOld || !pwdNew || !pwdConfirm || (pwdNew && calcPasswordStrength(pwdNew).score <= 2)}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {pwdChanging ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <ShieldAlert className="h-4 w-4 mr-2" />
+              )}
+              确认修改
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </>
   );

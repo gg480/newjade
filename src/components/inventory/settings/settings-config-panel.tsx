@@ -52,10 +52,25 @@ export default function SettingsConfigPanel({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
 
+  /** 密码强度计算（与后端 DEFAULT_POLICY 的 5 条规则对齐） */
+  function calcPasswordStrength(pwd: string): { score: number; label: string; color: string } {
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[a-z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+    if (score <= 2) return { score, label: '弱', color: 'text-red-500' };
+    if (score <= 3) return { score, label: '中', color: 'text-orange-500' };
+    return { score, label: '强', color: 'text-green-500' };
+  }
+
   async function handleChangePassword() {
     if (!oldPassword) { toast.error('请输入旧密码'); return; }
     if (!newPassword) { toast.error('请输入新密码'); return; }
-    if (newPassword.length < 4) { toast.error('新密码长度不能少于4位'); return; }
+    const strength = calcPasswordStrength(newPassword);
+    if (strength.score <= 2) { toast.error('密码强度太弱，请设置更强的密码'); return; }
     if (newPassword !== confirmPassword) { toast.error('两次输入的新密码不一致'); return; }
 
     setChangingPassword(true);
@@ -279,8 +294,32 @@ export default function SettingsConfigPanel({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="h-8 text-sm"
-                  placeholder="至少4位"
+                  placeholder="至少8位，含大小写字母、数字、特殊字符"
                 />
+                {/* 密码强度指示条 */}
+                {newPassword && (() => {
+                  const strength = calcPasswordStrength(newPassword);
+                  const barWidth = (strength.score / 5) * 100;
+                  const barColor = strength.score <= 2
+                    ? 'bg-red-500'
+                    : strength.score <= 3 ? 'bg-orange-500' : 'bg-green-500';
+                  return (
+                    <div className="mt-1.5">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[10px] text-muted-foreground">密码强度</span>
+                        <span className={`text-[10px] font-semibold ${strength.color}`}>
+                          {strength.label}
+                        </span>
+                      </div>
+                      <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                          style={{ width: `${barWidth}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">确认新密码</Label>
@@ -298,7 +337,7 @@ export default function SettingsConfigPanel({
               size="sm"
               className="h-8 bg-amber-600 hover:bg-amber-700 text-xs"
               onClick={handleChangePassword}
-              disabled={changingPassword}
+              disabled={changingPassword || (!!newPassword && calcPasswordStrength(newPassword).score <= 2)}
             >
               {changingPassword ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
