@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { request } from '@/lib/api';
 import { TabId, NavGroup, useAppStore } from '@/lib/store';
 import ThemeToggle from './theme-toggle';
 import NotificationBell from './notification-bell';
@@ -77,9 +78,7 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch('/api/batches?page=1&size=100');
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
+        const data = await request<any>('/batches?page=1&size=100');
         if (cancelled) return;
         const batches = data.items || [];
         setPendingBatches(batches.filter((b: Batch) => (b.itemsCount || 0) < (b.quantity || 0)).length);
@@ -87,9 +86,8 @@ function MobileNav({ activeTab, onTabChange, className, onLogout }: { activeTab:
       // Check sales today
       try {
         const todayStr = new Date().toISOString().slice(0, 10);
-        const salesRes = await fetch(`/api/sales?start_date=${todayStr}&end_date=${todayStr}&size=1`);
-        if (salesRes.ok && !cancelled) {
-          const salesData = await salesRes.json();
+        const salesData = await request<any>(`/sales?start_date=${todayStr}&end_date=${todayStr}&size=1`);
+        if (!cancelled) {
           setHasSalesToday((salesData.pagination?.total || 0) > 0);
         }
       } catch (e) { console.error('[Nav]', e); /* silently fail */ }
@@ -273,11 +271,10 @@ function DesktopNav({ activeTab, onTabChange, className, loading = false, onLogo
   useEffect(() => {
     // Sync store name from server config
     let mounted = true;
-    fetch('/api/config')
-      .then(r => r.json())
+    request<SysConfig[]>('/config')
       .then(data => {
-        if (mounted && data.code === 0 && Array.isArray(data.data)) {
-          const cfg = data.data.find((c: SysConfig) => c.key === 'store_name');
+        if (mounted && Array.isArray(data)) {
+          const cfg = data.find((c: SysConfig) => c.key === 'store_name');
           if (cfg?.value) setStoreName(cfg.value);
         }
       })

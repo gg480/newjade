@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { stocktakingApi, itemsApi } from '@/lib/api';
 import {
   Card,
   CardContent,
@@ -155,11 +156,8 @@ const StocktakingTab: React.FC = () => {
   const fetchStocktakings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/stocktaking');
-      const data = await response.json();
-      if (data.code === 0) {
-        setStocktakings(data.data.stocktakings);
-      }
+      const data = await stocktakingApi.listStocktakings();
+      setStocktakings(data.stocktakings || []);
     } catch (error) {
       console.error('获取盘点计划列表失败:', error);
     } finally {
@@ -170,11 +168,8 @@ const StocktakingTab: React.FC = () => {
   // 获取可盘点的商品列表（在库状态）
   const fetchItems = async () => {
     try {
-      const response = await fetch('/api/items?status=in_stock');
-      const data = await response.json();
-      if (data.code === 0) {
-        setItems(data.data.items || []);
-      }
+      const data = await itemsApi.getItems({ status: 'in_stock' as any, page: 1, size: 1000 });
+      setItems(data.items || []);
     } catch (error) {
       console.error('获取商品列表失败:', error);
     }
@@ -195,29 +190,18 @@ const StocktakingTab: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/stocktaking', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...newStocktaking,
-          itemIds: selectedItems,
-        }),
+      await stocktakingApi.createStocktaking({
+        ...newStocktaking,
+        itemIds: selectedItems,
       });
-      const data = await response.json();
-      if (data.code === 0) {
-        setIsCreateDialogOpen(false);
-        setSelectedItems([]);
-        setNewStocktaking({
-          type: 'regular',
-          startDate: format(new Date(), 'yyyy-MM-dd'),
-          notes: '',
-        });
-        fetchStocktakings();
-      } else {
-        alert('创建盘点计划失败: ' + data.message);
-      }
+      setIsCreateDialogOpen(false);
+      setSelectedItems([]);
+      setNewStocktaking({
+        type: 'regular',
+        startDate: format(new Date(), 'yyyy-MM-dd'),
+        notes: '',
+      });
+      fetchStocktakings();
     } catch (error) {
       console.error('创建盘点计划失败:', error);
       alert('创建盘点计划失败');
@@ -255,27 +239,16 @@ const StocktakingTab: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/stocktaking/${selectedStocktaking.id}/details`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          details: stocktakingDetails.map(detail => ({
-            detailId: detail.id,
-            actualQty: detail.actualQty,
-            systemQty: detail.systemQty,
-            notes: detail.notes,
-          })),
-        }),
+      await stocktakingApi.updateDetails(selectedStocktaking.id, {
+        details: stocktakingDetails.map(detail => ({
+          detailId: detail.id,
+          actualQty: detail.actualQty,
+          systemQty: detail.systemQty,
+          notes: detail.notes,
+        })),
       });
-      const data = await response.json();
-      if (data.code === 0) {
-        alert('保存盘点明细成功');
-        fetchStocktakings();
-      } else {
-        alert('保存盘点明细失败: ' + data.message);
-      }
+      alert('保存盘点明细成功');
+      fetchStocktakings();
     } catch (error) {
       console.error('保存盘点明细失败:', error);
       alert('保存盘点明细失败');
@@ -290,23 +263,12 @@ const StocktakingTab: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/stocktaking/${selectedStocktaking.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: 'completed',
-          endDate: format(new Date(), 'yyyy-MM-dd'),
-        }),
+      await stocktakingApi.updateStocktaking(selectedStocktaking.id, {
+        status: 'completed',
+        endDate: format(new Date(), 'yyyy-MM-dd'),
       });
-      const data = await response.json();
-      if (data.code === 0) {
-        setIsDetailDialogOpen(false);
-        fetchStocktakings();
-      } else {
-        alert('完成盘点失败: ' + data.message);
-      }
+      setIsDetailDialogOpen(false);
+      fetchStocktakings();
     } catch (error) {
       console.error('完成盘点失败:', error);
       alert('完成盘点失败');

@@ -26,7 +26,7 @@ import type {
 
 const BASE = '/api';
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
   // Attach auth token for API middleware
   if (typeof window !== 'undefined') {
@@ -349,6 +349,44 @@ export const importApi = {
     return json.data as ImportResult;
   },
   downloadTemplate: (type: 'items' | 'sales') => `${BASE}/import/template?type=${type}`,
+};
+
+// ========== Promotions ==========
+export const promotionsApi = {
+  getPromotions: (params?: Record<string, string | number | boolean | undefined | null>) => {
+    const qs = params ? buildQueryString(params) : '';
+    return request<any>(`/promotions${qs}`);
+  },
+  createPromotion: (data: Record<string, unknown>) =>
+    request<any>('/promotions', { method: 'POST', body: JSON.stringify(data) }),
+  updatePromotion: (id: number, data: Record<string, unknown>) =>
+    request<any>(`/promotions?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePromotion: (id: number) =>
+    request<any>(`/promotions?id=${id}`, { method: 'DELETE' }),
+  getPromotionItems: (promotionId: number) =>
+    request<any>(`/promotions/${promotionId}/items`),
+  addPromotionItems: (promotionId: number, itemIds: number[]) =>
+    request<any>(`/promotions/${promotionId}/items`, { method: 'POST', body: JSON.stringify({ itemIds }) }),
+  removePromotionItems: (promotionId: number, itemIds: number[]) =>
+    request<any>(`/promotions/${promotionId}/items`, { method: 'DELETE', body: JSON.stringify({ itemIds }) }),
+  forecastPromotionEffect: (promotionId: number) =>
+    request<any>(`/promotions/${promotionId}/forecast`),
+};
+
+// ========== Stocktaking ==========
+export const stocktakingApi = {
+  listStocktakings: (params?: Record<string, string | number | boolean | undefined | null>) => {
+    const qs = params ? buildQueryString(params) : '';
+    return request<any>(`/stocktaking${qs}`);
+  },
+  getStocktaking: (id: number) =>
+    request<any>(`/stocktaking/${id}`),
+  createStocktaking: (data: Record<string, unknown>) =>
+    request<any>('/stocktaking', { method: 'POST', body: JSON.stringify(data) }),
+  updateStocktaking: (id: number, data: Record<string, unknown>) =>
+    request<any>(`/stocktaking/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateDetails: (stocktakingId: number, data: Record<string, unknown>) =>
+    request<any>(`/stocktaking/${stocktakingId}/details`, { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // ========== Restock ==========

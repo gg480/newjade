@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { promotionsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useAppStore } from '@/lib/store';
@@ -62,84 +63,7 @@ interface PromotionForecast {
   };
 }
 
-// API 函数
-async function getPromotions(params: Record<string, string | number | undefined>) {
-  const url = new URL('/api/promotions', window.location.origin);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value) url.searchParams.append(key, value);
-  });
-  const response = await fetch(url);
-  const data = await response.json();
-  if (data.code !== 0) throw new Error(data.message || '获取促销活动失败');
-  return data.data;
-}
-
-async function createPromotion(data: Record<string, unknown>) {
-  const response = await fetch('/api/promotions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  const result = await response.json();
-  if (result.code !== 0) throw new Error(result.message || '创建促销活动失败');
-  return result.data;
-}
-
-async function updatePromotion(id: number, data: Record<string, unknown>) {
-  const response = await fetch(`/api/promotions?id=${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  const result = await response.json();
-  if (result.code !== 0) throw new Error(result.message || '更新促销活动失败');
-  return result.data;
-}
-
-async function deletePromotion(id: number) {
-  const response = await fetch(`/api/promotions?id=${id}`, {
-    method: 'DELETE',
-  });
-  const result = await response.json();
-  if (result.code !== 0) throw new Error(result.message || '删除促销活动失败');
-  return result.data;
-}
-
-async function getPromotionItems(promotionId: number) {
-  const response = await fetch(`/api/promotions/${promotionId}/items`);
-  const data = await response.json();
-  if (data.code !== 0) throw new Error(data.message || '获取促销商品失败');
-  return data.data;
-}
-
-async function addPromotionItems(promotionId: number, itemIds: number[]) {
-  const response = await fetch(`/api/promotions/${promotionId}/items`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ itemIds }),
-  });
-  const result = await response.json();
-  if (result.code !== 0) throw new Error(result.message || '添加促销商品失败');
-  return result.data;
-}
-
-async function removePromotionItems(promotionId: number, itemIds: number[]) {
-  const response = await fetch(`/api/promotions/${promotionId}/items`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ itemIds }),
-  });
-  const result = await response.json();
-  if (result.code !== 0) throw new Error(result.message || '移除促销商品失败');
-  return result.data;
-}
-
-async function forecastPromotionEffect(promotionId: number) {
-  const response = await fetch(`/api/promotions/${promotionId}/forecast`);
-  const data = await response.json();
-  if (data.code !== 0) throw new Error(data.message || '预测促销效果失败');
-  return data.data;
-}
+// API 函数 — 改用 promotionsApi 统一客户端
 
 // 促销状态映射
 const STATUS_MAP: Record<string, { label: string; class: string }> = {
@@ -192,7 +116,7 @@ function PromotionsTab() {
         if (filters.type) params.type = filters.type;
         if (filters.keyword) params.keyword = filters.keyword;
         
-        const data = await getPromotions(params);
+        const data = await promotionsApi.getPromotions(params);
         if (!cancelled) {
           setPromotions(data.promotions || []);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
@@ -230,7 +154,7 @@ function PromotionsTab() {
   // 处理创建促销活动
   async function handleCreatePromotion(data: Record<string, unknown>) {
     try {
-      await createPromotion(data);
+      await promotionsApi.createPromotion(data);
       toast.success('创建促销活动成功！');
       setShowCreate(false);
       refresh();
@@ -242,7 +166,7 @@ function PromotionsTab() {
   // 处理更新促销活动
   async function handleUpdatePromotion(id: number, data: Record<string, unknown>) {
     try {
-      await updatePromotion(id, data);
+      await promotionsApi.updatePromotion(id, data);
       toast.success('更新促销活动成功！');
       setEditPromotion(null);
       refresh();
@@ -255,7 +179,7 @@ function PromotionsTab() {
   async function handleDeletePromotion() {
     if (!deleteConfirmPromotion) return;
     try {
-      await deletePromotion(deleteConfirmPromotion.id);
+      await promotionsApi.deletePromotion(deleteConfirmPromotion.id);
       toast.success('删除促销活动成功！');
       setDeleteConfirmPromotion(null);
       refresh();
@@ -278,7 +202,7 @@ function PromotionsTab() {
   // 处理查看促销详情
   async function handleViewDetail(promotion: Promotion) {
     try {
-      const data = await getPromotionItems(promotion.id);
+      const data = await promotionsApi.getPromotionItems(promotion.id);
       setPromotionItems(data.items || []);
       setDetailPromotion(promotion);
     } catch (error) {
@@ -289,7 +213,7 @@ function PromotionsTab() {
   // 处理预测促销效果
   async function handleForecast(promotion: Promotion) {
     try {
-      const data = await forecastPromotionEffect(promotion.id);
+      const data = await promotionsApi.forecastPromotionEffect(promotion.id);
       setForecastData(data);
       setShowForecast(true);
     } catch (error) {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { restockApi, dictsApi } from '@/lib/api';
+import { restockApi, dictsApi, request } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,7 +67,7 @@ const RestockTab: React.FC = () => {
     try {
       const [materialsData, priceRangesData] = await Promise.all([
         dictsApi.getMaterials(),
-        fetch('/api/dicts/price-ranges').then(res => res.json())
+        request<any>('/dicts/price-ranges')
       ]);
       setMaterials(materialsData);
       if (priceRangesData.code === 0) {

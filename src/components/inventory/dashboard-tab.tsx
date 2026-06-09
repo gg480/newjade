@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { dashboardApi, configApi, batchesApi } from '@/lib/api';
+import { dashboardApi, configApi, batchesApi, request } from '@/lib/api';
 import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge, PaybackBar, EmptyState, LoadingSkeleton, CHART_COLORS } from './shared';
@@ -402,10 +402,9 @@ function DashboardTab() {
     let cancelled = false;
     const loadRecentSales = async () => {
       try {
-        const res = await fetch('/api/dashboard/recent-sales');
-        const json = await res.json();
-        if (!cancelled && json.code === 0) {
-          setRecentSales(json.data || []);
+        const data = await request<RecentSaleItem[]>('/dashboard/recent-sales');
+        if (!cancelled) {
+          setRecentSales(data || []);
         }
       } catch (e) { console.error('[DashboardTab]', e); /* silently fail */ }
     };
@@ -606,12 +605,12 @@ function DashboardTab() {
       {/* ====== 1. Overview Cards ====== */}
       {summary && !isEmptyDashboard && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="card-glow relative overflow-hidden border-l-4 border-l-emerald-500 hover:scale-[1.02] transition-transform duration-200 cursor-default shadow-sm hover:shadow-md">
+          <Card data-testid="dashboard-card-total-items" className="card-glow relative overflow-hidden border-l-4 border-l-emerald-500 hover:scale-[1.02] transition-transform duration-200 cursor-default shadow-sm hover:shadow-md">
             <CardContent className="p-4">
               <div className="absolute -right-2 -bottom-2 opacity-10"><Package className="h-20 w-20 text-emerald-500" /></div>
               <p className="text-sm text-muted-foreground">库存总计</p>
               <p className="text-3xl font-extrabold mt-1 tabular-nums">{animTotalItems}</p>
-              <p className="text-xs text-muted-foreground mt-1">库存货值 {formatPrice(summary.totalStockValue)}</p>
+              <p data-testid="dashboard-card-inventory-value" className="text-xs text-muted-foreground mt-1">库存货值 {formatPrice(summary.totalStockValue)}</p>
               {inventoryTrendSparkline.length > 0 && (
                 <div className="mt-1">
                   <ResponsiveContainer width="100%" height={40}>
@@ -629,7 +628,7 @@ function DashboardTab() {
               )}
             </CardContent>
           </Card>
-          <Card className="card-glow relative overflow-hidden border-l-4 border-l-sky-500 hover:scale-[1.02] transition-transform duration-200 cursor-default shadow-sm hover:shadow-md">
+          <Card data-testid="dashboard-card-monthly-sales" className="card-glow relative overflow-hidden border-l-4 border-l-sky-500 hover:scale-[1.02] transition-transform duration-200 cursor-default shadow-sm hover:shadow-md">
             <CardContent className="p-4">
               <div className="absolute -right-2 -bottom-2 opacity-10"><TrendingUp className="h-20 w-20 text-sky-500" /></div>
               <div className="flex items-center justify-between">
@@ -649,7 +648,7 @@ function DashboardTab() {
                 )}
               </div>
               <p className="text-3xl font-extrabold text-emerald-600 mt-1 tabular-nums">{formatPrice(summary.monthRevenue)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{summary.monthSoldCount} 件，毛利 {formatPrice(summary.monthProfit)}</p>
+              <p data-testid="dashboard-card-monthly-profit" className="text-xs text-muted-foreground mt-1">{summary.monthSoldCount} 件，毛利 {formatPrice(summary.monthProfit)}</p>
               {dailySalesSparkline.length > 1 && (
                 <div className="mt-1">
                   <ResponsiveContainer width="100%" height={40}>
@@ -1359,7 +1358,7 @@ function DashboardTab() {
       </div>
 
       {/* ====== 5. Monthly Sales Trend ====== */}
-      <Card className="hover:shadow-md transition-shadow duration-300">
+      <Card data-testid="dashboard-card-sales-trend" className="hover:shadow-md transition-shadow duration-300">
         <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-sky-600" />月度销量趋势</CardTitle></CardHeader>
         <CardContent>
           {trend.length === 0 ? (
@@ -1522,7 +1521,7 @@ function DashboardTab() {
       {/* ====== Top 5 Best Sellers + Customer Frequency ====== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top 5 Best Sellers */}
-        <Card className="border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-shadow">
+        <Card data-testid="dashboard-card-top-sellers" className="border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-600" />

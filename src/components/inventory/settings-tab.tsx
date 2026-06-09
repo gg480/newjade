@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, itemsApi, salesApi, batchesApi, customersApi } from '@/lib/api';
+import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, itemsApi, salesApi, batchesApi, customersApi, request } from '@/lib/api';
 import type { DictMaterial, DictType, DictTag, Supplier, MetalPrice, SysConfig, ImportResult } from '@/lib/api.types';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import { toast } from 'sonner';
@@ -274,25 +274,20 @@ function SettingsTab() {
           batchesCount: batchesRes.status === 'fulfilled' ? (batchesRes.value.pagination?.total ?? null) : null,
         });
         try {
-          const sizeRes = await fetch('/api/config');
-          const sizeJson = await sizeRes.json();
-          if (sizeJson.code === 0) {
-            const sizeStr = sizeJson.data?.find?.((c: SysConfig) => c.key === 'db_size')?.value;
-            if (sizeStr) setDbSize(sizeStr);
-          }
+          const configData = await configApi.getConfig();
+          const sizeStr = configData?.find?.((c: SysConfig) => c.key === 'db_size')?.value;
+          if (sizeStr) setDbSize(sizeStr);
         } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
         try {
           const [delRes, logRes] = await Promise.allSettled([
-            fetch('/api/items/cleanup-deleted'),
-            fetch('/api/logs/cleanup-old'),
+            request<{ count: number }>('/items/cleanup-deleted'),
+            request<{ count: number }>('/logs/cleanup-old'),
           ]);
           if (delRes.status === 'fulfilled') {
-            const delJson = await delRes.value.json();
-            setDeletedItemsCount(delJson.data?.count || 0);
+            setDeletedItemsCount(delRes.value.count || 0);
           }
           if (logRes.status === 'fulfilled') {
-            const logJson = await logRes.value.json();
-            setOldLogsCount(logJson.data?.count || 0);
+            setOldLogsCount(logRes.value.count || 0);
           }
         } catch (e) { console.error('[SettingsTab]', e); /* ignore */ }
       } catch (e) { console.error('[SettingsTab]', e); /* silently fail */ } finally { setDbSizeLoading(false); }
@@ -364,14 +359,11 @@ function SettingsTab() {
   async function handleCleanupDeleted() {
     setCleanupLoading('deleted');
     try {
-      const res = await fetch('/api/items/cleanup-deleted', { method: 'DELETE' });
-      const json = await res.json();
-      if (json.code === 0) {
-        toast.success(`已清除 ${json.data.deleted} 条已删除货品`);
-        setDeletedItemsCount(0);
-        const itemsRes = await itemsApi.getItems({ page: 1, size: 1 });
-        setDataStats(prev => ({ ...prev, itemsCount: itemsRes.pagination?.total ?? prev.itemsCount }));
-      } else { toast.error(json.message || '清除失败'); }
+      const result = await request<{ deleted: number }>('/items/cleanup-deleted', { method: 'DELETE' });
+      toast.success(`已清除 ${result.deleted} 条已删除货品`);
+      setDeletedItemsCount(0);
+      const itemsRes = await itemsApi.getItems({ page: 1, size: 1 });
+      setDataStats(prev => ({ ...prev, itemsCount: itemsRes.pagination?.total ?? prev.itemsCount }));
     } catch (e) { console.error('[SettingsTab]', e); toast.error('清除已删除货品失败'); } finally {
       setCleanupLoading(null);
       setCleanupConfirm({ type: 'deleted', open: false });
@@ -381,12 +373,9 @@ function SettingsTab() {
   async function handleCleanupOldLogs() {
     setCleanupLoading('logs');
     try {
-      const res = await fetch('/api/logs/cleanup-old', { method: 'DELETE' });
-      const json = await res.json();
-      if (json.code === 0) {
-        toast.success(`已清除 ${json.data.deleted} 条30天前的操作日志`);
-        setOldLogsCount(0);
-      } else { toast.error(json.message || '清除失败'); }
+      const result = await request<{ deleted: number }>('/logs/cleanup-old', { method: 'DELETE' });
+      toast.success(`已清除 ${result.deleted} 条30天前的操作日志`);
+      setOldLogsCount(0);
     } catch (e) { console.error('[SettingsTab]', e); toast.error('清除操作日志失败'); } finally {
       setCleanupLoading(null);
       setCleanupConfirm({ type: 'logs', open: false });
@@ -549,7 +538,12 @@ function SettingsTab() {
   // Backup download handler
   async function handleDownloadBackup() {
     try {
-      const res = await fetch(backupApi.download());
+      const headers: Record<string, string> = {};
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('auth_token');
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(backupApi.download(), { headers });
       if (!res.ok) {
         let errMsg = `下载失败（HTTP ${res.status}）`;
         try { const errJson = await res.json(); if (errJson?.message) errMsg = errJson.message; } catch { /* ignore */ }

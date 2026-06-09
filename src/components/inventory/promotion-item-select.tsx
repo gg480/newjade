@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+import { itemsApi, dictsApi } from '@/lib/api';
 import { Search, CheckSquare, X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import type { ItemSummary, DictMaterial, DictType } from '@/lib/api.types';
@@ -33,31 +34,7 @@ interface ItemQueryParams {
   maxPrice?: string;
 }
 
-// API 函数
-async function getItems(params: Record<string, string | number | undefined>) {
-  const url = new URL('/api/items', window.location.origin);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value) url.searchParams.append(key, value);
-  });
-  const response = await fetch(url);
-  const data = await response.json();
-  if (data.code !== 0) throw new Error(data.message || '获取商品失败');
-  return data.data;
-}
-
-async function getMaterials() {
-  const response = await fetch('/api/dicts/materials');
-  const data = await response.json();
-  if (data.code !== 0) throw new Error(data.message || '获取材质失败');
-  return data.data;
-}
-
-async function getTypes() {
-  const response = await fetch('/api/dicts/types');
-  const data = await response.json();
-  if (data.code !== 0) throw new Error(data.message || '获取器型失败');
-  return data.data;
-}
+// API 函数 — 改用统一客户端
 
 // 促销商品选择组件
 function PromotionItemSelect({ 
@@ -99,8 +76,8 @@ function PromotionItemSelect({
       try {
         // 加载材质和器型
         const [materialsData, typesData] = await Promise.all([
-          getMaterials(),
-          getTypes()
+          dictsApi.getMaterials(),
+          dictsApi.getTypes()
         ]);
         
         if (!cancelled) {
@@ -121,7 +98,7 @@ function PromotionItemSelect({
         if (filters.minPrice) params.minPrice = filters.minPrice;
         if (filters.maxPrice) params.maxPrice = filters.maxPrice;
         
-        const itemsData = await getItems(params);
+        const itemsData = await itemsApi.getItems(params as any);
         
         if (!cancelled) {
           setItems(itemsData.items || []);
