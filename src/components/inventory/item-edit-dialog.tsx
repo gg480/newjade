@@ -1,20 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, dictsApi } from '@/lib/api';
-import type { ItemSummary, DictType, DictTag } from '@/lib/api.types';
+import type { ItemSummary, DictMaterial, DictType, DictTag } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge } from './shared';
 import { parseSpecFields } from './settings-tab';
+import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import EditBasicFields from './item-edit/edit-basic-fields';
 import EditSpecFields from './item-edit/edit-spec-fields';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
-import { Copy } from 'lucide-react';
+import { Copy, Gem, Type } from 'lucide-react';
 
 // ========== Item Edit Dialog ==========
 function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: number | null; open: boolean; onOpenChange: (o: boolean) => void; onSuccess: () => void }) {
@@ -25,10 +27,13 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, boolean>>({});
-  const [itemMaterialId, setItemMaterialId] = useState<number | null>(null);
+  const [materials, setMaterials] = useState<DictMaterial[]>([]);
+  const [materialCategory, setMaterialCategory] = useState('');
+  const [materialSubType, setMaterialSubType] = useState('');
   const [form, setForm] = useState({
     name: '', sellingPrice: 0, floorPrice: 0, counter: '', certNo: '', notes: '', origin: '',
     tagIds: [] as number[],
+    materialId: '', typeId: '',
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
   });
   // Track original values for diff indicator
@@ -37,25 +42,44 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   useEffect(() => {
     if (open) {
       dictsApi.getTypes().then(setTypes).catch(() => {});
+      dictsApi.getMaterials().then(setMaterials).catch(() => {});
     }
   }, [open]);
 
-  // Fetch tags filtered by item's material
-  useEffect(() => {
-    if (!open) return;
-    if (itemMaterialId) {
-      dictsApi.getTags(undefined, false, itemMaterialId).then(setTags).catch(() => {});
+  // 当材质变化时，重新加载该材质下的器型和标签
+  function onMaterialChange(materialIdStr: string) {
+    setForm(f => ({ ...f, materialId: materialIdStr }));
+    const materialIdNum = materialIdStr ? Number(materialIdStr) : null;
+    if (materialIdNum) {
+      dictsApi.getTypes(false, materialIdNum).then(newTypes => {
+        setTypes(newTypes);
+        // 如果当前 typeId 不在新器型列表中，清零
+        setForm(f => {
+          if (f.typeId && !newTypes.some(t => String(t.id) === f.typeId)) {
+            return { ...f, typeId: '' };
+          }
+          return f;
+        });
+      }).catch(() => {});
+      dictsApi.getTags(undefined, false, materialIdNum).then(newTags => {
+        setTags(newTags);
+        // 清零不兼容的标签
+        setForm(f => ({
+          ...f,
+          tagIds: f.tagIds.filter(id => newTags.some(t => t.id === id))
+        }));
+      }).catch(() => {});
     } else {
+      dictsApi.getTypes().then(setTypes).catch(() => {});
       dictsApi.getTags().then(setTags).catch(() => {});
     }
-  }, [open, itemMaterialId]);
+  }
 
   useEffect(() => {
     if (open && itemId) {
       setLoading(true);
       itemsApi.getItem(itemId).then((data: ItemSummary) => {
         setItem(data);
-        setItemMaterialId(data.materialId || null);
         const specObj = data.spec || {};
         setForm({
           name: data.name || '',
@@ -66,6 +90,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
           notes: data.notes || '',
           origin: data.origin || '',
           tagIds: data.tags ? data.tags.map((t: DictTag) => t.id) : [],
+          materialId: String(data.materialId || ''),
+          typeId: String(data.typeId || ''),
           weight: specObj.weight || '',
           metalWeight: specObj.metalWeight || '',
           size: specObj.size || '',
@@ -80,7 +106,6 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     } else {
       setItem(null);
       setOriginalForm(null);
-      setItemMaterialId(null);
     }
   }, [open, itemId]);
 
@@ -91,7 +116,42 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     }
   }, [item?.id]);
 
-  const selectedType = types.find((t: DictType) => String(t.id) === String(item?.typeId));
+  // ========== 材质级联筛选 ==========
+  const filteredByCategory = useMemo(() => {
+    if (!materialCategory) return materials;
+    return materials.filter(m => m.category === materialCategory);
+  }, [materials, materialCategory]);
+
+  const subTypes = useMemo(() => {
+    const set = new Set<string>();
+    filteredByCategory.forEach(m => {
+      if (m.subType) set.add(m.subType);
+    });
+    return Array.from(set).sort();
+  }, [filteredByCategory]);
+
+  const filteredMaterials = useMemo(() => {
+    if (!materialSubType) return filteredByCategory;
+    return filteredByCategory.filter(m => m.subType === materialSubType);
+  }, [filteredByCategory, materialSubType]);
+
+  // 当 item 和 materials 都加载完成后，初始化级联选择器的值
+  useEffect(() => {
+    if (!item || materials.length === 0) return;
+    const mat = materials.find(m => m.id === Number(form.materialId));
+    if (mat) {
+      setMaterialCategory(mat.category || '');
+      setMaterialSubType(mat.subType || '');
+    }
+    // 根据 item 的材质加载器型和标签
+    if (form.materialId) {
+      const materialIdNum = Number(form.materialId);
+      dictsApi.getTypes(false, materialIdNum).then(setTypes).catch(() => {});
+      dictsApi.getTags(undefined, false, materialIdNum).then(setTags).catch(() => {});
+    }
+  }, [item?.id, materials.length]);
+
+  const selectedType = types.find((t: DictType) => String(t.id) === form.typeId);
   const typeSpecFields = parseSpecFields(selectedType?.specFields);
   // When no type is selected, show all spec fields; otherwise show only type-specific fields
   const ALL_SPEC_FIELDS: Record<string, { required: boolean }> = {
@@ -171,6 +231,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
         certNo: form.certNo || undefined,
         notes: form.notes || undefined,
         origin: form.origin || undefined,
+        materialId: form.materialId ? Number(form.materialId) : undefined,
+        typeId: form.typeId ? Number(form.typeId) : undefined,
         spec: Object.keys(spec).length > 0 ? spec : undefined,
         tagIds: form.tagIds,
       });
@@ -191,8 +253,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
       const spec: Record<string, string | number> = {};
       specFieldKeys.forEach(f => { if (form[f as keyof typeof form]) spec[f] = String(form[f as keyof typeof form]); });
       await itemsApi.createItem({
-        materialId: item.materialId,
-        typeId: item.typeId || undefined,
+        materialId: form.materialId ? Number(form.materialId) : item.materialId,
+        typeId: form.typeId ? Number(form.typeId) : item.typeId || undefined,
         costPrice: item.costPrice || undefined,
         sellingPrice: form.sellingPrice || item.sellingPrice,
         name: form.name || undefined,
@@ -233,6 +295,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
         certNo: form.certNo || undefined,
         notes: form.notes || undefined,
         origin: form.origin || undefined,
+        materialId: form.materialId ? Number(form.materialId) : undefined,
+        typeId: form.typeId ? Number(form.typeId) : undefined,
         spec: Object.keys(spec).length > 0 ? spec : undefined,
         tagIds: form.tagIds,
       });
@@ -260,11 +324,96 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
             {/* Non-editable info */}
             <div className="grid grid-cols-2 gap-3 text-sm bg-muted/30 p-3 rounded-lg">
               <div><span className="text-muted-foreground">SKU:</span> <span className="font-mono">{item.skuCode}</span></div>
-              <div><span className="text-muted-foreground">材质:</span> {item.materialName || '-'}</div>
-              <div><span className="text-muted-foreground">器型:</span> {item.typeName || '-'}</div>
               <div><span className="text-muted-foreground">状态:</span> <StatusBadge status={item.status} /></div>
               <div><span className="text-muted-foreground">成本价:</span> {formatPrice(item.costPrice)}</div>
               <div><span className="text-muted-foreground">分摊成本:</span> {formatPrice(item.allocatedCost)}</div>
+            </div>
+
+            {/* 材质（三级级联：大类 → 子类 → 材质） */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Gem className="h-3 w-3" />
+                材质
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                <Select
+                  value={materialCategory}
+                  onValueChange={v => {
+                    setMaterialCategory(v);
+                    setMaterialSubType('');
+                    onMaterialChange('');
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="大类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MATERIAL_CATEGORIES.map(c => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {subTypes.length > 0 && (
+                  <Select
+                    value={materialSubType}
+                    onValueChange={v => {
+                      setMaterialSubType(v);
+                      onMaterialChange('');
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="子类" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subTypes.map(s => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Select
+                  value={form.materialId}
+                  onValueChange={onMaterialChange}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="材质" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredMaterials.map(m => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 器型 */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Type className="h-3 w-3" />
+                器型
+              </label>
+              <Select
+                value={form.typeId}
+                onValueChange={v => setForm(f => ({ ...f, typeId: v }))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="选择器型" />
+                </SelectTrigger>
+                <SelectContent>
+                  {types.filter(t => t.isActive).map(t => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Changed indicator banner */}
