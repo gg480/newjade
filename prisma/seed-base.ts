@@ -95,6 +95,7 @@ async function main() {
     { key: 'warning_days', value: '90', description: '压货预警天数' },
     { key: 'default_alloc_method', value: 'equal', description: '默认分摊算法' },
     { key: 'admin_password', value: 'admin123', description: '管理员登录密码' },
+    { key: 'feature_checkout_enabled', value: 'true', description: '是否启用收银台模式' },
   ];
   for (const c of configs) {
     await prisma.sysConfig.upsert({

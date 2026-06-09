@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { StepIndicator } from './step-indicator';
-import { StepPlaceholder } from './step-placeholder';
+import StepCustomer from './step-customer';
 import StepItems from './step-items';
+import StepPayment from './step-payment';
 
 // ==================== 类型定义 ====================
 
@@ -124,6 +125,8 @@ interface CheckoutModeProps {
   onClose?: () => void;
   /** 销售完成回调（用于刷新父组件数据） */
   onComplete?: () => void;
+  /** 当前活跃 Tab（用于 Tab 切换时自动退出收银台） */
+  activeTab?: string;
 }
 
 /**
@@ -131,9 +134,8 @@ interface CheckoutModeProps {
  *
  * 管理三步流程状态：选择客户 → 选择货品 → 收款确认
  * 支持连续销售模式开关
- * TODO: Step 1/2/3 组件待 T-2b/T-3/T-4 完成后替换为实际组件
  */
-export function CheckoutMode({ onClose }: CheckoutModeProps) {
+export function CheckoutMode({ onClose, onComplete, activeTab }: CheckoutModeProps) {
   // 状态管理
   const [step, setStep] = useState<CheckoutState['step']>(1);
   const [customer, setCustomer] = useState<CheckoutState['customer']>(null);
@@ -141,6 +143,14 @@ export function CheckoutMode({ onClose }: CheckoutModeProps) {
   const [payment, setPayment] = useState<CheckoutState['payment']>({ ...INITIAL_PAYMENT });
   const [continuousMode, setContinuousMode] = useState(false);
   const [completed, setCompleted] = useState(false);
+
+  // Tab 切换检测：收银台模式下切换到其他 Tab 则自动退出
+  const entryTabRef = useRef(activeTab);
+  useEffect(() => {
+    if (activeTab && entryTabRef.current !== activeTab) {
+      onClose?.();
+    }
+  }, [activeTab, onClose]);
 
   // ==================== 计算属性 ====================
 
@@ -191,6 +201,17 @@ export function CheckoutMode({ onClose }: CheckoutModeProps) {
     setItems([]);
     setPayment({ ...INITIAL_PAYMENT });
     setCompleted(false);
+  }, []);
+
+  /** 选择客户（同时进入 Step 2） */
+  const handleSelectCustomer = useCallback((selected: { id: number; name: string }) => {
+    setCustomer(selected);
+    setStep(2);
+  }, []);
+
+  /** 跳过客户选择（进入 Step 2） */
+  const handleSkipCustomer = useCallback(() => {
+    setStep(2);
   }, []);
 
   /** 重置全部状态 */
@@ -265,10 +286,10 @@ export function CheckoutMode({ onClose }: CheckoutModeProps) {
       {/* ===== 步骤内容区（可滚动） ===== */}
       <div className="flex-1 overflow-y-auto px-4 pb-24">
         {step === 1 && (
-          <div className="space-y-4">
-            {/* TODO: 替换为 T-2b Step1CustomerSelect 组件 */}
-            <StepPlaceholder step={1} />
-          </div>
+          <StepCustomer
+            onSelectCustomer={handleSelectCustomer}
+            onSkip={handleSkipCustomer}
+          />
         )}
 
         {step === 2 && (
@@ -281,77 +302,41 @@ export function CheckoutMode({ onClose }: CheckoutModeProps) {
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            {/* 已选客户摘要 */}
-            {customer && (
-              <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-900">
-                <span className="text-gray-500 dark:text-gray-400">客户：</span>
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  {customer.name}
-                  {customer.phone && ` · ${customer.phone}`}
-                </span>
-              </div>
-            )}
-
-            {/* 已选货品摘要 */}
-            {items.length > 0 && (
-              <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-900">
-                <span className="text-gray-500 dark:text-gray-400">货品：</span>
-                <span className="font-medium text-gray-800 dark:text-gray-200">
-                  {items.length} 件
-                </span>
-                <span className="mx-2 text-gray-300 dark:text-gray-600">|</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  ¥{totalAmount.toFixed(2)}
-                </span>
-              </div>
-            )}
-
-            {/* TODO: 替换为 T-4 Step3PaymentConfirm 组件 */}
-            <StepPlaceholder step={3} />
-          </div>
+          <StepPayment
+            customer={customer}
+            items={items}
+            onItemsChange={setItems}
+            onPrev={handlePrev}
+            onComplete={handleReset}
+            onContinue={handleContinueSelling}
+          />
         )}
       </div>
 
-      {/* ===== 底部固定操作栏 ===== */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950 md:sticky">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          {/* 上一步 */}
-          <Button
-            variant="outline"
-            onClick={handlePrev}
-            disabled={step === 1}
-            className="min-w-24"
-          >
-            上一步
-          </Button>
+      {/* ===== 底部固定操作栏（Step 3 时由 StepPayment 内部处理） ===== */}
+      {step !== 3 && (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950 md:sticky">
+          <div className="mx-auto flex max-w-2xl items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={handlePrev}
+              disabled={step === 1}
+              className="min-w-24"
+            >
+              上一步
+            </Button>
 
-          {/* 中间：合计金额（Step 3 时显示） */}
-          {step === 3 && items.length > 0 && (
-            <div className="text-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">合计：</span>
-              <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                ¥{totalAmount.toFixed(2)}
-              </span>
-              {payment.discount > 0 && (
-                <span className="ml-2 text-xs text-red-500 line-through">
-                  ¥{(totalAmount + payment.discount).toFixed(2)}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* 下一步 / 确认收款 */}
-          <Button
-            variant="default"
-            onClick={handleNext}
-            disabled={!canProceed()}
-            className={`min-w-24 ${step === 3 ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
-          >
-            {step === 3 ? '确认收款' : '下一步'}
-          </Button>
+            <Button
+              variant="default"
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="min-w-24"
+            >
+              下一步
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
