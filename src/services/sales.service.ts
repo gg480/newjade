@@ -325,7 +325,7 @@ export async function getSaleById(id: number) {
 /**
  * 创建单件销售记录
  * 事务内完成：创建 SaleRecord + 更新 Item 状态为 sold
- * @throws {ValidationError} 货品不存在/不在库时抛出
+ * @throws {ValidationError} 货品不存在/不在库/成交价低于底价时抛出
  */
 export async function createSale(data: CreateSaleInput) {
   // 校验货品
@@ -335,6 +335,13 @@ export async function createSale(data: CreateSaleInput) {
   }
   if (item.status !== 'in_stock') {
     throw new ValidationError('货品不在库，无法出售');
+  }
+
+  // 底价校验：成交价不得低于货品设定的底价
+  if (item.floorPrice !== null && item.floorPrice !== undefined && data.actualPrice < item.floorPrice) {
+    throw new ValidationError(
+      `成交价 ¥${data.actualPrice.toFixed(2)} 低于底价 ¥${item.floorPrice.toFixed(2)}，无法出售`
+    );
   }
 
   const saleNo = await generateSaleNo();
@@ -466,7 +473,7 @@ export async function processReturn(data: ProcessReturnInput) {
  * 创建套装销售（一单多件）
  * 支持两种分摊方式：by_ratio（按售价比例）、chain_at_cost（链件原价+主件剩余）
  * 事务内：创建 BundleSale + N 个 SaleRecord + 更新 N 个 Item 状态为 sold
- * @throws {ValidationError} 参数校验失败、货品无效/不在库、分摊失败时抛出
+ * @throws {ValidationError} 参数校验失败、货品无效/不在库、成交价低于底价、分摊失败时抛出
  */
 export async function createBundleSale(data: CreateBundleSaleInput) {
   const allowedAllocMethods = new Set(['by_ratio', 'chain_at_cost']);
@@ -552,6 +559,25 @@ export async function createBundleSale(data: CreateBundleSaleInput) {
 
   if (allocations.length !== items.length) {
     throw new ValidationError('套装分摊失败：部分货品未分配价格');
+  }
+
+  // 底价校验：每件货品的分摊价格不得低于其底价
+  const floorViolations: { skuCode: string; allocatedPrice: number; floorPrice: number }[] = [];
+  for (const alloc of allocations) {
+    const allocItem = items.find((i) => i.id === alloc.itemId);
+    if (allocItem?.floorPrice != null && alloc.price < allocItem.floorPrice) {
+      floorViolations.push({
+        skuCode: allocItem.skuCode,
+        allocatedPrice: alloc.price,
+        floorPrice: allocItem.floorPrice,
+      });
+    }
+  }
+  if (floorViolations.length > 0) {
+    const details = floorViolations
+      .map((v) => `${v.skuCode}: 分摊 ¥${v.allocatedPrice.toFixed(2)} < 底价 ¥${v.floorPrice.toFixed(2)}`)
+      .join('; ');
+    throw new ValidationError(`套装中存在低于底价的货品: ${details}`);
   }
 
   // 事务：创建套装 + 销售记录 + 更新货品状态

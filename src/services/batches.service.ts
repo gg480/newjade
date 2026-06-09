@@ -290,11 +290,83 @@ export async function deleteBatch(id: number) {
 }
 
 /**
+ * 为批次自动补建货品（当货品数量不足时调用）
+ * 生成的货品继承批次的材质、器型、供应商、采购日期等信息
+ * @returns 新创建的货品数量
+ */
+async function ensureBatchItems(batch: {
+  id: number;
+  batchCode: string;
+  materialId: number;
+  typeId: number | null;
+  quantity: number;
+  totalCost: number;
+  supplierId: number | null;
+  purchaseDate: string | null;
+}, existingCount: number): Promise<number> {
+  const missing = batch.quantity - existingCount;
+  if (missing <= 0) return 0;
+
+  // 生成 SKU 前缀：材质ID2位 + 器型ID2位 + MMDD
+  const mCode = String(batch.materialId).padStart(2, '0');
+  const tCode = batch.typeId ? String(batch.typeId).padStart(2, '0') : '00';
+  const today = new Date();
+  const dateStr = String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
+  const prefix = `${mCode}${tCode}-${dateStr}-`;
+
+  // 查找当前前缀下最后一个 SKU，确定起始序号
+  const lastItem = await db.item.findFirst({
+    where: { skuCode: { startsWith: prefix } },
+    orderBy: { skuCode: 'desc' },
+  });
+  let seq = 1;
+  if (lastItem) {
+    const parts = lastItem.skuCode.split('-');
+    const lastSeq = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(lastSeq)) seq = lastSeq + 1;
+  }
+
+  // 初步成本估值为等额分摊
+  const estimatedCost = parseFloat((batch.totalCost / batch.quantity).toFixed(2));
+
+  for (let i = 0; i < missing; i++) {
+    const skuCode = `${prefix}${String(seq + i).padStart(3, '0')}`;
+    await db.item.create({
+      data: {
+        skuCode,
+        batchId: batch.id,
+        batchCode: batch.batchCode,
+        materialId: batch.materialId,
+        typeId: batch.typeId ?? null,
+        supplierId: batch.supplierId ?? null,
+        purchaseDate: batch.purchaseDate ?? null,
+        status: 'in_stock',
+        costPrice: estimatedCost,
+        sellingPrice: 0,
+      },
+    });
+  }
+
+  return missing;
+}
+
+/**
+ * 按等额分摊（内部辅助，用于 by_weight/by_price 数据不足时的回退策略）
+ */
+function allocateEqual(totalCost: number, count: number): number[] {
+  const perItem = Math.floor((totalCost / count) * 100) / 100;
+  const remainder = Math.round((totalCost - perItem * count) * 100) / 100;
+  return Array.from({ length: count }, (_, i) =>
+    i === count - 1 ? perItem + remainder : perItem,
+  );
+}
+
+/**
  * 批次成本分摊
  * 将批次总成本按分摊方式（equal / by_weight / by_price）分配到每件货品，
- * 同时计算底价和建议售价
+ * 同时计算底价和建议售价。如果批次下尚无货品，自动按 quantity 创建货品。
  * @throws {NotFoundError} 批次不存在
- * @throws {ValidationError} 货品数量与批次不一致 / 分摊方式不支持 / 数据不足
+ * @throws {ValidationError} 货品数量超出批次 / 分摊方式不支持
  */
 export async function allocateItems(batchId: number) {
   const batch = await db.batch.findUnique({ where: { id: batchId } });
@@ -302,13 +374,25 @@ export async function allocateItems(batchId: number) {
     throw new NotFoundError('批次不存在');
   }
 
-  const items = await db.item.findMany({
+  // 查询已有货品
+  let items = await db.item.findMany({
     where: { batchId, isDeleted: false },
     include: { spec: true },
   });
 
-  if (items.length !== batch.quantity) {
-    throw new ValidationError(`货品数量与批次不一致，当前 ${items.length}/${batch.quantity} 件`);
+  // 货品数量不足 → 自动补建
+  if (items.length < batch.quantity) {
+    await ensureBatchItems(batch, items.length);
+    // 重新查询包含新创建货品（含 spec）
+    items = await db.item.findMany({
+      where: { batchId, isDeleted: false },
+      include: { spec: true },
+    });
+    if (items.length !== batch.quantity) {
+      throw new ValidationError(`货品数量与批次不一致，当前 ${items.length}/${batch.quantity} 件`);
+    }
+  } else if (items.length > batch.quantity) {
+    throw new ValidationError(`货品数量超出批次预期，当前 ${items.length}/${batch.quantity} 件`);
   }
 
   // 获取系统配置（运营费率、加价率）
@@ -321,43 +405,42 @@ export async function allocateItems(batchId: number) {
 
   if (batch.costAllocMethod === 'equal') {
     // 平均分摊
-    const perItem = Math.floor((batch.totalCost / batch.quantity) * 100) / 100;
-    const remainder = Math.round((batch.totalCost - perItem * batch.quantity) * 100) / 100;
-    allocatedCosts = items.map((_, i) => (i === items.length - 1 ? perItem + remainder : perItem));
+    allocatedCosts = allocateEqual(batch.totalCost, batch.quantity);
   } else if (batch.costAllocMethod === 'by_weight') {
     // 按克重分摊
     const weights = items.map(item => item.spec?.weight || 0);
     if (weights.some(w => w <= 0)) {
-      throw new ValidationError('按克重分摊：每件货品克重必须大于0');
+      // 货品尚未设置克重，回退为等额分摊
+      allocatedCosts = allocateEqual(batch.totalCost, batch.quantity);
+    } else {
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      let sumAllocated = 0;
+      allocatedCosts = items.map((item, i) => {
+        const w = item.spec?.weight || 0;
+        const cost = i === items.length - 1
+          ? Math.round((batch.totalCost - sumAllocated) * 100) / 100
+          : Math.round((w / totalWeight) * batch.totalCost * 100) / 100;
+        sumAllocated += cost;
+        return cost;
+      });
     }
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    if (totalWeight === 0) {
-      throw new ValidationError('按克重分摊：所有货品必须有克重');
-    }
-    let sumAllocated = 0;
-    allocatedCosts = items.map((item, i) => {
-      const w = item.spec?.weight || 0;
-      const cost = i === items.length - 1
-        ? Math.round((batch.totalCost - sumAllocated) * 100) / 100
-        : Math.round((w / totalWeight) * batch.totalCost * 100) / 100;
-      sumAllocated += cost;
-      return cost;
-    });
   } else if (batch.costAllocMethod === 'by_price') {
     // 按售价比例分摊
     const prices = items.map(item => item.sellingPrice || 0);
     const totalSelling = prices.reduce((a, b) => a + b, 0);
     if (totalSelling === 0) {
-      throw new ValidationError('按售价比例分摊：所有货品必须有售价');
+      // 货品尚未设置售价，回退为等额分摊
+      allocatedCosts = allocateEqual(batch.totalCost, batch.quantity);
+    } else {
+      let sumAllocated = 0;
+      allocatedCosts = items.map((item, i) => {
+        const cost = i === items.length - 1
+          ? Math.round((batch.totalCost - sumAllocated) * 100) / 100
+          : Math.round((item.sellingPrice / totalSelling) * batch.totalCost * 100) / 100;
+        sumAllocated += cost;
+        return cost;
+      });
     }
-    let sumAllocated = 0;
-    allocatedCosts = items.map((item, i) => {
-      const cost = i === items.length - 1
-        ? Math.round((batch.totalCost - sumAllocated) * 100) / 100
-        : Math.round((item.sellingPrice / totalSelling) * batch.totalCost * 100) / 100;
-      sumAllocated += cost;
-      return cost;
-    });
   } else {
     throw new ValidationError('不支持的分摊方式');
   }
