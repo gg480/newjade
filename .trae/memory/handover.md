@@ -370,7 +370,7 @@ pnpm build       → ✅ 编译成功，89/89 pages
 
 ## 当前状态
 
-**Sprint-012 Phase 1 已全部完成 ✅。Sprint-009 Sprint 计划已重建（current-sprint.md）✅。任务 ID 冲突已消除。23 个修改文件 + 大量新文件未提交。工厂模式继续推进中。**
+**2026-06-10 生产环境修复：重置密码 API 404 + 收银台功能开关默认开启。两个问题均已修复并构建验证通过。**
 
 ### 完成总览（代码尚未提交）
 
@@ -412,6 +412,7 @@ pnpm build       → ✅ 编译成功，89/89 pages
 ---
 
 ## 最近完成
+| 2026-06-10 | BE | **生产环境修复：重置密码 API 404 + 收银台功能开关默认开启**：`src/app/api/users/[id]/reset-password/route.ts` — 新建独立路由（`PUT /api/users/:id/reset-password`），含参数校验+速率限制+审计日志，修复管理员重置密码 404 问题。`src/components/inventory/sales-tab.tsx` — 收银台功能开关改为配置不存在时默认开启（`enabled ? enabled.value === 'true' : true`），生产环境无此配置时自动可用。`pnpm build` ✅ 89/89。⚠️ 部署需重新构建 Docker 镜像并推送。|
 | 2026-06-09 | BE | **批次 allocate 自动补建货品 Bug 修复（QA-FINDING:BUG B2/B3）**：`batches.service.ts` — 新增 `ensureBatchItems()` 辅助函数（按批次 quantity 自动生成 N 件货品，继承批次材质/器型/供应商/采购日期，SKU 自增不冲突）；新增 `allocateEqual()` 辅助函数（等额分摊提取复用）。`allocateItems()` 修改：货品数量不足时自动补建缺失货品再分摊；by_weight 无克重或 by_price 无售价时回退为等额分摊（不再抛错）。ESLint 零错误 ✅，TypeScript 零新增错误 ✅。|
 | 2026-06-09 | BE | **底价校验缺失 Bug 修复（QA-FINDING:BUG B1）**：`sales.service.ts` 两个销售创建函数增加 floorPrice 底价校验。(1) `createSale()` — 成交价 < `item.floorPrice` 时抛出 `ValidationError("成交价 ¥xxx 低于底价 ¥xxx，无法出售")`；(2) `createBundleSale()` — 分摊计算后逐件比对底价，存在低于底价的分摊时列出所有违规货品并拒绝。`npx eslint --quiet` 零错误 ✅，`pnpm build` 89/89 ✅。|
 | 2026-06-09 | BE | **Sprint-012 Phase 1 认证修复全部完成**：api.ts 新增 promotionsApi（8 方法）和 stocktakingApi（5 方法），导出 request() 函数。修复 7 个组件共 27+ 处裸 fetch 缺少 Authorization token 的问题。涉及文件：promotions-tab.tsx(8处→promotionsApi)、stocktaking-tab.tsx(5处→stocktakingApi+itemsApi)、settings-tab.tsx(6处→request)、promotion-item-select.tsx(3处→itemsApi+dictsApi)、navigation.tsx(3处→request)、restock-tab.tsx(1处→request)、dashboard-tab.tsx(1处→request)。`pnpm build` ✅ 89/89 零类型错误。|

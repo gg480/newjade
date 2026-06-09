@@ -651,25 +651,25 @@ interface PasswordPolicy {
 
 | 任务ID | 任务名称 | 类型 | 负责人 | 涉及文件 | 预估 | 优先级 | 状态 |
 |--------|---------|:----:|:------:|---------|:----:|:------:|:----:|
-| S12-01 | PromotionsTab 认证修复 | 修复 | @Backend | `promotions-tab.tsx`（8 处裸 fetch → api.ts） | 1h | P0 | ⏳ 待启动 |
-| S12-02 | StocktakingTab 认证修复 | 修复 | @Backend | `stocktaking-tab.tsx`（5 处裸 fetch → api.ts） | 1h | P0 | ⏳ 待启动 |
-| S12-03 | SettingsTab 认证修复 | 修复 | @Backend | `settings-tab.tsx`（6 处裸 fetch → api.ts） | 1h | P1 | ⏳ 待启动 |
-| S12-04 | 其余组件认证修复 | 修复 | @Backend | `promotion-item-select.tsx`(3) + `navigation.tsx`(3) + `restock-tab.tsx`(1) + `dashboard-tab.tsx`(1) | 1h | P1 | ⏳ 待启动 |
+| S12-01 | PromotionsTab 认证修复 | 修复 | @Backend | `promotions-tab.tsx`（8 处裸 fetch → api.ts） | 1h | P0 | ✅ 已完成 |
+| S12-02 | StocktakingTab 认证修复 | 修复 | @Backend | `stocktaking-tab.tsx`（5 处裸 fetch → api.ts） | 1h | P0 | ✅ 已完成 |
+| S12-03 | SettingsTab 认证修复 | 修复 | @Backend | `settings-tab.tsx`（6 处裸 fetch → api.ts） | 1h | P1 | ✅ 已完成 |
+| S12-04 | 其余组件认证修复 | 修复 | @Backend | `promotion-item-select.tsx`(3) + `navigation.tsx`(3) + `restock-tab.tsx`(1) + `dashboard-tab.tsx`(1) | 1h | P1 | ✅ 已完成 |
 
 ### Phase 2：收银台上线（前端 — 依赖 Phase 1 但可并行）
 
 | 任务ID | 任务名称 | 类型 | 负责人 | 涉及文件 | 预估 | 优先级 | 状态 |
 |--------|---------|:----:|:------:|---------|:----:|:------:|:----:|
-| S12-05 | checkout-mode 接线 | 新增 | @Frontend | `checkout-mode.tsx`：Step 1/3 占位符 → 实际组件 | 1.5h | P0 | ⏳ 待启动 |
-| S12-06 | seed 预置 feature 开关 | 新增 | @Frontend | `prisma/seed-base.ts` 加 `feature_checkout_enabled=true` | 0.3h | P0 | ⏳ 待启动 |
-| S12-07 | Tab 切换时退出收银台 | 增强 | @Frontend | `checkout-mode.tsx` 监听 activeTab 变化自动退出 | 0.5h | P1 | ⏳ 待启动 |
+| S12-05 | checkout-mode 接线 | 新增 | @Frontend | `checkout-mode.tsx`：Step 1/3 占位符 → 实际组件 | 1.5h | P0 | ✅ 已完成 |
+| S12-06 | seed 预置 feature 开关 | 新增 | @Frontend | `prisma/seed-base.ts` 加 `feature_checkout_enabled=true` | 0.3h | P0 | ✅ 已完成 |
+| S12-07 | Tab 切换时退出收银台 | 增强 | @Frontend | `checkout-mode.tsx` 监听 activeTab 变化自动退出 | 0.5h | P1 | ✅ 已完成 |
 
 ### Phase 3：测试债务（前端 — 可并行）
 
 | 任务ID | 任务名称 | 类型 | 负责人 | 涉及文件 | 预估 | 优先级 | 状态 |
 |--------|---------|:----:|:------:|---------|:----:|:------:|:----:|
-| S12-08 | 看板卡片添加 data-testid | 增强 | @Frontend | `dashboard-tab.tsx` 各卡片容器 | 1h | P2 | ⏳ 待启动 |
-| S12-09 | 场景 F 测试脚本优化 | 增强 | @Frontend | `playwright-business-scenarios.spec.ts` 看板断言 | 0.5h | P2 | ⏳ 待启动 |
+| S12-08 | 看板卡片添加 data-testid | 增强 | @Frontend | `dashboard-tab.tsx` 各卡片容器 | 1h | P2 | ✅ 已完成 |
+| S12-09 | 场景 F 测试脚本优化 | 增强 | @Frontend | `playwright-business-scenarios.spec.ts` 看板断言 | 0.5h | P2 | ✅ 已完成 |
 
 ---
 

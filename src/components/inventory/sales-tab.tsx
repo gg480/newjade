@@ -259,7 +259,8 @@ function SalesTab() {
     configApi.getConfig()
       .then(configs => {
         const enabled = configs.find(c => c.key === 'feature_checkout_enabled');
-        setCheckoutEnabled(enabled?.value === 'true');
+        // 配置不存在时默认开启（兼容生产环境无此配置的场景）
+        setCheckoutEnabled(enabled ? enabled.value === 'true' : true);
       })
       .catch(() => setCheckoutEnabled(false));
   }, []);

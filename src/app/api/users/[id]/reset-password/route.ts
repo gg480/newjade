@@ -1,89 +1,75 @@
 import { NextResponse } from 'next/server';
 import { resetUserPassword } from '@/services/user.service';
 import { AppError } from '@/lib/errors';
-import { db } from '@/lib/db';
+import { createLimiter } from '@/lib/rate-limiter';
 import { logAction } from '@/lib/log';
-import {
-  validatePassword,
-  EXTERNAL_ERROR_MESSAGE,
-  logValidationFailure,
-} from '@/lib/password-validator';
 
 /**
  * PUT /api/users/:id/reset-password — 管理员重置用户密码
  *
- * 调用 resetUserPassword service（bcrypt 哈希 + 设置 mustChangePwd=true）
- * 前置校验：密码复杂度（8位+大小写+数字+特殊字符），失败信息脱敏
+ * 校验顺序：
+ *   ① 参数校验 → ② 速率限制 → ③ 调用 service 层
+ *
+ * 与旧版 PATCH /api/users/:id?action=reset-password 功能一致，
+ * 新增独立路由供前端统一调用。
  */
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } },
-) {
+
+// 重置密码限流：每 IP 30分钟最多5次
+const resetPasswordLimiter = createLimiter({
+  windowMs: 30 * 60 * 1000,
+  maxAttempts: 5,
+  keyType: 'ip',
+});
+
+/** 获取请求来源 IP */
+function getClientIP(req: Request): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown';
+}
+
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
-      return NextResponse.json(
-        { code: 400, data: null, message: '无效的用户ID' },
-        { status: 400 },
-      );
+      return NextResponse.json({ code: 400, data: null, message: '无效的用户ID' }, { status: 400 });
     }
 
+    // ① 参数校验
     const body = await req.json();
-    const { newPassword } = body;
+    if (!body.newPassword || typeof body.newPassword !== 'string' || body.newPassword.trim().length === 0) {
+      return NextResponse.json({ code: 400, data: null, message: '请输入新密码' }, { status: 400 });
+    }
 
-    if (!newPassword || typeof newPassword !== 'string') {
+    // ② 速率限制检查
+    const ip = getClientIP(req);
+    const limitResult = resetPasswordLimiter.check(ip);
+    if (!limitResult.allowed) {
       return NextResponse.json(
-        { code: 400, data: null, message: '请提供新密码' },
-        { status: 400 },
+        { code: 429, data: null, message: '请求过于频繁，请稍后再试' },
+        { status: 429 },
       );
     }
 
-    // 密码复杂度校验（对外脱敏，内部控制台打印详细原因）
-    const validation = validatePassword(newPassword);
-    if (!validation.valid) {
-      logValidationFailure({ userId: id }, validation);
-      return NextResponse.json(
-        { code: 400, data: null, message: EXTERNAL_ERROR_MESSAGE },
-        { status: 400 },
-      );
-    }
+    // ③ 调用 service 层（含密码复杂度校验 + bcrypt 哈希 + 更新数据库）
+    await resetUserPassword(id, body.newPassword.trim());
 
-    await resetUserPassword(id, newPassword.trim());
+    // ④ 写入审计日志（静默失败，不阻塞主流程）
+    const operator = req.headers.get('x-user-name') || 'unknown';
+    await logAction(
+      'reset_password',
+      'user',
+      id,
+      JSON.stringify({ operator, targetUserId: id }),
+      operator,
+    );
 
-    // 写入审计日志（静默失败，不阻塞主流程）
-    try {
-      const adminUserId = parseInt(req.headers.get('x-user-id') || '0');
-      const adminUser = adminUserId > 0
-        ? await db.user.findUnique({ where: { id: adminUserId }, select: { username: true } })
-        : null;
-      const adminUsername = adminUser?.username || 'unknown';
-      await logAction(
-        'reset_password',
-        'user',
-        id,
-        JSON.stringify({ operator: adminUsername, operatorId: adminUserId }),
-        adminUsername,
-      );
-    } catch {
-      // 审计日志写入失败不阻塞主流程
-    }
-
-    return NextResponse.json({
-      code: 0,
-      data: null,
-      message: '密码重置成功',
-    });
+    return NextResponse.json({ code: 0, data: null, message: '密码重置成功' });
   } catch (e) {
     if (e instanceof AppError) {
-      return NextResponse.json(
-        { code: e.code, data: null, message: e.message },
-        { status: e.statusCode },
-      );
+      return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
     const msg = e instanceof Error ? e.message : '服务器错误';
-    return NextResponse.json(
-      { code: 500, data: null, message: msg },
-      { status: 500 },
-    );
+    return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
