@@ -60,6 +60,11 @@ export interface SysConfig {
   key: string;
   value: string;
   description: string | null;
+  valueType: string | null;
+  minValue: number | null;
+  maxValue: number | null;
+  unit: string | null;
+  groupName: string | null;
 }
 
 // ========== 供应商 ==========

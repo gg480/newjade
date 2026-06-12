@@ -1,6 +1,53 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-09 | 更新人：SOLO
+> 最后更新：2026-06-10 | 更新人：SOLO
+
+---
+
+## 2026-06-10 SOLO — Sprint-013 系统配置页面集中重构全部完成
+
+**状态：全部通过 ✅ | Build: 89/89 pages ✅ | 零新增 lint 错误**
+
+### 变更总览
+
+| 类别 | 数量 | 说明 |
+|:----:|:----:|------|
+| Bug 修复 | 2 | `handleResetConfig` void Promise、配置保存顺序 |
+| 架构重构 | 7 | localStorage→服务器迁移、密码面板独立、数据概览迁移、克重定价合并、导入合并、供应商 Dialog 内聚、配置搜索 |
+| 新增功能 | 2 | 配置输入类型校验、schema 元数据扩展 |
+| 新建文件 | 2 | `PasswordPanel`、`ImportPanel` |
+
+### 核心变更
+
+| 任务 | 变更 |
+|:----:|------|
+| S13-01 | `handleResetConfig` 改为 async，先服务器后 toast |
+| S13-02 | `handleSaveConfig` 先服务器后 localStorage，try/catch 保护 |
+| S13-03 | 所有配置统一存服务器，localStorage 仅作离线回退；SysConfig 扩展 6 个字段 |
+| S13-04 | 密码修改从 ConfigPanel 拆分为独立 PasswordPanel |
+| S13-05 | 数据概览从设置页迁移到 Dashboard |
+| S13-06 | 克重定价合并到字典管理材质编辑 Dialog |
+| S13-07 | 后端配置值校验 + 前端动态输入控件 |
+| S13-08 | CSV 导入 + 标准导入合并为统一 ImportPanel |
+| S13-09 | 配置面板顶部增加搜索框 |
+| S13-10 | 供应商 Dialog 内聚到 suppliers-panel，Props 从 7 个减为 2 个 |
+
+### 新增交互路径
+
+1. **Dashboard** → 顶部新增"数据概览"卡片（货品/销售/客户/批次/DB大小）
+2. **设置 → 系统配置** → 顶部新增搜索框，支持按 key/description 过滤
+3. **设置 → 系统配置** → ConfigPanel 下方新增独立 PasswordPanel（琥珀色边框）
+4. **设置 → 字典管理** → 材质编辑 Dialog 中非贵金属显示"克重成本"输入框
+5. **设置 → 导入数据** → 统一面板，顶部"快速导入"/"标准导入"模式切换
+6. **设置 → 供应商** → 创建/编辑/删除 Dialog 内聚在面板内部
+
+### 已知待办（待排期）
+
+| 任务 | 说明 | 优先级 |
+|:----:|------|:------:|
+| S13-11 | SettingsContext + 状态下推（settings-tab.tsx 进一步精简） | P3 |
+| S13-12 | 配置变更事件通知机制 | P3 |
+| S13-16 | E2E 测试补充 + 全量回归 | P2 |
 
 ---
 

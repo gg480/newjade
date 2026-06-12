@@ -88,23 +88,26 @@ async function main() {
 
   // 1. 系统配置
   const configs = [
-    { key: 'store_name', value: '翡翠珠宝', description: '店铺名称' },
-    { key: 'operating_cost_rate', value: '0.05', description: '经营成本率' },
-    { key: 'markup_rate', value: '0.30', description: '零售价上浮比例' },
-    { key: 'aging_threshold_days', value: '90', description: '压货预警天数(旧)' },
-    { key: 'warning_days', value: '90', description: '压货预警天数' },
-    { key: 'default_alloc_method', value: 'equal', description: '默认分摊算法' },
-    { key: 'admin_password', value: 'admin123', description: '管理员登录密码' },
-    { key: 'feature_checkout_enabled', value: 'true', description: '是否启用收银台模式' },
+    { key: 'store_name', value: '翡翠珠宝', description: '店铺名称', valueType: 'string', groupName: 'system' },
+    { key: 'operating_cost_rate', value: '0.05', description: '经营成本率', valueType: 'number', groupName: 'system' },
+    { key: 'markup_rate', value: '0.30', description: '零售价上浮比例', valueType: 'number', groupName: 'pricing' },
+    { key: 'aging_threshold_days', value: '90', description: '压货预警天数(旧)', valueType: 'number', groupName: 'system' },
+    { key: 'warning_days', value: '90', description: '压货预警天数', valueType: 'number', groupName: 'system' },
+    { key: 'default_alloc_method', value: 'equal', description: '默认分摊算法', valueType: 'string', groupName: 'system' },
+    { key: 'admin_password', value: 'admin123', description: '管理员登录密码', valueType: 'string', groupName: 'system' },
+    { key: 'feature_checkout_enabled', value: 'true', description: '是否启用收银台模式', valueType: 'string', groupName: 'system' },
+    { key: 'currency_symbol', value: '¥', description: '默认货币符号', valueType: 'string', groupName: 'system' },
+    { key: 'profit_warning_threshold', value: '30', description: '利润预警阈值(%)', valueType: 'number', groupName: 'system', minValue: 0, maxValue: 100, unit: '%' },
+    { key: 'default_profit_rate', value: '40', description: '默认利润率(%)', valueType: 'number', groupName: 'pricing', minValue: 0, maxValue: 100, unit: '%' },
   ];
   for (const c of configs) {
     await prisma.sysConfig.upsert({
       where: { key: c.key },
-      update: { value: c.value, description: c.description },
-      create: c,
+      update: { value: c.value, description: c.description, valueType: c.valueType, groupName: c.groupName, minValue: c.minValue ?? null, maxValue: c.maxValue ?? null, unit: c.unit ?? null },
+      create: { key: c.key, value: c.value, description: c.description, valueType: c.valueType, groupName: c.groupName, minValue: c.minValue ?? null, maxValue: c.maxValue ?? null, unit: c.unit ?? null },
     });
   }
-  console.log('✅ 系统配置已插入/更新 (7条)');
+  console.log('✅ 系统配置已插入/更新 (11条)');
 
   // 2. 材质 (36种) — 含 category 大类
   const materials = [

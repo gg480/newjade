@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   use: {
-    baseURL: 'http://127.0.0.1:9677',
+    baseURL: 'http://localhost:9677',
     headless: true,
     viewport: { width: 1920, height: 1080 },
     actionTimeout: 10000,

@@ -1,4 +1,6 @@
 'use client';
+// ⚠️ 废弃（DEPRECATED）：克重定价已合并到字典管理材质编辑 Dialog 中（settings-tab.tsx）
+// 保留此文件仅为兼容引用，新代码请勿使用。确认无任何引用后可删除此文件。
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -12,23 +12,11 @@ import {
   AlertTriangle,
   Loader2,
   Clock,
-  Grid,
-  Package,
-  ShoppingCart,
-  Users,
-  Layers,
   Trash2,
 } from 'lucide-react';
 import { formatRelativeTime } from '../settings-tab';
 
 interface BackupPanelProps {
-  dataStats: {
-    itemsCount: number | null;
-    salesCount: number | null;
-    customersCount: number | null;
-    batchesCount: number | null;
-  };
-  dbSizeLoading: boolean;
   lastBackupFromStorage: string | null;
   restoreFileInputRef: RefObject<HTMLInputElement | null>;
   restoring: boolean;
@@ -42,8 +30,6 @@ interface BackupPanelProps {
 }
 
 export default function SettingsBackupPanel({
-  dataStats,
-  dbSizeLoading,
   lastBackupFromStorage,
   restoreFileInputRef,
   restoring,
@@ -57,68 +43,6 @@ export default function SettingsBackupPanel({
 }: BackupPanelProps) {
   return (
     <div className="space-y-4">
-      {/* Data Statistics Card */}
-      <Card className="border-l-4 border-l-emerald-400 hover:shadow-sm transition-shadow duration-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Grid className="h-4 w-4 text-emerald-500" />
-            数据统计
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            <div className="p-3 bg-muted/50 rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                <Package className="h-3.5 w-3.5" />
-                <span className="text-xs">货品总数</span>
-              </div>
-              <p className="text-lg font-bold">
-                {dbSizeLoading ? '...' : (dataStats.itemsCount ?? '...')}
-              </p>
-            </div>
-            <div className="p-3 bg-muted/50 rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                <ShoppingCart className="h-3.5 w-3.5" />
-                <span className="text-xs">销售总数</span>
-              </div>
-              <p className="text-lg font-bold">
-                {dbSizeLoading ? '...' : (dataStats.salesCount ?? '...')}
-              </p>
-            </div>
-            <div className="p-3 bg-muted/50 rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                <Users className="h-3.5 w-3.5" />
-                <span className="text-xs">客户总数</span>
-              </div>
-              <p className="text-lg font-bold">
-                {dbSizeLoading ? '...' : (dataStats.customersCount ?? '...')}
-              </p>
-            </div>
-            <div className="p-3 bg-muted/50 rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                <Layers className="h-3.5 w-3.5" />
-                <span className="text-xs">批次总数</span>
-              </div>
-              <p className="text-lg font-bold">
-                {dbSizeLoading ? '...' : (dataStats.batchesCount ?? '...')}
-              </p>
-            </div>
-            <div className="p-3 bg-muted/50 rounded-lg text-center col-span-2 md:col-span-1">
-              <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
-                <Database className="h-3.5 w-3.5" />
-                <span className="text-xs">数据库</span>
-              </div>
-              <p className="text-sm font-medium">SQLite</p>
-              {lastBackupFromStorage && (
-                <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-center gap-0.5">
-                  <Clock className="h-2.5 w-2.5" />
-                  上次备份: {lastBackupFromStorage}
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Download backup */}
       <Card className="border-l-4 border-l-red-400 hover:shadow-sm transition-shadow duration-200">

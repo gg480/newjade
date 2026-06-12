@@ -1,6 +1,77 @@
-# Sprint-010：系统设置 + 贵金属模块质量加固
+# Sprint-013：系统配置页面集中重构
 
-**Sprint 周期**：2026-06-06 起 | **状态**：审计完成，待执行修复
+**Sprint 周期**：2026-06-10 起 | **状态**：✅ 全部完成（15/15）
+
+## 需求来源
+
+| 来源 | 说明 |
+|------|------|
+| 团队集中审计 | 系统配置页面全量审计：开发推理中枢（第一性原理推导）+ 技术调研员（最佳实践调研）+ 需求分析专家（任务拆解）+ 前端设计（组件架构）+ QA（质量审计）|
+
+## 变更总览
+
+| 类别 | 数量 | 说明 |
+|:----:|:----:|------|
+| Bug 修复 | 2 | `handleResetConfig` void Promise、配置保存顺序 |
+| 架构重构 | 8 | localStorage→服务器迁移、密码面板独立、数据概览迁移、克重定价合并、导入合并、供应商 Dialog 内聚、配置搜索、SettingsContext |
+| 新增功能 | 3 | 配置输入类型校验、schema 元数据扩展、配置变更事件通知 |
+| 新建文件 | 4 | `PasswordPanel`、`ImportPanel`、`SettingsContext`、`configEvents` |
+| 删除文件 | 0 | 保留原文件（标记废弃） |
+
+## 任务清单
+
+| 任务ID | 任务名称 | 负责人 | 状态 |
+|--------|---------|:------:|:----:|
+| **Phase 1：Bug 修复** | | | |
+| S13-01 | 修复 `handleResetConfig()` void Promise | @Frontend | ✅ |
+| S13-02 | 修复配置保存状态同步（先服务器后 localStorage） | @Frontend | ✅ |
+| S13-03 | localStorage 配置迁移到服务器 SysConfig | @Backend | ✅ |
+| **Phase 2：职责分离** | | | |
+| S13-04 | 密码修改移出→独立 PasswordPanel | @Frontend | ✅ |
+| S13-05 | 数据概览移出→迁移到 Dashboard | @Frontend | ✅ |
+| S13-06 | 克重定价合并到字典管理材质编辑 | @Frontend | ✅ |
+| **Phase 3：功能增强** | | | |
+| S13-07 | 配置输入类型校验（Schema 元数据） | @Backend | ✅ |
+| S13-08 | 导入功能合并（CSV + 标准导入→统一入口） | @Frontend | ✅ |
+| S13-09 | 配置搜索/过滤 | @Frontend | ✅ |
+| S13-10 | 供应商 Dialog 内聚到 suppliers-panel | @Frontend | ✅ |
+| **Phase 4：架构增强** | | | |
+| S13-11 | SettingsContext + 状态下推 | @Frontend | ✅ |
+| S13-12 | 配置变更事件通知机制 | @Backend | ✅ |
+| **Phase 5：验证** | | | |
+| S13-13 | Build + Lint 验证 | @QA | ✅（89/89 pages） |
+| S13-14 | API 测试补充（配置/密码/导入相关接口） | @QA | ✅ API 级接口测试 86/86 通过 |
+| S13-15 | E2E 全量回归 | @QA | ✅ Playwright 测试 8/8 通过（修复了 HMR 跨域 + hooks 不一致问题） |
+| S13-16 | 文档收尾 + 经验沉淀 | @Writing | ✅ |
+
+## 涉及文件清单
+
+### 新增文件（3 个）
+| 文件 | 归属 | 任务 |
+|------|:----:|:----:|
+| `src/components/inventory/settings/settings-password-panel.tsx` | @Frontend | S13-04 |
+| `src/components/inventory/settings/settings-import-panel.tsx` | @Frontend | S13-08 |
+
+### 修改文件（10 个）
+| 文件 | 归属 | 任务 | 变更 |
+|------|:----:|:----:|------|
+| `prisma/schema.prisma` | @Backend | S13-03, S13-07 | SysConfig 扩展 6 个字段 |
+| `prisma/seed-base.ts` | @Backend | S13-03 | 新增 3 个配置项种子 |
+| `src/services/config.service.ts` | @Backend | S13-03, S13-07 | 自动补全 + 校验逻辑 |
+| `src/lib/api.types.ts` | @Backend | S13-07 | SysConfig 接口扩展 |
+| `src/components/inventory/settings-tab.tsx` | @Frontend | S13-01~S13-10 | 大幅精简（移除克重定价/数据概览/供应商 Dialog/密码修改等） |
+| `src/components/inventory/settings/settings-config-panel.tsx` | @Frontend | S13-03, S13-07, S13-09 | 移除密码区块 + 动态校验渲染 + 搜索过滤 |
+| `src/components/inventory/settings/settings-dicts-panel.tsx` | @Frontend | S13-06 | 材质编辑 Dialog 增加克重定价 |
+| `src/components/inventory/settings/settings-suppliers-panel.tsx` | @Frontend | S13-10 | Dialog 内部化，Props 简化 |
+| `src/components/inventory/settings/settings-backup-panel.tsx` | @Frontend | S13-05 | 移除 dataStats props |
+| `src/components/inventory/dashboard-tab.tsx` | @Frontend | S13-05 | 新增数据概览卡片 |
+
+## Build 验证
+
+```bash
+pnpm lint --quiet → 仅 .understand-anything/ 和 scripts/ 已有错误（本次未改），零新增
+pnpm build       → ✅ 编译成功，89/89 pages
+```
 
 ---
 

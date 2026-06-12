@@ -14,10 +14,17 @@ datasource db {
 // 1. sys_config — 系统配置（key/value/description）
 // ──────────────────────────────────────────────
 model SysConfig {
-  id          Int     @id @default(autoincrement())
-  key         String  @unique
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
   value       String
   description String?
+  valueType   String   @default("string")  // "string" | "number" | "boolean"
+  groupName   String?  // 配置分组，如 "system" | "pricing" | "notification"
+  minValue    Float?
+  maxValue    Float?
+  unit        String?  // 单位，如 "%" | "天" | "元"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 // ──────────────────────────────────────────────

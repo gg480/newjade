@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DollarSign, Calculator, History, Activity, TrendingUp, Database, ChevronDown } from 'lucide-react';
+import { DollarSign, Calculator, History, Activity, TrendingUp, Database, ChevronDown, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,24 +16,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { metalApi } from '@/lib/api';
-import type { DictMaterial, MarketPriceItem } from '@/lib/api.types';
+import { metalApi, dictsApi } from '@/lib/api';
+import type { DictMaterial, MarketPriceItem, MetalPrice } from '@/lib/api.types';
+import { formatPrice } from '../shared';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import CompetitorCompareDialog from './competitor-compare-dialog';
 import LocalReferencePanel from './local-reference-panel';
+import { useSettings } from './settings-context';
 
-interface MetalPanelProps {
-  materials: DictMaterial[];
-  onMaterialsChange: (updater: (prev: DictMaterial[]) => DictMaterial[]) => void;
-  onPreviewReprice: (materialId: number, newPrice: number) => void;
-  onPriceHistory: (materialId: number, materialName: string) => void;
-}
-
-export default function SettingsMetalPanel({
-  materials,
-  onMaterialsChange,
-  onPreviewReprice,
-  onPriceHistory,
-}: MetalPanelProps) {
+export default function SettingsMetalPanel() {
+  const { materials, refreshMaterials } = useSettings();
   const { handleError } = useErrorHandler();
 
   // 行情价数据（页面加载时获取，用户可手动刷新）
@@ -48,6 +41,18 @@ export default function SettingsMetalPanel({
 
   // 工费编辑状态：materialId -> 输入框中的值（字符串）
   const [laborInputs, setLaborInputs] = useState<Record<number, string>>({});
+
+  // Reprice preview & price history state（原 settings-tab 中定义，现迁入）
+  const [repricePreview, setRepricePreview] = useState<{
+    materialId?: number;
+    newPrice?: number;
+    affectedItems: Array<{ itemId: number; skuCode: string; name?: string; oldPrice: number; newPrice: number }>;
+    oldPrice: number;
+  } | null>(null);
+
+  const [priceHistory, setPriceHistory] = useState<MetalPrice[]>([]);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
+  const [priceHistoryMaterial, setPriceHistoryMaterial] = useState('');
 
   // 标准行情码：上海黄金交易所可查询的品种
   const STANDARD_MARKET_CODES = new Set(['Au9999', 'PT9995', 'AgT+D']);
@@ -112,11 +117,7 @@ export default function SettingsMetalPanel({
         materialId: m.id,
         laborCostPerGram: val,
       });
-      onMaterialsChange((ms: DictMaterial[]) =>
-        ms.map((x: DictMaterial) =>
-          x.id === m.id ? { ...x, laborCostPerGram: val } : x
-        )
-      );
+      await refreshMaterials();
       toast.success(`${m.name} 工费已更新为 ¥${val}/克`);
     } catch (error) {
       handleError(error, { title: '保存工费失败', silent: true });
@@ -146,6 +147,39 @@ export default function SettingsMetalPanel({
   }
 
   // 预览调价：行情价 * marketRatio + 工费 作为新克价
+  async function handlePreviewReprice(materialId: number, newPrice: number) {
+    try {
+      const result = await metalApi.previewReprice({ materialId, newPricePerGram: newPrice });
+      setRepricePreview({ ...result, materialId, newPrice });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '预览失败');
+    }
+  }
+
+  async function handleConfirmReprice() {
+    if (!repricePreview) return;
+    try {
+      await metalApi.confirmReprice({ materialId: repricePreview.materialId, newPricePerGram: repricePreview.newPrice });
+      toast.success('调价已确认，相关货品已更新');
+      setRepricePreview(null);
+      await refreshMaterials();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '确认调价失败');
+    }
+  }
+
+  async function handlePriceHistory(materialId: number, materialName: string) {
+    try {
+      const h = await metalApi.getPriceHistory({ material_id: materialId });
+      setPriceHistory(h || []);
+      setPriceHistoryMaterial(materialName);
+      setShowPriceHistory(true);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '加载历史失败');
+    }
+  }
+
+  // 预览调价：行情价 * marketRatio + 工费 作为新克价
   function handlePreviewRepriceClick(m: DictMaterial) {
     const mp = getMarketPrice(m);
     const finalPrice = calcFinalPrice(m, mp);
@@ -153,7 +187,7 @@ export default function SettingsMetalPanel({
       toast.error('无法计算售价，请先获取行情价');
       return;
     }
-    onPreviewReprice(m.id, finalPrice);
+    handlePreviewReprice(m.id, finalPrice);
   }
 
   if (preciousMetals.length === 0) {
@@ -374,7 +408,7 @@ export default function SettingsMetalPanel({
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs"
-                      onClick={() => onPriceHistory(m.id, m.name)}
+                      onClick={() => handlePriceHistory(m.id, m.name)}
                     >
                       <History className="h-3 w-3 mr-1" />
                       历史记录
@@ -401,6 +435,68 @@ export default function SettingsMetalPanel({
         ourPrice={competitorOurPrice}
         ourName={competitorOurName}
       />
+
+      {/* Reprice Preview Dialog */}
+      <Dialog open={repricePreview !== null} onOpenChange={open => { if (!open) setRepricePreview(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>调价预览</DialogTitle><DialogDescription>以下货品将受影响</DialogDescription></DialogHeader>
+          {repricePreview && (
+            <div className="space-y-3">
+              <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded text-sm">
+                <p>新单价: <span className="font-bold text-emerald-600">¥{repricePreview.newPrice}/克</span></p>
+                <p>影响货品: <span className="font-bold">{repricePreview.affectedItems?.length || 0} 件</span></p>
+              </div>
+              {repricePreview.affectedItems && repricePreview.affectedItems.length > 0 ? (
+                <div className="max-h-64 overflow-y-auto border rounded-lg">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>SKU</TableHead><TableHead>名称</TableHead><TableHead className="text-right">原价</TableHead><TableHead className="text-right">新价</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {repricePreview.affectedItems.map((item: { itemId: number; skuCode: string; name?: string; oldPrice: number; newPrice: number }) => (
+                        <TableRow key={item.itemId}>
+                          <TableCell className="font-mono text-xs">{item.skuCode}</TableCell>
+                          <TableCell className="text-sm">{item.name || '-'}</TableCell>
+                          <TableCell className="text-right text-sm">{formatPrice(item.oldPrice)}</TableCell>
+                          <TableCell className="text-right text-sm font-medium text-emerald-600">{formatPrice(item.newPrice)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : <p className="text-sm text-muted-foreground text-center py-4">没有受影响的在库货品</p>}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRepricePreview(null)}>取消</Button>
+            <Button onClick={handleConfirmReprice} className="bg-emerald-600 hover:bg-emerald-700" disabled={!repricePreview?.affectedItems?.length}>确认调价</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Price History Dialog */}
+      <Dialog open={showPriceHistory} onOpenChange={setShowPriceHistory}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>价格历史 - {priceHistoryMaterial}</DialogTitle></DialogHeader>
+          {priceHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">暂无历史记录</p>
+          ) : (
+            <div className="max-h-72 overflow-y-auto border rounded-lg">
+              <Table>
+                <TableHeader><TableRow><TableHead>日期</TableHead><TableHead className="text-right">单价(元/克)</TableHead><TableHead>操作人</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {priceHistory.map((h: MetalPrice, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-sm">{h.effectiveDate || h.createdAt?.slice(0, 10) || '-'}</TableCell>
+                      <TableCell className="text-right font-medium text-emerald-600">¥{h.pricePerGram}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{h.updatedBy || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <DialogFooter><Button variant="outline" onClick={() => setShowPriceHistory(false)}>关闭</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

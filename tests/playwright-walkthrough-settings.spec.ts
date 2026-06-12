@@ -15,7 +15,7 @@ test.describe('系统设置模块 — 全量穷举测试', () => {
 
   test('G1 系统设置子Tab加载', async ({ page }) => {
     await screenshot(page, 'settings-G1-01-初始状态.png');
-    const tabs = page.locator('button:has-text("材质"), button:has-text("器型"), button:has-text("标签"), button:has-text("系统配置")');
+    const tabs = page.locator('button:has-text("字典管理"), button:has-text("系统配置"), button:has-text("数据备份"), button:has-text("数据导入")');
     const count = await tabs.count();
     await screenshot(page, 'settings-G1-02-子Tab列表.png');
     expect(count).toBeGreaterThanOrEqual(2);

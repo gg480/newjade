@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { dashboardApi, configApi, batchesApi, request } from '@/lib/api';
+import { dashboardApi, configApi, batchesApi, itemsApi, salesApi, customersApi, request } from '@/lib/api';
 import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge, PaybackBar, EmptyState, LoadingSkeleton, CHART_COLORS } from './shared';
@@ -15,12 +15,13 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip as UiTooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import {
   Package, ShoppingCart, TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight,
   BarChart3, PieChart, AlertTriangle, CheckCircle, Gem, Layers, Tag, RefreshCw,
   Activity, Flame, Trophy, Users, CalendarDays, RotateCcw, Crown, Sparkles,
-  Target, Store, LayoutGrid,
+  Target, Store, LayoutGrid, Database, Grid,
 } from 'lucide-react';
 
 import {
@@ -99,6 +100,16 @@ function DashboardTab() {
   const [loading, setLoading] = useState(false);
   const [chartsLoaded, setChartsLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Data overview states
+  const [dataStats, setDataStats] = useState({
+    itemsCount: null as number | null,
+    salesCount: null as number | null,
+    customersCount: null as number | null,
+    batchesCount: null as number | null,
+  });
+  const [dbSize, setDbSize] = useState<string | null>(null);
+  const [dbSizeLoading, setDbSizeLoading] = useState(false);
 
   // ===== Manual Refresh + Cache =====
   const SNAPSHOT_KEY = 'dashboard_snapshot';
@@ -267,6 +278,29 @@ function DashboardTab() {
 
       // Mark core data as loaded so overview cards render immediately
       setLoading(false);
+
+      // ===== Data Overview: items/sales/customers/batches counts + DB size =====
+      try {
+        setDbSizeLoading(true);
+        const [itemsRes, salesRes, customersRes, batchesRes] = await Promise.allSettled([
+          itemsApi.getItems({ page: 1, size: 1 }),
+          salesApi.getSales({ page: 1, size: 1 }),
+          customersApi.getCustomers({ page: 1, size: 1 }),
+          batchesApi.getBatches({ page: 1, size: 1 }),
+        ]);
+        if (signal.aborted) return;
+        setDataStats({
+          itemsCount: itemsRes.status === 'fulfilled' ? (itemsRes.value.pagination?.total ?? null) : null,
+          salesCount: salesRes.status === 'fulfilled' ? (salesRes.value.pagination?.total ?? null) : null,
+          customersCount: customersRes.status === 'fulfilled' ? (customersRes.value.pagination?.total ?? null) : null,
+          batchesCount: batchesRes.status === 'fulfilled' ? (batchesRes.value.pagination?.total ?? null) : null,
+        });
+        try {
+          const configData = await configApi.getConfig();
+          const sizeStr = configData?.find?.((c: SysConfig) => c.key === 'db_size')?.value;
+          if (sizeStr) setDbSize(sizeStr);
+        } catch (e) { console.error('[DashboardTab]', e); /* ignore */ }
+      } catch (e) { console.error('[DashboardTab]', e); /* silently fail */ } finally { setDbSizeLoading(false); }
 
       // ===== Phase 2: Chart data (deferred, loaded in small batches) =====
       // Batch 1: Category/Channel/Monthly trend
@@ -726,6 +760,72 @@ function DashboardTab() {
           </Card>
         </div>
       )}
+
+      {/* ====== Data Overview ====== */}
+      <Card className="border-l-4 border-l-emerald-400 hover:shadow-sm transition-shadow duration-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2"><Grid className="h-4 w-4 text-emerald-500" />数据概览</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="p-3 rounded-lg border border-border border-l-4 border-l-emerald-500 bg-muted/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-md bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center"><Package className="h-3.5 w-3.5 text-emerald-600" /></div>
+                <span className="text-xs text-muted-foreground">货品总数</span>
+              </div>
+              {dbSizeLoading || dataStats.itemsCount == null ? (
+                <Skeleton className="h-6 w-16" />
+              ) : (
+                <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{dataStats.itemsCount ?? 0}</p>
+              )}
+            </div>
+            <div className="p-3 rounded-lg border border-border border-l-4 border-l-sky-500 bg-muted/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-md bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center"><ShoppingCart className="h-3.5 w-3.5 text-sky-600" /></div>
+                <span className="text-xs text-muted-foreground">销售总数</span>
+              </div>
+              {dbSizeLoading || dataStats.salesCount == null ? (
+                <Skeleton className="h-6 w-16" />
+              ) : (
+                <p className="text-xl font-bold text-sky-700 dark:text-sky-400">{dataStats.salesCount ?? 0}</p>
+              )}
+            </div>
+            <div className="p-3 rounded-lg border border-border border-l-4 border-l-amber-500 bg-muted/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-md bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center"><Users className="h-3.5 w-3.5 text-amber-600" /></div>
+                <span className="text-xs text-muted-foreground">客户总数</span>
+              </div>
+              {dbSizeLoading || dataStats.customersCount == null ? (
+                <Skeleton className="h-6 w-16" />
+              ) : (
+                <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{dataStats.customersCount ?? 0}</p>
+              )}
+            </div>
+            <div className="p-3 rounded-lg border border-border border-l-4 border-l-teal-500 bg-muted/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-md bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center"><Layers className="h-3.5 w-3.5 text-teal-600" /></div>
+                <span className="text-xs text-muted-foreground">批次总数</span>
+              </div>
+              {dbSizeLoading || dataStats.batchesCount == null ? (
+                <Skeleton className="h-6 w-16" />
+              ) : (
+                <p className="text-xl font-bold text-teal-700 dark:text-teal-400">{dataStats.batchesCount ?? 0}</p>
+              )}
+            </div>
+            <div className="p-3 rounded-lg border border-border border-l-4 border-l-violet-500 bg-muted/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center"><Database className="h-3.5 w-3.5 text-violet-600" /></div>
+                <span className="text-xs text-muted-foreground">数据库信息</span>
+              </div>
+              {dbSizeLoading ? (
+                <Skeleton className="h-6 w-20" />
+              ) : (
+                <p className="text-xl font-bold text-violet-700 dark:text-violet-400">{dbSize || '计算中...'}</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ====== Latest Transactions Card ====== */}
       {recentSales.length > 0 && (

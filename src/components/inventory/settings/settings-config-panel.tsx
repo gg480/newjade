@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, CheckCircle, KeyRound, Loader2 } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { Settings, CheckCircle, Search } from 'lucide-react';
 import type { SysConfig } from '@/lib/api.types';
-import { toast } from 'sonner';
-import { useErrorHandler } from '@/hooks/use-error-handler';
 
 interface ConfigPanelProps {
   configs: SysConfig[];
@@ -46,46 +43,17 @@ export default function SettingsConfigPanel({
   onSaveConfig,
   onResetConfig,
 }: ConfigPanelProps) {
-  const { handleError } = useErrorHandler();
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  /** 密码强度计算（与后端 DEFAULT_POLICY 的 5 条规则对齐） */
-  function calcPasswordStrength(pwd: string): { score: number; label: string; color: string } {
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (/[A-Z]/.test(pwd)) score++;
-    if (/[a-z]/.test(pwd)) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[^A-Za-z0-9]/.test(pwd)) score++;
-
-    if (score <= 2) return { score, label: '弱', color: 'text-red-500' };
-    if (score <= 3) return { score, label: '中', color: 'text-orange-500' };
-    return { score, label: '强', color: 'text-green-500' };
-  }
-
-  async function handleChangePassword() {
-    if (!oldPassword) { toast.error('请输入旧密码'); return; }
-    if (!newPassword) { toast.error('请输入新密码'); return; }
-    const strength = calcPasswordStrength(newPassword);
-    if (strength.score <= 2) { toast.error('密码强度太弱，请设置更强的密码'); return; }
-    if (newPassword !== confirmPassword) { toast.error('两次输入的新密码不一致'); return; }
-
-    setChangingPassword(true);
-    try {
-      await authApi.changePassword(oldPassword, newPassword);
-      toast.success('密码修改成功');
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      handleError(error, { title: '密码修改失败' });
-    } finally {
-      setChangingPassword(false);
-    }
-  }
+  const filteredConfigs = useMemo(() => {
+    const excludedKeys = ['store_name', 'warning_days', 'currency_symbol', 'profit_warning_threshold', 'default_profit_rate'];
+    if (!searchQuery.trim()) return configs.filter(c => !excludedKeys.includes(c.key));
+    const q = searchQuery.toLowerCase();
+    return configs.filter(c => {
+      if (excludedKeys.includes(c.key)) return false;
+      return c.key.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);
+    });
+  }, [configs, searchQuery]);
 
   return (
     <Card className="border-l-4 border-l-gray-400 hover:shadow-sm transition-shadow duration-200">
@@ -97,6 +65,29 @@ export default function SettingsConfigPanel({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {/* 搜索框 */}
+          <div className="flex items-center gap-2 mb-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索配置项..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setSearchQuery('')}
+              >
+                清除
+              </Button>
+            )}
+          </div>
+
           {/* System Config (localStorage + server sync for store_name) */}
           <div className="p-3 bg-violet-50 dark:bg-violet-950/30 rounded-lg border border-violet-200 dark:border-violet-800 space-y-3">
             <p className="font-medium text-sm flex items-center gap-2">
@@ -207,16 +198,17 @@ export default function SettingsConfigPanel({
           </div>
 
           {/* Server-side configs — fully editable */}
-          {configs
-            .filter((c) => !['store_name', 'warning_days'].includes(c.key))
-            .map((c) => {
+          {filteredConfigs.map((c) => {
               const editValue = editConfigs[c.key] ?? c.value;
-              const isNumeric = [
-                'operating_cost_rate',
-                'markup_rate',
-                'aging_threshold_days',
-              ].includes(c.key);
+              const valueType = c.valueType ?? 'string';
+              const isNumeric = valueType === 'number';
               const isPassword = c.key === 'admin_password';
+              // 百分比类配置：值在 0~1 之间，前端显示为百分比
+              const isPercent = isNumeric && c.minValue === 0 && c.maxValue !== null && c.maxValue <= 5;
+              // 范围提示文本
+              const rangeHint = isNumeric && (c.minValue !== null || c.maxValue !== null)
+                ? `${c.minValue !== null ? c.minValue : ''} ~ ${c.maxValue !== null ? c.maxValue : ''}${c.unit ?? ''}`
+                : null;
               return (
                 <div
                   key={c.key}
@@ -227,6 +219,11 @@ export default function SettingsConfigPanel({
                     <p className="text-xs text-muted-foreground font-mono">
                       {c.key}
                     </p>
+                    {rangeHint && (
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                        范围: {rangeHint}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -253,15 +250,17 @@ export default function SettingsConfigPanel({
                           : 'w-40 h-8 text-sm'
                       }
                       step={isNumeric ? 'any' : undefined}
+                      min={c.minValue ?? undefined}
+                      max={c.maxValue ?? undefined}
                     />
-                    {c.key === 'operating_cost_rate' && (
+                    {isPercent && (
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
                         ({(parseFloat(editValue) * 100).toFixed(0)}%)
                       </span>
                     )}
-                    {c.key === 'markup_rate' && (
+                    {c.unit && !isPercent && (
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        ({(parseFloat(editValue) * 100).toFixed(0)}%)
+                        {c.unit}
                       </span>
                     )}
                   </div>
@@ -269,84 +268,6 @@ export default function SettingsConfigPanel({
               );
             })}
         </div>
-
-          {/* 修改密码 */}
-          <div className="mt-6 pt-5 border-t p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 space-y-3">
-            <p className="font-medium text-sm flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-amber-600" />
-              修改密码
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">旧密码</Label>
-                <Input
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  className="h-8 text-sm"
-                  placeholder="输入旧密码"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">新密码</Label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="h-8 text-sm"
-                  placeholder="至少8位，含大小写字母、数字、特殊字符"
-                />
-                {/* 密码强度指示条 */}
-                {newPassword && (() => {
-                  const strength = calcPasswordStrength(newPassword);
-                  const barWidth = (strength.score / 5) * 100;
-                  const barColor = strength.score <= 2
-                    ? 'bg-red-500'
-                    : strength.score <= 3 ? 'bg-orange-500' : 'bg-green-500';
-                  return (
-                    <div className="mt-1.5">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[10px] text-muted-foreground">密码强度</span>
-                        <span className={`text-[10px] font-semibold ${strength.color}`}>
-                          {strength.label}
-                        </span>
-                      </div>
-                      <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                          style={{ width: `${barWidth}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">确认新密码</Label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword(); }}
-                  className="h-8 text-sm"
-                  placeholder="再次输入新密码"
-                />
-              </div>
-            </div>
-            <Button
-              size="sm"
-              className="h-8 bg-amber-600 hover:bg-amber-700 text-xs"
-              onClick={handleChangePassword}
-              disabled={changingPassword || (!!newPassword && calcPasswordStrength(newPassword).score <= 2)}
-            >
-              {changingPassword ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <KeyRound className="h-3 w-3 mr-1" />
-              )}
-              修改密码
-            </Button>
-          </div>
       </CardContent>
     </Card>
   );
