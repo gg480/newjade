@@ -13,7 +13,6 @@ import {
   CircleDot, SlidersHorizontal, ChevronDown, ChevronUp, X,
 } from 'lucide-react';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
-import MaterialTypeTagFilter from '@/components/inventory/shared/material-type-tag-filter';
 import type { DictMaterial, DictType, DictTag, Batch } from '@/lib/api.types';
 
 // ========== Active Filter Tags Component ==========
@@ -192,31 +191,12 @@ export default function InventoryFilterBar({
           )}
         </div>
 
-        {/* MaterialTypeTagFilter Cascade - Row 1 (full width) */}
-        <div className="mb-3">
-          <MaterialTypeTagFilter
-            materialId={filters.materialId || 'all'}
-            typeId={filters.typeId || 'all'}
-            tagId={filters.tagId || 'all'}
-            onMaterialChange={(v) => {
-              const val = v === 'all' ? '' : v;
-              onFiltersChange(f => ({ ...f, materialId: val, materialCategory: '', typeId: '', tagId: '' }));
-            }}
-            onTypeChange={(v) => onFiltersChange(f => ({ ...f, typeId: v === 'all' ? '' : v }))}
-            onTagChange={(v) => onFiltersChange(f => ({ ...f, tagId: v === 'all' ? '' : v }))}
-            materials={materials}
-            types={types}
-            tags={tags}
-            onLoadTypes={onLoadTypes}
-            onLoadTags={onLoadTags}
-            compact
-          />
-        </div>
+        {/* 材质大类 + 材质 + 器型已移至下方网格，标签筛选已移除 */}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-          {/* Keyword Search */}
-          <div className="space-y-1 relative">
-            <Label className="text-xs">关键词</Label>
+        {/* Row 1: Keyword Search (full width) */}
+        <div className="mb-3">
+          <div className="space-y-1">
+            <Label className="text-xs">关键词搜索</Label>
             <div className="relative flex gap-1.5">
               <Select value={searchField} onValueChange={onSearchFieldChange}>
                 <SelectTrigger className="w-20 h-9 text-xs shrink-0"><SelectValue /></SelectTrigger>
@@ -233,17 +213,14 @@ export default function InventoryFilterBar({
                   placeholder={searchField === 'all' ? 'SKU/名称/证书' : searchField === 'sku' ? '搜索SKU...' : searchField === 'name' ? '搜索名称...' : searchField === 'material' ? '搜索材质...' : '搜索器型...'}
                   value={filters.keyword}
                   onChange={e => onFiltersChange(f => ({ ...f, keyword: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') onSearch(); }}
                   className="h-9 pr-8"
                 />
                 {filters.keyword && (
                   <button
                     type="button"
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => {
-                      onFiltersChange(f => ({ ...f, keyword: '' }));
-                      const input = document.querySelector('input[placeholder*="SKU"]') as HTMLInputElement;
-                      if (input) input.focus();
-                    }}
+                    onClick={() => onFiltersChange(f => ({ ...f, keyword: '' }))}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -251,26 +228,65 @@ export default function InventoryFilterBar({
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Status */}
+        {/* Row 2: Filters grid — mobile 2 cols, desktop 5 cols */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {/* Material Category (大类) */}
           <div className="space-y-1">
-            <Label className="text-xs">状态</Label>
+            <Label className="text-xs">材质大类</Label>
             <Select
-              value={activeStatuses.size === 1 ? Array.from(activeStatuses)[0] : activeStatuses.size === 0 ? 'all' : 'multi'}
-              onValueChange={v => {
-                if (v === 'all') { onFiltersChange(f => ({ ...f, status: '' })); /* handled via reset */ }
-                else onToggleStatusFilter(v);
-              }}
+              value={filters.materialCategory || 'all'}
+              onValueChange={v => onFiltersChange(f => ({ ...f, materialCategory: v === 'all' ? '' : v, materialId: '', typeId: '', tagId: '' }))}
             >
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="全部" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">全部</SelectItem>
-                <SelectItem value="in_stock">在库</SelectItem>
-                <SelectItem value="sold">已售</SelectItem>
-                <SelectItem value="returned">已退</SelectItem>
-                <SelectItem value="multi" disabled>多选(用上方按钮)</SelectItem>
+                <SelectItem value="all">全部大类</SelectItem>
+                {MATERIAL_CATEGORIES.map(c => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Material (子材质) — 基于大类筛选 */}
+          <div className="space-y-1">
+            <Label className="text-xs">材质</Label>
+            <Select value={filters.materialId || 'all'} onValueChange={v => {
+              const val = v === 'all' ? '' : v;
+              onFiltersChange(f => ({ ...f, materialId: val, typeId: '', tagId: '' }));
+              const mid = val ? parseInt(val, 10) : undefined;
+              onLoadTypes(mid);
+              onLoadTags(mid);
+            }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="全部" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部材质</SelectItem>
+                {filteredMaterials.map(m => (
+                  <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Type (器型) — 基于材质过滤 */}
+          <div className="space-y-1">
+            <Label className="text-xs">器型</Label>
+            <Select value={filters.typeId || 'all'} onValueChange={v => onFiltersChange(f => ({ ...f, typeId: v === 'all' ? '' : v }))}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="全部" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部器型</SelectItem>
+                {types.map(t => (
+                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Search + Reset Buttons */}
+          <div className="flex items-end gap-2">
+            <Button size="sm" onClick={onSearch} className="h-9 flex-1"><Search className="h-3 w-3 mr-1" />搜索</Button>
+            <Button size="sm" variant="outline" onClick={onResetFilters} className="h-9 flex-1">重置</Button>
           </div>
 
           {/* Counter */}
@@ -295,12 +311,6 @@ export default function InventoryFilterBar({
                 {allBatches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Search + Reset Buttons */}
-          <div className="flex items-end gap-2">
-            <Button size="sm" onClick={onSearch} className="h-9"><Search className="h-3 w-3 mr-1" />搜索</Button>
-            <Button size="sm" variant="outline" onClick={onResetFilters} className="h-9">重置</Button>
           </div>
         </div>
 

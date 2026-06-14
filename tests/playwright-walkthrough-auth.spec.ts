@@ -6,6 +6,9 @@
  *   2. 输入错误密码 → 显示错误提示
  *   3. 登出操作 → 返回登录页
  *
+ * ⚠️ 注意：此测试需要在生产构建下运行（npx next build && npx next start -p 9677）
+ *    开发模式下 Next.js 16 Turbopack 在 Playwright 无头浏览器中无法完成 React 水合。
+ *
  * 运行: npx playwright test tests/playwright-walkthrough-auth.spec.ts --headed
  * 登录页结构: #username + #password + "登 录"按钮
  * 系统使用 localStorage auth_token 做会话管理
@@ -14,7 +17,7 @@
 import { test, expect, Page } from '@playwright/test';
 import * as path from 'path';
 
-const BASE = 'http://127.0.0.1:5000';
+const BASE = 'http://127.0.0.1:9677';
 const SCREENSHOT_DIR = path.resolve(__dirname, '../screenshots');
 
 async function screenshot(page: Page, name: string) {

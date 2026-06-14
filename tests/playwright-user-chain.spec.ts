@@ -68,7 +68,7 @@ async function waitReady(page: Page) {
 }
 
 async function loginUI(page: Page, user: string, pass: string) {
-  await page.goto(BASE, { waitUntil: 'load' });
+  await page.goto(BASE, { waitUntil: 'load', timeout: 120000 });
   // 等待 React 水合完成（登录页最多 20s）
   const usernameInput = page.locator('#username');
   await expect(usernameInput).toBeVisible({ timeout: 20000 });
@@ -84,7 +84,7 @@ async function logoutUI(page: Page) {
   // 清除浏览器中的登录状态（token 存在 localStorage 中）
   await page.evaluate(() => localStorage.removeItem('auth_token'));
   // 导航到首页，应显示登录页
-  await page.goto(BASE, { waitUntil: 'load' });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   // 等待 React 渲染登录页
   await expect(page.locator('#username')).toBeVisible({ timeout: 15000 });
   await page.waitForTimeout(1000);
@@ -164,7 +164,7 @@ test('用户行为链: 管理员→创建用户→新用户→改密→重登录
   // ===== Step 6: 新用户登录 → mustChangePwd 弹窗 =====
   console.log('\n═══ Step 5: 新用户登录 → 强制改密弹窗 ═══');
   // 定位到登录页
-  await page.goto(BASE, { waitUntil: 'load' });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#username')).toBeVisible({ timeout: 20000 });
   await page.locator('#username').fill(TEST_USER.username);
   await page.locator('#password').fill(TEST_USER.password);
