@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import * as backupService from '@/services/backup.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
-// GET /api/backup — Download SQLite database backup
-async function backupGET() {
+// GET /api/backup — Download SQLite database backup（需要 action:user_manage 权限）
+async function backupGET(req: Request) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   const result = await backupService.downloadBackup();
 
   return new NextResponse(result.buffer, {
@@ -16,8 +20,11 @@ async function backupGET() {
   });
 }
 
-// POST /api/backup — Restore database from uploaded file
+// POST /api/backup — Restore database from uploaded file（需要 action:user_manage 权限）
 async function backupPOST(req: Request) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   const formData = await req.formData();
   const file = formData.get('backup') as File | null;
 

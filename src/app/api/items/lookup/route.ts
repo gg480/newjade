@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { lookupItemBySku } from '@/services/items-extra.service';
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/errors';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 // Lookup item by SKU code (for scan-to-sell)
 export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:item_view');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const sku = searchParams.get('sku');
 

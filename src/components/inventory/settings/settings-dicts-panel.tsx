@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import type { DictMaterial, DictType, DictTag } from '@/lib/api.types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { DictMaterial, DictType, DictTag, PriceRange, CustomerSegment, ProductCategory } from '@/lib/api.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, Gem, Box, Tag, Hash, Layers, Crown, Search, Lock } from 'lucide-react';
+import { Plus, Pencil, Gem, Box, Tag, Hash, Layers, Crown, Search, Lock, DollarSign, Users, FolderTree } from 'lucide-react';
 import { toast } from 'sonner';
 import { dictsApi } from '@/lib/api';
 import { useSettings } from './settings-context';
@@ -297,6 +297,175 @@ export default function SettingsDictsPanel() {
     setTagForm({ name: tag.name || '', groupName: tag.groupName || '' });
   }
 
+  // ─── PriceRange State ───
+  const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
+  const [showCreatePriceRange, setShowCreatePriceRange] = useState(false);
+  const [editPriceRange, setEditPriceRange] = useState<PriceRange | null>(null);
+  const [priceRangeForm, setPriceRangeForm] = useState({ name: '', minValue: '', maxValue: '' });
+
+  useEffect(() => {
+    dictsApi.getPriceRanges().then(setPriceRanges).catch(() => {});
+  }, []);
+
+  async function refreshPriceRanges() {
+    try { const d = await dictsApi.getPriceRanges(); setPriceRanges(d); } catch {}
+  }
+
+  async function handleCreatePriceRange() {
+    try {
+      await dictsApi.createPriceRange({
+        name: priceRangeForm.name,
+        minValue: priceRangeForm.minValue ? parseFloat(priceRangeForm.minValue) : undefined,
+        maxValue: priceRangeForm.maxValue ? parseFloat(priceRangeForm.maxValue) : undefined,
+      });
+      toast.success('价格带创建成功');
+      setShowCreatePriceRange(false);
+      setPriceRangeForm({ name: '', minValue: '', maxValue: '' });
+      await refreshPriceRanges();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '创建失败');
+    }
+  }
+
+  async function handleUpdatePriceRange() {
+    if (!editPriceRange) return;
+    try {
+      await dictsApi.updatePriceRange(editPriceRange.id, {
+        name: priceRangeForm.name,
+        minValue: priceRangeForm.minValue ? parseFloat(priceRangeForm.minValue) : undefined,
+        maxValue: priceRangeForm.maxValue ? parseFloat(priceRangeForm.maxValue) : undefined,
+      });
+      toast.success('价格带更新成功');
+      setEditPriceRange(null);
+      setPriceRangeForm({ name: '', minValue: '', maxValue: '' });
+      await refreshPriceRanges();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '更新失败');
+    }
+  }
+
+  async function togglePriceRangeActive(id: number, isActive: boolean) {
+    try {
+      await dictsApi.updatePriceRange(id, { isActive: !isActive });
+      await refreshPriceRanges();
+      toast.success(isActive ? '已停用' : '已启用');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '操作失败');
+    }
+  }
+
+  // ─── CustomerSegment State ───
+  const [customerSegments, setCustomerSegments] = useState<CustomerSegment[]>([]);
+  const [showCreateCustomerSegment, setShowCreateCustomerSegment] = useState(false);
+  const [editCustomerSegment, setEditCustomerSegment] = useState<CustomerSegment | null>(null);
+  const [customerSegmentForm, setCustomerSegmentForm] = useState({ name: '', description: '' });
+
+  useEffect(() => {
+    dictsApi.getCustomerSegments().then(setCustomerSegments).catch(() => {});
+  }, []);
+
+  async function refreshCustomerSegments() {
+    try { const d = await dictsApi.getCustomerSegments(); setCustomerSegments(d); } catch {}
+  }
+
+  async function handleCreateCustomerSegment() {
+    try {
+      await dictsApi.createCustomerSegment({
+        name: customerSegmentForm.name,
+        description: customerSegmentForm.description || undefined,
+      });
+      toast.success('客户分组创建成功');
+      setShowCreateCustomerSegment(false);
+      setCustomerSegmentForm({ name: '', description: '' });
+      await refreshCustomerSegments();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '创建失败');
+    }
+  }
+
+  async function handleUpdateCustomerSegment() {
+    if (!editCustomerSegment) return;
+    try {
+      await dictsApi.updateCustomerSegment(editCustomerSegment.id, {
+        name: customerSegmentForm.name,
+        description: customerSegmentForm.description || undefined,
+      });
+      toast.success('客户分组更新成功');
+      setEditCustomerSegment(null);
+      setCustomerSegmentForm({ name: '', description: '' });
+      await refreshCustomerSegments();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '更新失败');
+    }
+  }
+
+  async function toggleCustomerSegmentActive(id: number, isActive: boolean) {
+    try {
+      await dictsApi.updateCustomerSegment(id, { isActive: !isActive });
+      await refreshCustomerSegments();
+      toast.success(isActive ? '已停用' : '已启用');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '操作失败');
+    }
+  }
+
+  // ─── ProductCategory State ───
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>([]);
+  const [showCreateProductCategory, setShowCreateProductCategory] = useState(false);
+  const [editProductCategory, setEditProductCategory] = useState<ProductCategory | null>(null);
+  const [productCategoryForm, setProductCategoryForm] = useState({ name: '', parentId: '', description: '' });
+
+  useEffect(() => {
+    dictsApi.getProductCategories().then(setProductCategories).catch(() => {});
+  }, []);
+
+  async function refreshProductCategories() {
+    try { const d = await dictsApi.getProductCategories(); setProductCategories(d); } catch {}
+  }
+
+  async function handleCreateProductCategory() {
+    try {
+      await dictsApi.createProductCategory({
+        name: productCategoryForm.name,
+        parentId: productCategoryForm.parentId ? parseInt(productCategoryForm.parentId, 10) : undefined,
+        description: productCategoryForm.description || undefined,
+      });
+      toast.success('商品分类创建成功');
+      setShowCreateProductCategory(false);
+      setProductCategoryForm({ name: '', parentId: '', description: '' });
+      await refreshProductCategories();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '创建失败');
+    }
+  }
+
+  async function handleUpdateProductCategory() {
+    if (!editProductCategory) return;
+    try {
+      await dictsApi.updateProductCategory(editProductCategory.id, {
+        name: productCategoryForm.name,
+        parentId: productCategoryForm.parentId ? parseInt(productCategoryForm.parentId, 10) : undefined,
+        description: productCategoryForm.description || undefined,
+      });
+      toast.success('商品分类更新成功');
+      setEditProductCategory(null);
+      setProductCategoryForm({ name: '', parentId: '', description: '' });
+      await refreshProductCategories();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '更新失败');
+    }
+  }
+
+  async function toggleProductCategoryActive(id: number, isActive: boolean) {
+    try {
+      await dictsApi.updateProductCategory(id, { isActive: !isActive });
+      await refreshProductCategories();
+      toast.success(isActive ? '已停用' : '已启用');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '操作失败');
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Materials */}
@@ -564,6 +733,219 @@ export default function SettingsDictsPanel() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Price Ranges */}
+      <Card className="border-l-4 border-l-pink-400 hover:shadow-sm transition-shadow duration-200">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-pink-500" />
+              价格带 ({priceRanges.length})
+            </CardTitle>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs"
+              onClick={() => { setShowCreatePriceRange(true); setPriceRangeForm({ name: '', minValue: '', maxValue: '' }); }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              新增价格带
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="max-h-48 overflow-y-auto custom-scrollbar">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>名称</TableHead>
+                  <TableHead>最小值</TableHead>
+                  <TableHead>最大值</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {priceRanges.map((pr: PriceRange) => (
+                  <TableRow key={pr.id} className={!pr.isActive ? 'opacity-50' : ''}>
+                    <TableCell className="font-medium">{pr.name}</TableCell>
+                    <TableCell>{pr.minValue != null ? `¥${pr.minValue}` : '-'}</TableCell>
+                    <TableCell>{pr.maxValue != null ? `¥${pr.maxValue}` : '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={pr.isActive ? 'default' : 'secondary'}
+                        className={pr.isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : ''}
+                      >
+                        {pr.isActive ? '启用' : '停用'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-amber-600"
+                          onClick={() => {
+                            setEditPriceRange(pr);
+                            setPriceRangeForm({
+                              name: pr.name || '',
+                              minValue: pr.minValue != null ? String(pr.minValue) : '',
+                              maxValue: pr.maxValue != null ? String(pr.maxValue) : '',
+                            });
+                          }}
+                          title="编辑"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => togglePriceRangeActive(pr.id, pr.isActive)}>
+                          {pr.isActive ? '停用' : '启用'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Customer Segments */}
+      <Card className="border-l-4 border-l-indigo-400 hover:shadow-sm transition-shadow duration-200">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-indigo-500" />
+              客户分组 ({customerSegments.length})
+            </CardTitle>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs"
+              onClick={() => { setShowCreateCustomerSegment(true); setCustomerSegmentForm({ name: '', description: '' }); }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              新增分组
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="max-h-48 overflow-y-auto custom-scrollbar">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>名称</TableHead>
+                  <TableHead>描述</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customerSegments.map((cs: CustomerSegment) => (
+                  <TableRow key={cs.id} className={!cs.isActive ? 'opacity-50' : ''}>
+                    <TableCell className="font-medium">{cs.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{cs.description || '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={cs.isActive ? 'default' : 'secondary'}
+                        className={cs.isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : ''}
+                      >
+                        {cs.isActive ? '启用' : '停用'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-amber-600"
+                          onClick={() => {
+                            setEditCustomerSegment(cs);
+                            setCustomerSegmentForm({ name: cs.name || '', description: cs.description || '' });
+                          }}
+                          title="编辑"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => toggleCustomerSegmentActive(cs.id, cs.isActive)}>
+                          {cs.isActive ? '停用' : '启用'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Product Categories */}
+      <Card className="border-l-4 border-l-teal-400 hover:shadow-sm transition-shadow duration-200">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-teal-500" />
+              商品分类 ({productCategories.length})
+            </CardTitle>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 h-7 text-xs"
+              onClick={() => { setShowCreateProductCategory(true); setProductCategoryForm({ name: '', parentId: '', description: '' }); }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              新增分类
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="max-h-48 overflow-y-auto custom-scrollbar">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>名称</TableHead>
+                  <TableHead>父分类</TableHead>
+                  <TableHead>描述</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {productCategories.map((pc: ProductCategory) => {
+                  const parent = productCategories.find(p => p.id === pc.parentId);
+                  return (
+                    <TableRow key={pc.id} className={!pc.isActive ? 'opacity-50' : ''}>
+                      <TableCell className="font-medium">{pc.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{parent?.name || '-'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{pc.description || '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={pc.isActive ? 'default' : 'secondary'}
+                          className={pc.isActive ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : ''}
+                        >
+                          {pc.isActive ? '启用' : '停用'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-amber-600"
+                            onClick={() => {
+                              setEditProductCategory(pc);
+                              setProductCategoryForm({
+                                name: pc.name || '',
+                                parentId: pc.parentId != null ? String(pc.parentId) : '',
+                                description: pc.description || '',
+                              });
+                            }}
+                            title="编辑"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => toggleProductCategoryActive(pc.id, pc.isActive)}>
+                            {pc.isActive ? '停用' : '启用'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -861,6 +1243,144 @@ export default function SettingsDictsPanel() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTag(null)}>取消</Button>
             <Button onClick={handleUpdateTag} className="bg-emerald-600 hover:bg-emerald-700" disabled={!tagForm.name}>保存修改</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ════════════════════════════════════════════ */}
+      {/* PriceRange Dialogs */}
+      {/* ════════════════════════════════════════════ */}
+
+      {/* Create PriceRange Dialog */}
+      <Dialog open={showCreatePriceRange} onOpenChange={setShowCreatePriceRange}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>新增价格带</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>名称 *</Label><Input value={priceRangeForm.name} onChange={e => setPriceRangeForm(f => ({ ...f, name: e.target.value }))} placeholder="如: 低端" /></div>
+            <div className="space-y-1"><Label>最小值</Label><Input type="number" value={priceRangeForm.minValue} onChange={e => setPriceRangeForm(f => ({ ...f, minValue: e.target.value }))} placeholder="如: 0" /></div>
+            <div className="space-y-1"><Label>最大值</Label><Input type="number" value={priceRangeForm.maxValue} onChange={e => setPriceRangeForm(f => ({ ...f, maxValue: e.target.value }))} placeholder="如: 1000" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreatePriceRange(false)}>取消</Button>
+            <Button onClick={handleCreatePriceRange} className="bg-emerald-600 hover:bg-emerald-700" disabled={!priceRangeForm.name}>创建</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit PriceRange Dialog */}
+      <Dialog open={editPriceRange !== null} onOpenChange={open => { if (!open) setEditPriceRange(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>编辑价格带</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>名称 *</Label><Input value={priceRangeForm.name} onChange={e => setPriceRangeForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>最小值</Label><Input type="number" value={priceRangeForm.minValue} onChange={e => setPriceRangeForm(f => ({ ...f, minValue: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>最大值</Label><Input type="number" value={priceRangeForm.maxValue} onChange={e => setPriceRangeForm(f => ({ ...f, maxValue: e.target.value }))} /></div>
+            <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+              <span className="text-sm">状态</span>
+              <Button size="sm" variant={editPriceRange?.isActive ? 'outline' : 'default'} className={editPriceRange?.isActive ? 'text-orange-600' : 'bg-emerald-600 hover:bg-emerald-700'} onClick={() => { if (editPriceRange) togglePriceRangeActive(editPriceRange.id, editPriceRange.isActive); }}>{editPriceRange?.isActive ? '停用' : '启用'}</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPriceRange(null)}>取消</Button>
+            <Button onClick={handleUpdatePriceRange} className="bg-emerald-600 hover:bg-emerald-700" disabled={!priceRangeForm.name}>保存修改</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ════════════════════════════════════════════ */}
+      {/* CustomerSegment Dialogs */}
+      {/* ════════════════════════════════════════════ */}
+
+      {/* Create CustomerSegment Dialog */}
+      <Dialog open={showCreateCustomerSegment} onOpenChange={setShowCreateCustomerSegment}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>新增客户分组</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>名称 *</Label><Input value={customerSegmentForm.name} onChange={e => setCustomerSegmentForm(f => ({ ...f, name: e.target.value }))} placeholder="如: VIP客户" /></div>
+            <div className="space-y-1"><Label>描述</Label><Input value={customerSegmentForm.description} onChange={e => setCustomerSegmentForm(f => ({ ...f, description: e.target.value }))} placeholder="如: 年消费10万以上" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateCustomerSegment(false)}>取消</Button>
+            <Button onClick={handleCreateCustomerSegment} className="bg-emerald-600 hover:bg-emerald-700" disabled={!customerSegmentForm.name}>创建</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit CustomerSegment Dialog */}
+      <Dialog open={editCustomerSegment !== null} onOpenChange={open => { if (!open) setEditCustomerSegment(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>编辑客户分组</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>名称 *</Label><Input value={customerSegmentForm.name} onChange={e => setCustomerSegmentForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>描述</Label><Input value={customerSegmentForm.description} onChange={e => setCustomerSegmentForm(f => ({ ...f, description: e.target.value }))} /></div>
+            <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+              <span className="text-sm">状态</span>
+              <Button size="sm" variant={editCustomerSegment?.isActive ? 'outline' : 'default'} className={editCustomerSegment?.isActive ? 'text-orange-600' : 'bg-emerald-600 hover:bg-emerald-700'} onClick={() => { if (editCustomerSegment) toggleCustomerSegmentActive(editCustomerSegment.id, editCustomerSegment.isActive); }}>{editCustomerSegment?.isActive ? '停用' : '启用'}</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditCustomerSegment(null)}>取消</Button>
+            <Button onClick={handleUpdateCustomerSegment} className="bg-emerald-600 hover:bg-emerald-700" disabled={!customerSegmentForm.name}>保存修改</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ════════════════════════════════════════════ */}
+      {/* ProductCategory Dialogs */}
+      {/* ════════════════════════════════════════════ */}
+
+      {/* Create ProductCategory Dialog */}
+      <Dialog open={showCreateProductCategory} onOpenChange={setShowCreateProductCategory}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>新增商品分类</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>名称 *</Label><Input value={productCategoryForm.name} onChange={e => setProductCategoryForm(f => ({ ...f, name: e.target.value }))} placeholder="如: 翡翠手镯" /></div>
+            <div className="space-y-1"><Label>父分类</Label>
+              <Select value={productCategoryForm.parentId || '_none'} onValueChange={v => setProductCategoryForm(f => ({ ...f, parentId: v === '_none' ? '' : v }))}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="无（顶级分类）" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">无（顶级分类）</SelectItem>
+                  {productCategories.filter(pc => pc.isActive).map(pc => (
+                    <SelectItem key={pc.id} value={String(pc.id)}>{pc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>描述</Label><Input value={productCategoryForm.description} onChange={e => setProductCategoryForm(f => ({ ...f, description: e.target.value }))} placeholder="如: 各类翡翠手镯" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateProductCategory(false)}>取消</Button>
+            <Button onClick={handleCreateProductCategory} className="bg-emerald-600 hover:bg-emerald-700" disabled={!productCategoryForm.name}>创建</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit ProductCategory Dialog */}
+      <Dialog open={editProductCategory !== null} onOpenChange={open => { if (!open) setEditProductCategory(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>编辑商品分类</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>名称 *</Label><Input value={productCategoryForm.name} onChange={e => setProductCategoryForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>父分类</Label>
+              <Select value={productCategoryForm.parentId || '_none'} onValueChange={v => setProductCategoryForm(f => ({ ...f, parentId: v === '_none' ? '' : v }))}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="无（顶级分类）" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">无（顶级分类）</SelectItem>
+                  {productCategories.filter(pc => pc.isActive && pc.id !== editProductCategory?.id).map(pc => (
+                    <SelectItem key={pc.id} value={String(pc.id)}>{pc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>描述</Label><Input value={productCategoryForm.description} onChange={e => setProductCategoryForm(f => ({ ...f, description: e.target.value }))} /></div>
+            <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+              <span className="text-sm">状态</span>
+              <Button size="sm" variant={editProductCategory?.isActive ? 'outline' : 'default'} className={editProductCategory?.isActive ? 'text-orange-600' : 'bg-emerald-600 hover:bg-emerald-700'} onClick={() => { if (editProductCategory) toggleProductCategoryActive(editProductCategory.id, editProductCategory.isActive); }}>{editProductCategory?.isActive ? '停用' : '启用'}</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProductCategory(null)}>取消</Button>
+            <Button onClick={handleUpdateProductCategory} className="bg-emerald-600 hover:bg-emerald-700" disabled={!productCategoryForm.name}>保存修改</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

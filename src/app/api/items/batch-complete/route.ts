@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { batchCompleteItems } from '@/services/items.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function itemsBatchCompletePatch(req: Request) {
+  const denied = await guardPermission(req, 'action:item_batch_ops');
+  if (denied) return denied;
   try {
     const body = await req.json();
     const { ids, materialId, typeId, name, tagIds, counter, floorPrice, origin, weight } = body;

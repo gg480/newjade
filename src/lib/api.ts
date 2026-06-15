@@ -1,6 +1,7 @@
 // API client for jade inventory system
 import type {
   DictMaterial, DictType, DictTag, SysConfig,
+  PriceRange, CustomerSegment, ProductCategory,
   Batch, ItemSummary, SkuLookupResult, SaleRecord, Customer, CustomerDetail,
   Supplier, SupplierStats, SupplierPurchase,
   PaginatedData, ImageUploadResult, ImageUploadResponse,
@@ -90,6 +91,33 @@ export const dictsApi = {
     request<DictTag>(`/dicts/tags/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTag: (id: number) =>
     request<null>(`/dicts/tags/${id}`, { method: 'DELETE' }),
+
+  // ===== 价格带 =====
+  getPriceRanges: () => request<PriceRange[]>('/dicts/price-ranges'),
+  createPriceRange: (data: { name: string; minValue?: number; maxValue?: number; sortOrder?: number }) =>
+    request<PriceRange>('/dicts/price-ranges', { method: 'POST', body: JSON.stringify(data) }),
+  updatePriceRange: (id: number, data: { name?: string; minValue?: number; maxValue?: number; sortOrder?: number; isActive?: boolean }) =>
+    request<PriceRange>(`/dicts/price-ranges/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePriceRange: (id: number) =>
+    request<null>(`/dicts/price-ranges/${id}`, { method: 'DELETE' }),
+
+  // ===== 客户分组 =====
+  getCustomerSegments: () => request<CustomerSegment[]>('/dicts/customer-segments'),
+  createCustomerSegment: (data: { name: string; description?: string; sortOrder?: number }) =>
+    request<CustomerSegment>('/dicts/customer-segments', { method: 'POST', body: JSON.stringify(data) }),
+  updateCustomerSegment: (id: number, data: { name?: string; description?: string; sortOrder?: number; isActive?: boolean }) =>
+    request<CustomerSegment>(`/dicts/customer-segments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCustomerSegment: (id: number) =>
+    request<null>(`/dicts/customer-segments/${id}`, { method: 'DELETE' }),
+
+  // ===== 商品分类 =====
+  getProductCategories: () => request<ProductCategory[]>('/dicts/product-categories'),
+  createProductCategory: (data: { name: string; parentId?: number; description?: string; sortOrder?: number }) =>
+    request<ProductCategory>('/dicts/product-categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateProductCategory: (id: number, data: { name?: string; parentId?: number; description?: string; sortOrder?: number; isActive?: boolean }) =>
+    request<ProductCategory>(`/dicts/product-categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProductCategory: (id: number) =>
+    request<null>(`/dicts/product-categories/${id}`, { method: 'DELETE' }),
 };
 
 // ========== Config ==========
@@ -132,10 +160,22 @@ export const itemsApi = {
   createItemsBatch: (data: CreateItemBody[]) =>
     request<ItemSummary[]>('/items/batch', { method: 'POST', body: JSON.stringify(data) }),
   lookupBySku: (sku: string) => request<SkuLookupResult>(`/items/lookup?sku=${encodeURIComponent(sku)}`),
-  uploadImage: async (itemId: number, file: File) => {
+  uploadImage: async (itemId: number, file: File, angleCode?: string) => {
     const formData = new FormData();
     formData.append('image', file);
+    if (angleCode) formData.append('angleCode', angleCode);
     const res = await fetch(`${BASE}/items/${itemId}/images`, { method: 'POST', body: formData });
+    const json = await res.json();
+    if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '上传失败');
+    return json.data as ImageUploadResult;
+  },
+  /** 扫码拍摄：SKU定位 + 上传图片 + 标记角度，一步完成 */
+  scanPhoto: async (skuCode: string, file: File, angleCode?: string) => {
+    const formData = new FormData();
+    formData.append('skuCode', skuCode);
+    formData.append('image', file);
+    if (angleCode) formData.append('angleCode', angleCode);
+    const res = await fetch(`${BASE}/items/scan-photo`, { method: 'POST', body: formData });
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '上传失败');
     return json.data as ImageUploadResult;

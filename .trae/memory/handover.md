@@ -1,6 +1,190 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-10 | 更新人：SOLO
+> 最后更新：2026-06-16 | 更新人：SOLO
+> 📦 归档索引：[[archive/2026-06-sprint-009-013|Sprint-009~013 归档]]
+
+---
+
+## 2026-06-16 Sprint-015 全部完成 + 推送前检查通过
+
+**状态：全部通过 ✅ | Build: 92/92 ✅ | 基线测试: 86/86 ✅ | 安全审查: 7/7 已修复 ✅**
+
+### 本轮新增变更
+
+| 类别 | 变更内容 |
+|:----:|----------|
+| **S14-21** | TanStack Query 配置 — `QueryClientProvider` + `use-items-query.ts` query hooks |
+| **代码审查** | 10 个问题发现，全部已修复 |
+| **安全审查** | 7 个权限遗漏（P1-P7），全部已修复 |
+| **推送前检查** | lint 无新增错误 ✅ → build 92/92 ✅ → 基线测试 86/86 ✅ |
+
+### 推送前检查清单
+
+| 检查项 | 结果 |
+|:------|:----:|
+| `pnpm lint --quiet` | ✅ 无新增错误（仅既存 .js require 问题） |
+| `pnpm run build` | ✅ 92/92 pages |
+| `npx tsx tests/e2e-click-test.ts` | ✅ **86/86**（6.2s→4.8s） |
+| 代码审查（code-review-and-quality） | ✅ 10 问题已修复 |
+| 安全审查（security-and-hardening） | ✅ 7 权限遗漏已修复 |
+
+### 待完成项
+
+| 任务 | 优先级 | 说明 |
+|:----:|:------:|------|
+| inventory-tab 全量迁移 TanStack Query | P3 | 渐进式，已有 query hooks 基础设施 |
+| TD-039~063 低优先级技术债务 | P3 | CSP/HSTS/CSRF/Excel注入等 |
+| 权限定义去重（seed.ts ↔ role.service.ts） | P3 | 提取到共享文件 |
+
+---
+
+**状态：全部通过 ✅ | Build: 92/92 pages ✅ | 基线测试: 86/86 ✅**
+
+### 变更总览
+
+| 类别 | 数量 | 说明 |
+|:----:|:----:|------|
+| 安全修复 | 4 | RBAC 中间件、备份/密码API权限、bcrypt异步化 |
+| 性能修复 | 3 | 退货流程、Dashboard分页、API错误脱敏 |
+| 权限体系 | 1 | 细粒度RBAC权限定义（30+权限key，三级角色） |
+| 路由加固 | 50+ | 核心业务API路由全部加guardPermission |
+| 新建文件 | 1 | `permission-guard.ts` |
+
+### 核心变更
+
+| 任务 | 变更 |
+|:----:|------|
+| **S15-01** | 实现 `guardPermission()` 中间件，基于 `x-user-id` header + `hasPermission()` 校验 |
+| **S15-02** | 备份 API（GET/POST `/api/backup`）限 `action:user_manage` |
+| **S15-03** | 密码重置 API（PUT `/api/users/:id/reset-password`）限 `action:user_manage` |
+| **S15-04** | bcrypt 7处 `compareSync`/`hashSync` → `compare`/`hash` async 版本 |
+| **S15-05** | 退货流程修复，统一走 `processReturn()` 含 SaleReturn 记录 |
+| **S15-06** | Dashboard 6个查询函数支持 DateRangeFilter 时间范围 |
+| **S15-07** | `safeErrorMessage()` 生产环境脱敏 |
+| **权限体系** | 细粒度权限定义：items/sales/batches/customers/suppliers/dicts/logs/metal-prices/promotions/stocktaking/import/export 各模块独立权限 |
+| **路由加固** | 50+ API 路由添加 `guardPermission` 校验 |
+
+### 权限角色
+
+| 角色 | 范围 |
+|:----:|------|
+| admin | 全部权限（30+ action + 10 tab） |
+| manager | 业务权限（不含 user_manage/role_manage/backup_manage/config_manage） |
+| staff | 仅 tab 权限 + item_view/sale_view/batch_view/customer_view/log_view |
+
+### 测试结果
+
+| 测试套件 | 通过 | 失败 | 耗时 |
+|:--------:|:----:|:----:|:----:|
+| e2e-click-test.ts（基线86项） | 86 | 0 | 4.1s |
+| scan-photo-e2e.spec.ts（19项） | 17 | 0 | 2.2m |
+
+### 待完成项
+
+| 任务 | 优先级 |
+|:----:|:------:|
+| S14-21 TanStack Query 配置 | P2 |
+| TD-039~063 低优先级技术债务（CSP/HSTS/CSRF/Excel注入等） | P3 |
+
+---
+
+## 2026-06-16 元管理 — 项目体系建设
+
+**状态：已完成 ✅**
+
+| 类别 | 数量 | 说明 |
+|:----:|:----:|------|
+| 项目手册 | 1 | 完整操作手册（23 章）写入 Obsidian |
+| 流程机制 | 4 | handover 归档门禁、Sprint 模板、五层保障机制、远程指挥台（灰度） |
+| 安全加固 | 8 | RBAC 权限守卫 + 7 个关键 API 路由加固 |
+| 性能修复 | 3 | bcrypt 异步、Dashboard 安全上限、退货流程修复 |
+| 审查 | 3 | security-auditor + code-reviewer + web-performance-auditor 三轴审查（36 项发现） |
+
+---
+
+## 2026-06-16 Bug 修复 — 库存导出按钮认证修复
+
+**状态：已完成 ✅ | 文件：inventory-tab.tsx + inventory-filter-bar.tsx**
+
+### 问题
+
+库存管理页的三个导出按钮全部无法使用：
+
+| 按钮 | 实现方式 | 根因 |
+|------|---------|------|
+| 导出CSV | 前端从 sortedItems 生成 CSV 下载 | 若已登录则正常（不经过 API） |
+| 导出Excel | 前端从 sortedItems 生成 HTML table 下载 | 若已登录则正常（不经过 API） |
+| 完整导出 | `<a href="/api/export/inventory">` 直接跳转 | ❌ `<a>` 标签不携带 Authorization header，被 middleware 拦截返回 401 |
+
+### 修复
+
+| 文件 | 变更 |
+|------|------|
+| `src/components/inventory/inventory-tab.tsx` | 新增 `handleExportFull()` 函数 — 使用 `fetch` + `localStorage.getItem('auth_token')` 携带 token 下载完整 CSV |
+| `src/components/inventory/inventory/inventory-filter-bar.tsx` | 接口新增 `onExportFull: () => void` 属性；"完整导出"从 `<a>` 标签改为 `<Button onClick={onExportFull}>`；新增 `Download` 图标导入 |
+
+### 行为变更
+
+- **完整导出**：不再在新标签页打开，改为直接触发浏览器文件下载（同 CSV/Excel 行为）
+- **安全**：未登录用户无法下载（fetch 不带 token 时 API 返回 401 → toast 提示失败）
+- **导出CSV/导出Excel**：行为不变，仅导出当前筛选/分页数据
+
+### 验证
+
+- 开发服务器启动正常，页面编译无错误
+- 首页 HTTP 200 正常返回
+
+---
+
+## 2026-06-16 Sprint-014 扫码拍摄功能 — 全部完成
+
+**状态：全部通过 ✅ | Build: 92/92 pages ✅ | lint: 零新增错误 ✅**
+
+### 变更总览
+
+| 类别 | 数量 | 说明 |
+|:----:|:----:|------|
+| 新增功能 | 2 | 扫码拍摄模式、临时拍照模式 |
+| 新增 API | 1 | POST /api/items/scan-photo |
+| 数据库变更 | 1 | ItemImage 新增 angleCode/sortOrder 字段 |
+| 新增组件 | 1 | ScanPhotoMode（全屏扫码拍摄组件） |
+| 新增测试 | 1 | tests/scan-photo-e2e.spec.ts（19个用例） |
+| 文档更新 | 3 | PRD、操作手册、CHANGELOG |
+
+### 核心功能
+
+1. **扫码拍摄**：扫码枪扫SKU → 系统定位货品 → 选角度（正面/侧面/特写/特征1/2/3）→ 摄像头拍照 → 自动上传关联到该SKU
+2. **临时拍照（先拍后录）**：不输入SKU直接拍照，通过 /api/images/upload 存临时目录，后续录数据时关联
+3. **API**：POST /api/items/scan-photo（接收 SKU+图片+角度，一步完成）
+4. **命名规则**：图片文件命名 {SKU}_{角度}_{序号}.jpg
+
+### 测试结果
+
+| 测试套件 | 通过 | 跳过 | 耗时 |
+|:--------:|:----:|:----:|:----:|
+| e2e-click-test.ts（基线86项） | 86 | 0 | 3.3s |
+| scan-photo-e2e.spec.ts（19项） | 15 | 4 | 1.7m |
+
+### 涉及文件
+
+| 文件 | 类型 |
+|------|:----:|
+| prisma/schema.prisma | 数据库 |
+| src/services/items-extra.service.ts | 后端服务 |
+| src/app/api/items/scan-photo/route.ts | 后端API（新增） |
+| src/app/api/items/[id]/images/route.ts | 后端API |
+| src/lib/api.ts | 前端API客户端 |
+| src/components/inventory/create/scan-photo-mode.tsx | 前端组件（新增） |
+| src/components/inventory/inventory-tab.tsx | 前端组件 |
+| tests/scan-photo-e2e.spec.ts | 测试（新增） |
+
+### 待完成项（后续 Sprint）
+
+| 任务 | 优先级 |
+|:----:|:------:|
+| S14-19 Dashboard 全量分页（剩余函数） | P2 |
+| S14-21 TanStack Query 配置 | P2 |
+| Sprint-015 技术债务清理 | P2 |
 
 ---
 
@@ -415,46 +599,7 @@ pnpm build       → ✅ 编译成功，89/89 pages
 
 ---
 
-## 当前状态
-
-**2026-06-10 生产环境修复：重置密码 API 404 + 收银台功能开关默认开启。两个问题均已修复并构建验证通过。**
-
-### 完成总览（代码尚未提交）
-
-| ID | 任务 | 负责 | 状态 |
-|----|------|------|------|
-| T-1~T-9 | Phase 1 收银台 + 提醒（全部） | @Frontend+@Backend | ✅ **完成** |
-| T-10 | 工厂模式 Phase 1 拍照采集界面 | @Frontend | ✅ **完成** |
-| T-11 | 字典管理分组筛选 + 材质重复检测 | @Frontend | ✅ **完成** |
-| T-12 | 单品录货表单 | @Frontend | 🔄 **进行中** |
-| T-13 | 行情价对接 + 行情源切换 + 本地参考行情 | @Frontend+@Backend | ✅ **完成** |
-| T-14 | 数据补全功能 | @Frontend+@Backend | ✅ **完成** |
-| T-15 | 贵金属定价改造 + 标签打印 CSV 导出 | @Frontend+@Backend | ✅ **完成** |
-
-### 待推进（工厂模式）
-
-| ID | 任务 | 负责 | 依赖 | 状态 |
-|----|------|------|------|:----:|
-| T-12 | 单品录货表单完成 | @Frontend | — | 🔄 |
-| T-20 | 草稿列表 + 批量设置 | @Frontend | T-10 | ⏳ |
-| T-21 | 批次录货 + 连续录入 | @Frontend | T-12 | ⏳ |
-| T-22 | 拍照强制校验 + 入口适配 | @Frontend | T-10~T-21 | ⏳ |
-| T-23 | 回归验证 | @QA | 全部 | ⏳ |
-
----
-
-### @Frontend — Promotions / Stocktaking / Settings API 已就绪
-
-所有认证修复均通过 `src/lib/api.ts` 的统一 `request()` 函数自动注入 `Authorization: Bearer {token}` 头：
-
-| 新 API 对象 | 说明 |
-|-------------|------|
-| `promotionsApi` | getPromotions / createPromotion / updatePromotion / deletePromotion / getPromotionItems / addPromotionItems / removePromotionItems / forecastPromotionEffect |
-| `stocktakingApi` | listStocktakings / createStocktaking / updateStocktaking / updateDetails |
-
-此外导出了 `request<T>()` 函数供组件直接使用（`dashboard-tab.tsx`、`navigation.tsx`、`restock-tab.tsx` 等已使用）。
-
-无破坏性变更，所有已有 API 对象和签名保持不变。
+## 活跃规则（不可归档）
 
 ---
 

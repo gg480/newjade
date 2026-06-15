@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import * as salesService from '@/services/sales.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function returnSalePOST(req: Request) {
+  const denied = await guardPermission(req, 'action:sale_return');
+  if (denied) return denied;
   const body = await req.json();
   const { saleId, refundAmount, returnReason, returnDate } = body;
   const parsedSaleId = parseInt(saleId);

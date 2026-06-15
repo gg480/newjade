@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ConflictError } from '@/lib/errors';
 import * as materialService from '@/services/dict-materials.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -11,6 +12,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await guardPermission(req, 'action:dict_manage');
+  if (denied) return denied;
   const body = await req.json();
 
   try {

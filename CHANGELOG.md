@@ -6,6 +6,39 @@ Format: [BUG] Bug修复 | [FEAT] 功能更新 | [TEST] 测试相关 | [DEPLOY] �
 
 ---
 
+## [2026-06-16]
+
+### [FEAT] Sprint-009: 扫码拍摄功能
+
+- **SOP 序列**: @Backend(T-901~T-903) → @Frontend(T-904~T-905) → @QA(T-906)
+- **验证结果**: 构建通过 ✅ | E2E 19/19 通过 ✅
+- **提交统计**: 15 个文件，+1720 / -32 行
+
+#### 扫码拍摄功能
+- **新增文件** (`@Frontend`): `src/components/inventory/scan-photo-mode.tsx`
+- **内容**:
+  - ScanPhotoMode 组件：扫码枪定位SKU → 6角度选择（正面/侧面/特写/特征1/2/3）→ 摄像头拍照 → 自动上传关联到SKU
+  - 支持临时拍照模式（先拍后录）：不输入SKU直接拍照，照片存临时目录
+  - 相机调用：使用 `navigator.mediaDevices.getUserMedia`，支持前后摄像头切换
+  - 拍照后自动生成缩略图预览，可删除重拍
+
+#### 后端API
+- **新增文件** (`@Backend`): `src/app/api/items/scan-photo/route.ts`
+- **修改文件** (`@Backend`): `src/app/api/items/[id]/images/route.ts`, `src/services/item.service.ts`
+- **内容**:
+  - POST /api/items/scan-photo 接口（SKU+图片+角度，一步完成）
+  - lookupItemBySkuAnyStatus 不限状态SKU查询函数
+  - uploadItemImage 支持 angleCode 参数，文件名改为 `{SKU}_{角度}_{序号}.jpg`
+  - 图片上传API支持接收 angleCode 参数
+
+#### 数据库
+- **修改文件** (`@Backend`): `prisma/schema.prisma`
+- **内容**: ItemImage 模型新增 angleCode（角度代码）和 sortOrder（排序）字段
+
+#### 测试
+- **新增文件** (`@QA`): `tests/scan-photo-e2e.spec.ts`
+- **内容**: 19个E2E测试用例，覆盖UI/API/集成三阶段
+
 ## [2026-05-20]
 
 ### [FEAT] Sprint-007: 多用户管理 + 登录验证 + 权限系统

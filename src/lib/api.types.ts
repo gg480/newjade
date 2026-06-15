@@ -53,6 +53,35 @@ export interface DictTag {
   isGlobal: boolean;
 }
 
+// ========== 价格带/客户分组/商品分类 ==========
+
+export interface PriceRange {
+  id: number;
+  name: string;
+  minValue: number | null;
+  maxValue: number | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CustomerSegment {
+  id: number;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface ProductCategory {
+  id: number;
+  name: string;
+  parentId: number | null;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  children?: ProductCategory[];
+}
+
 // ========== 系统配置 ==========
 
 export interface SysConfig {
@@ -548,6 +577,7 @@ export interface MetalPrice {
   pricePerGram: number;
   effectiveDate: string;
   createdAt: string;
+  updatedBy?: string;
   material?: DictMaterial;
 }
 

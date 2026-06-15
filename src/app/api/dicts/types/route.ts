@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as dictsService from '@/services/dicts.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -18,6 +19,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await guardPermission(req, 'action:dict_manage');
+  if (denied) return denied;
   const body = await req.json();
   const { name, specFields, sortOrder } = body;
   try {

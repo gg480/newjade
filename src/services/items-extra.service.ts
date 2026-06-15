@@ -18,8 +18,9 @@ const IMAGES_ROOT = process.env.NODE_ENV === 'production'
  * 上传货品图片
  * 保存文件到文件系统 + 创建 ItemImage 记录
  * 首张图片自动设为封面
+ * @param angleCode 角度代码：F=正面俯拍 S=侧面45° D=局部特写 X1/X2/X3=特征照
  */
-export async function uploadItemImage(itemId: number, file: File) {
+export async function uploadItemImage(itemId: number, file: File, angleCode?: string) {
   const item = await db.item.findUnique({ where: { id: itemId } });
   if (!item) throw new NotFoundError('货品不存在');
 
@@ -37,7 +38,13 @@ export async function uploadItemImage(itemId: number, file: File) {
   // Save file
   const buffer = Buffer.from(await file.arrayBuffer());
   const ext = file.name.split('.').pop() || 'jpg';
-  const filename = `item_${itemId}_${Date.now()}.${ext}`;
+
+  // 按 SKU+角度命名文件，便于文件系统管理
+  const angleSuffix = angleCode ? `_${angleCode}` : '';
+  const existingCount = angleCode
+    ? await db.itemImage.count({ where: { itemId, angleCode } })
+    : await db.itemImage.count({ where: { itemId } });
+  const filename = `${item.skuCode}${angleSuffix}_${String(existingCount + 1).padStart(2, '0')}.${ext}`;
 
   // Ensure directory exists
   await mkdir(IMAGES_ROOT, { recursive: true });
@@ -45,7 +52,7 @@ export async function uploadItemImage(itemId: number, file: File) {
   await writeFile(filepath, buffer);
 
   // Check if this is the first image (make it cover)
-  const existingImages = await db.itemImage.count({ where: { itemId } });
+  const totalImages = await db.itemImage.count({ where: { itemId } });
 
   // In DB, store the API path
   const dbPath = process.env.NODE_ENV === 'production'
@@ -56,7 +63,9 @@ export async function uploadItemImage(itemId: number, file: File) {
     data: {
       itemId,
       filename: dbPath,
-      isCover: existingImages === 0,
+      isCover: totalImages === 0,
+      angleCode: angleCode || null,
+      sortOrder: existingCount,
     },
   });
 
@@ -145,6 +154,32 @@ export async function lookupItemBySku(sku: string) {
     status: item.status,
     counter: item.counter,
     weight: item.spec?.weight,
+  };
+}
+
+/**
+ * SKU 扫码查询（不限状态）— 用于扫码拍摄等非销售场景
+ * 不检查货品状态，已售/已退也能查到
+ * @throws {NotFoundError} 货品不存在
+ */
+export async function lookupItemBySkuAnyStatus(sku: string) {
+  const item = await db.item.findFirst({
+    where: { skuCode: sku, isDeleted: false },
+    include: { material: true, type: true, spec: true },
+  });
+
+  if (!item) {
+    throw new NotFoundError('未找到该货品');
+  }
+
+  return {
+    id: item.id,
+    skuCode: item.skuCode,
+    name: item.name,
+    materialName: item.material?.name,
+    typeName: item.type?.name,
+    status: item.status,
+    counter: item.counter,
   };
 }
 

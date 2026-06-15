@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import * as salesService from '@/services/sales.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function bundleSalePOST(req: Request) {
+  const denied = await guardPermission(req, 'action:sale_bundle');
+  if (denied) return denied;
   const body = await req.json();
   const { itemIds, totalPrice, allocMethod, channel, saleDate, customerId, note, chainItems } = body;
   const parsedTotalPrice = parseFloat(totalPrice);

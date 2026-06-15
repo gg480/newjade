@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Bell, AlertTriangle, Package, TrendingDown, ShoppingCart,
-  CheckCircle2, Eye, ChartBar, TrendingUp, ImageOff,
+  CheckCircle2, Eye, ChartBar, TrendingUp, ImageOff, Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import ReportDetailDialog from './report-detail-dialog';
 
 // ============================================================
@@ -156,6 +157,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<NotificationItem | null>(null);
+  const [generating, setGenerating] = useState<'weekly' | 'monthly' | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { setActiveTab } = useAppStore();
 
@@ -179,6 +181,22 @@ export default function NotificationBell() {
     const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);
   }, [loadNotifications]);
+
+  // ========== 生成报表 ==========
+
+  async function handleGenerateReport(type: 'weekly_report' | 'monthly_report') {
+    const label = type === 'weekly_report' ? 'weekly' : 'monthly';
+    setGenerating(label);
+    try {
+      await notificationsApi.generateReport(type);
+      toast.success(`${type === 'weekly_report' ? '周报' : '月报'}生成成功`);
+      loadNotifications();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '生成失败');
+    } finally {
+      setGenerating(null);
+    }
+  }
 
   // ========== 点击外部关闭 ==========
 
@@ -357,6 +375,29 @@ export default function NotificationBell() {
             )}
           </ScrollArea>
 
+          {/* 底部：生成报表按钮 */}
+          <div className="border-t px-4 py-2 bg-muted/30 flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs flex-1"
+              onClick={() => handleGenerateReport('weekly_report')}
+              disabled={generating !== null}
+            >
+              {generating === 'weekly' ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <ChartBar className="h-3 w-3 mr-1" />}
+              生成周报
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs flex-1"
+              onClick={() => handleGenerateReport('monthly_report')}
+              disabled={generating !== null}
+            >
+              {generating === 'monthly' ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <TrendingUp className="h-3 w-3 mr-1" />}
+              生成月报
+            </Button>
+          </div>
           {/* 底部：总条数提示 */}
           {items.length > MAX_VISIBLE && (
             <div className="border-t px-4 py-2 bg-muted/30 text-center">

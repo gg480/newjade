@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DollarSign, Calculator, History, Activity, TrendingUp, Database, ChevronDown, Loader2 } from 'lucide-react';
+import { DollarSign, Calculator, History, Activity, TrendingUp, Database, ChevronDown, Loader2, ChartArea } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ import type { DictMaterial, MarketPriceItem, MetalPrice } from '@/lib/api.types'
 import { formatPrice } from '../shared';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CompetitorCompareDialog from './competitor-compare-dialog';
 import LocalReferencePanel from './local-reference-panel';
 import { useSettings } from './settings-context';
@@ -479,20 +480,39 @@ export default function SettingsMetalPanel() {
           {priceHistory.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">暂无历史记录</p>
           ) : (
-            <div className="max-h-72 overflow-y-auto border rounded-lg">
-              <Table>
-                <TableHeader><TableRow><TableHead>日期</TableHead><TableHead className="text-right">单价(元/克)</TableHead><TableHead>操作人</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {priceHistory.map((h: MetalPrice, i: number) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-sm">{h.effectiveDate || h.createdAt?.slice(0, 10) || '-'}</TableCell>
-                      <TableCell className="text-right font-medium text-emerald-600">¥{h.pricePerGram}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{h.updatedBy || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+              {priceHistory.length > 1 && (
+                <div className="h-48 mb-4">
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <ChartArea className="h-3 w-3" />
+                    价格趋势
+                  </p>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={[...priceHistory].reverse().map(h => ({ date: (h.effectiveDate || h.createdAt)?.slice(0, 10), price: h.pricePerGram }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="price" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} name="单价" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <div className="max-h-64 overflow-y-auto border rounded-lg">
+                <Table>
+                  <TableHeader><TableRow><TableHead>日期</TableHead><TableHead className="text-right">单价(元/克)</TableHead><TableHead>操作人</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {priceHistory.map((h: MetalPrice, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-sm">{h.effectiveDate || h.createdAt?.slice(0, 10) || '-'}</TableCell>
+                        <TableCell className="text-right font-medium text-emerald-600">¥{h.pricePerGram}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{h.updatedBy || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
           <DialogFooter><Button variant="outline" onClick={() => setShowPriceHistory(false)}>关闭</Button></DialogFooter>
         </DialogContent>

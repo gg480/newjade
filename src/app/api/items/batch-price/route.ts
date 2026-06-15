@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { batchAdjustPrice } from '@/services/items-extra.service';
 import { ValidationError } from '@/lib/errors';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function PATCH(req: Request) {
+  const denied = await guardPermission(req, 'action:item_batch_ops');
+  if (denied) return denied;
   try {
     const body = await req.json();
     const { ids, adjustmentType, value, direction } = body;

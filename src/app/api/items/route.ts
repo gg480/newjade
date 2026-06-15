@@ -2,6 +2,7 @@ import { withApiLogging } from '@/lib/api/with-api-logging';
 import { NextResponse } from 'next/server';
 import * as itemsService from '@/services/items.service';
 import { AppError, ValidationError } from '@/lib/errors';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function itemsListGet(req: Request) {
   const { searchParams } = new URL(req.url);

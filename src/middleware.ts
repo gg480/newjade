@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth',
   '/api/health',
+  // '/api/remote/',  // [灰度] 远程指令 API — 待重新设计后启用
 ];
 
 function isPublicPath(pathname: string): boolean {

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { uploadItemImage, deleteItemImage, setCoverImage } from '@/services/items-extra.service';
 import { NotFoundError, ValidationError } from '@/lib/errors';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 // Upload image for an item
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardPermission(req, 'action:item_batch_ops');
+  if (denied) return denied;
   const { id } = await params;
   const itemId = parseInt(id);
 
@@ -14,7 +17,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ code: 400, data: null, message: '请选择图片' }, { status: 400 });
     }
 
-    const imageRecord = await uploadItemImage(itemId, file);
+    const angleCode = formData.get('angleCode') as string | null;
+    const imageRecord = await uploadItemImage(itemId, file, angleCode || undefined);
     return NextResponse.json({ code: 0, data: imageRecord, message: 'ok' });
   } catch (e: unknown) {
     if (e instanceof NotFoundError) {

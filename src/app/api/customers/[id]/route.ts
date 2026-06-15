@@ -1,6 +1,7 @@
 import * as customersService from '@/services/customers.service';
 import { NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 type CustomerParams = { params: Promise<{ id: string }> };
 
@@ -16,6 +17,8 @@ async function customerByIdGET(req: Request, { params }: CustomerParams) {
 }
 
 async function customerByIdPUT(req: Request, { params }: CustomerParams) {
+  const denied = await guardPermission(req, 'action:customer_edit');
+  if (denied) return denied;
   const { id } = await params;
   const body = await req.json();
   const { name, phone, wechat, address, notes, tags } = body;

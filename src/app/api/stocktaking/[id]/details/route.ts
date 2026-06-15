@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ValidationError } from '@/lib/errors';
+import { guardPermission } from '@/lib/api/permission-guard';
 import { updateStocktakingDetails } from '@/services/stocktaking.service';
 
 // POST /api/stocktaking/[id]/details - 更新盘点明细
@@ -7,6 +8,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await guardPermission(request, 'action:stocktaking_manage');
+  if (denied) return denied;
+
   try {
     const { id } = await params;
     const body = await request.json();

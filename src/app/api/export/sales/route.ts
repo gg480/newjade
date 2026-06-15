@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getExportSalesData } from '@/services/export.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:export');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const startDate = searchParams.get('start_date');
   const endDate = searchParams.get('end_date');

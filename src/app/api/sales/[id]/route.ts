@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import * as salesService from '@/services/sales.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function saleByIdPUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardPermission(req, 'action:sale_edit');
+  if (denied) return denied;
   const { id } = await params;
   const saleId = parseInt(id);
   if (isNaN(saleId)) {

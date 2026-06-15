@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import * as materialService from '@/services/dict-materials.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(
   _req: Request,

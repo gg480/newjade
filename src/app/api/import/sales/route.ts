@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { parse as csvParse } from 'csv-parse/sync';
 import { importSalesRows } from '@/services/import.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function POST(req: Request) {
+  const denied = await guardPermission(req, 'action:import_data');
+  if (denied) return denied;
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;

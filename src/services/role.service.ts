@@ -50,21 +50,31 @@ function parsePermissions(permissionsStr: string): string[] {
 // ─── 权限常量 ─────────────────────────────────────────────
 
 export const PERMISSIONS = [
-  'tab:dashboard',
-  'tab:inventory',
-  'tab:sales',
-  'tab:batches',
-  'tab:customers',
-  'tab:settings',
-  'tab:logs',
-  'tab:promotions',
-  'tab:restock',
-  'tab:stocktaking',
-  'action:user_manage',
-  'action:role_manage',
-  'action:export',
-  'action:delete_item',
-  'action:price_adjust',
+  // 导航
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
+  'tab:customers', 'tab:settings', 'tab:logs', 'tab:promotions',
+  'tab:restock', 'tab:stocktaking',
+  // 用户 & 角色
+  'action:user_manage', 'action:role_manage',
+  // 导出 & 导入
+  'action:export', 'action:import_data',
+  // 货品（保留旧的 action:delete_item 向后兼容）
+  'action:item_create', 'action:item_edit', 'action:item_delete',
+  'action:delete_item', 'action:item_view', 'action:item_batch_ops',
+  // 销售
+  'action:sale_create', 'action:sale_return', 'action:sale_bundle',
+  'action:sale_view', 'action:sale_edit',
+  // 批次
+  'action:batch_create', 'action:batch_edit', 'action:batch_allocate',
+  'action:batch_view',
+  // 客户
+  'action:customer_create', 'action:customer_edit', 'action:customer_delete',
+  'action:customer_merge', 'action:customer_view',
+  // 其他管理
+  'action:supplier_manage', 'action:dict_manage', 'action:config_manage',
+  'action:log_view', 'action:backup_manage', 'action:metal_price_manage',
+  'action:promotion_manage', 'action:stocktaking_manage',
+  'action:restock_manage', 'action:price_adjust',
 ] as const;
 
 export type PermissionKey = typeof PERMISSIONS[number];
@@ -72,25 +82,35 @@ export type PermissionKey = typeof PERMISSIONS[number];
 export const ADMIN_PERMISSIONS: string[] = [...PERMISSIONS];
 
 export const MANAGER_PERMISSIONS: string[] = [
-  'tab:dashboard',
-  'tab:inventory',
-  'tab:sales',
-  'tab:batches',
-  'tab:customers',
-  'tab:logs',
-  'tab:promotions',
-  'tab:restock',
+  // 导航
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
+  'tab:customers', 'tab:logs', 'tab:promotions', 'tab:restock',
   'tab:stocktaking',
-  'action:export',
-  'action:delete_item',
-  'action:price_adjust',
+  // 导出 & 导入
+  'action:export', 'action:import_data',
+  // 货品（保留旧的 action:delete_item 向后兼容）
+  'action:item_create', 'action:item_edit', 'action:item_delete',
+  'action:delete_item', 'action:item_view', 'action:item_batch_ops',
+  // 销售
+  'action:sale_create', 'action:sale_return', 'action:sale_bundle',
+  'action:sale_view', 'action:sale_edit',
+  // 批次
+  'action:batch_create', 'action:batch_edit', 'action:batch_allocate',
+  'action:batch_view',
+  // 客户
+  'action:customer_create', 'action:customer_edit', 'action:customer_delete',
+  'action:customer_merge', 'action:customer_view',
+  // 其他管理（不含 user_manage/role_manage/backup_manage/config_manage）
+  'action:supplier_manage', 'action:dict_manage',
+  'action:log_view', 'action:metal_price_manage',
+  'action:promotion_manage', 'action:stocktaking_manage',
+  'action:restock_manage', 'action:price_adjust',
 ];
 
 export const STAFF_PERMISSIONS: string[] = [
-  'tab:dashboard',
-  'tab:inventory',
-  'tab:sales',
-  'tab:customers',
+  'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:customers',
+  'action:item_view', 'action:sale_view', 'action:batch_view',
+  'action:customer_view', 'action:log_view',
 ];
 
 export const PRESET_ROLES = [

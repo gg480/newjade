@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getPriceChangeLogs } from '@/services/items-extra.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:item_view');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get('item_id') ? parseInt(searchParams.get('item_id')!) : undefined;
   const page = parseInt(searchParams.get('page') || '1');

@@ -124,7 +124,7 @@ export async function getAggregate(params: AggregateParams = {}) {
       where: { status: 'in_stock', isDeleted: false },
       select: { costPrice: true, allocatedCost: true },
     }),
-    db.saleRecord.findMany({ include: { item: true } }),
+    db.saleRecord.findMany({ include: { item: true }, take: 5000 }), // 安全上限，防止全表 OOM
     db.item.count({ where: { status: 'sold', isDeleted: false } }),
     db.item.count({ where: { status: 'returned', isDeleted: false } }),
   ]);

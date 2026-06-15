@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { NotFoundError } from '@/lib/errors';
 import { getStocktakingById, updateStocktaking, deleteStocktaking } from '@/services/stocktaking.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 // GET /api/stocktaking/[id] - 获取单个盘点计划详情
 export async function GET(
@@ -25,6 +26,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await guardPermission(request, 'action:stocktaking_manage');
+  if (denied) return denied;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -42,6 +45,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await guardPermission(request, 'action:stocktaking_manage');
+  if (denied) return denied;
+
   try {
     const { id } = await params;
     await deleteStocktaking(parseInt(id));

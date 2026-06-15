@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import * as batchesService from '@/services/batches.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardPermission(_req, 'action:batch_view');
+  if (denied) return denied;
   const { id } = await params;
   try {
     const data = await batchesService.getBatchById(parseInt(id));

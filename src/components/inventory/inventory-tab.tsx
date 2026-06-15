@@ -11,6 +11,7 @@ import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton, ConfirmDialog } 
 import ItemCreateDialog from './item-create-dialog';
 import FactoryModeWrapper from './create/factory-mode-wrapper';
 import BatchPhotoMode from './create/batch-photo-mode';
+import ScanPhotoMode from './create/scan-photo-mode';
 import ItemDetailDialog from './item-detail-dialog';
 import ItemEditDialog from './item-edit-dialog';
 import LabelPrintDialog from './label-print-dialog';
@@ -164,6 +165,9 @@ function InventoryTab() {
 
   // Batch photo mode (批量补图)
   const [showBatchPhoto, setShowBatchPhoto] = useState(false);
+
+  // Scan photo mode (扫码拍摄)
+  const [showScanPhoto, setShowScanPhoto] = useState(false);
 
   // Image lightbox gallery
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -439,7 +443,29 @@ function InventoryTab() {
   async function handleReturn() {
     if (!returnConfirmItem.item) return;
     try {
-      await itemsApi.updateItem(returnConfirmItem.item.id, { status: 'returned' });
+      const item = returnConfirmItem.item;
+      // 优先通过销售退货 API 处理（含 SaleReturn 记录 + 退款审计）
+      // 如果货品有最近的销售记录，走正规退货流程
+      try {
+        const saleResult = await salesApi.getSales({ itemId: item.id, status: 'completed', page: 1, size: 1 });
+        const lastSale = saleResult?.items?.[0];
+        if (lastSale) {
+          await salesApi.returnSale({
+            saleId: lastSale.id,
+            refundAmount: lastSale.actualPrice,
+            returnReason: '库存页直接退货',
+            returnDate: new Date().toISOString().slice(0, 10),
+          });
+          toast.success('退货成功！已记录退款');
+          setReturnConfirmItem({ open: false, item: null });
+          refresh();
+          return;
+        }
+      } catch {
+        // 无关联销售记录，降级为直接状态变更（兼容旧数据）
+      }
+      // 降级：无销售记录时直接更新状态
+      await itemsApi.updateItem(item.id, { status: 'returned' });
       toast.success('退货成功！');
       setReturnConfirmItem({ open: false, item: null });
       refresh();
@@ -598,6 +624,30 @@ function InventoryTab() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success(`已导出Excel ${sortedItems.length} 条库存数据`);
+  }
+
+  // ========== Full Export (via API with auth token) ==========
+  async function handleExportFull() {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(exportApi.inventory(), { headers });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `库存数据_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('已完整导出全部库存数据');
+    } catch (e) {
+      toast.error('完整导出失败: ' + (e instanceof Error ? e.message : '未知错误'));
+    }
   }
 
   // ========== Batch Operations ==========
@@ -824,6 +874,7 @@ function InventoryTab() {
         onCreateItem={() => setShowCreate(true)}
         onExportCSV={handleExportCSV}
         onExportExcel={handleExportExcel}
+        onExportFull={handleExportFull}
         exportApiInventoryUrl={exportApi.inventory()}
         isExportDisabled={sortedItems.length === 0}
         isAllSelected={isAllSelected}
@@ -863,13 +914,22 @@ function InventoryTab() {
         </Button>
       </div>
 
-      {/* 批量补图入口 — 移动端 + 桌面端 */}
+      {/* 批量补图 + 扫码拍摄入口 */}
       <div className="flex items-center gap-2 px-1 mb-2">
         <Button
-          onClick={() => setShowBatchPhoto(true)}
+          onClick={() => setShowScanPhoto(true)}
           variant="default"
           size="sm"
           className="h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <Camera className="h-4 w-4 mr-1" />
+          扫码拍摄
+        </Button>
+        <Button
+          onClick={() => setShowBatchPhoto(true)}
+          variant="outline"
+          size="sm"
+          className="h-9 text-sm"
         >
           <Camera className="h-4 w-4 mr-1" />
           批量补图
@@ -1281,6 +1341,13 @@ function InventoryTab() {
       {showFactoryMode && (
         <FactoryModeWrapper
           onClose={() => { setShowFactoryMode(false); refresh(); }}
+        />
+      )}
+
+      {/* Scan Photo Mode（扫码拍摄） */}
+      {showScanPhoto && (
+        <ScanPhotoMode
+          onClose={() => { setShowScanPhoto(false); refresh(); }}
         />
       )}
 

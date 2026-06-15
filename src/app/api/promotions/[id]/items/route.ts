@@ -1,6 +1,7 @@
 import { withApiLogging } from '@/lib/api/with-api-logging';
 import { NextResponse } from 'next/server';
 import { NotFoundError, ValidationError } from '@/lib/errors';
+import { guardPermission } from '@/lib/api/permission-guard';
 import { getPromotionItems, addPromotionItems, removePromotionItems } from '@/services/promotions.service';
 
 async function promotionItemsGet(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +20,9 @@ async function promotionItemsGet(req: Request, { params }: { params: Promise<{ i
 }
 
 async function promotionItemsPost(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardPermission(req, 'action:promotion_manage');
+  if (denied) return denied;
+
   const { id: promotionId } = await params;
   const body = await req.json();
   const { itemIds } = body;
@@ -39,6 +43,9 @@ async function promotionItemsPost(req: Request, { params }: { params: Promise<{ 
 }
 
 async function promotionItemsDelete(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardPermission(req, 'action:promotion_manage');
+  if (denied) return denied;
+
   const { id: promotionId } = await params;
   const body = await req.json();
   const { itemIds } = body;

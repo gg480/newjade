@@ -81,8 +81,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ code: 401, data: null, message: '账户已被禁用' }, { status: 401 });
     }
 
-    // 验证密码
-    const isValid = bcrypt.compareSync(password, user.passwordHash);
+    // 验证密码（异步，避免阻塞事件循环）
+    const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
       recordFailedAttempt(clientIp);
       await logAction('login_failed', 'auth', null, JSON.stringify({ ip: clientIp, username: user.username, reason: 'wrong_password' }), 'anonymous');

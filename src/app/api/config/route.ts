@@ -3,6 +3,7 @@ import * as configService from '@/services/config.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
 import { db } from '@/lib/db';
 import { logAction } from '@/lib/log';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 // 敏感配置键：审计日志中值脱敏为 ****
 const SENSITIVE_KEYS = ['tanshu_api_key'];
@@ -23,12 +24,19 @@ async function resolveOperator(req: Request): Promise<string> {
   }
 }
 
-async function configGET() {
+async function configGET(req: Request) {
+  const denied = await guardPermission(req, 'action:config_manage');
+  if (denied) return denied;
+
   const configs = await configService.getAllConfigs();
   return NextResponse.json({ code: 0, data: configs, message: 'ok' });
 }
 
 async function configPUT(req: Request) {
+  // 权限检查：只有 admin（拥有 user_manage 权限）能修改系统配置
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   const { key, value } = await req.json();
 
   // 更新前查旧值（用于审计日志）

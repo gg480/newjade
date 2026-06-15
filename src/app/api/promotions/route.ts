@@ -2,6 +2,7 @@ import { withApiLogging } from '@/lib/api/with-api-logging';
 import { NextResponse } from 'next/server';
 import { ValidationError, NotFoundError } from '@/lib/errors';
 import { listPromotions, createPromotion, updatePromotion, deletePromotion } from '@/services/promotions.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function promotionsListGet(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -23,6 +24,9 @@ async function promotionsListGet(req: Request) {
 }
 
 async function promotionsCreatePost(req: Request) {
+  const denied = await guardPermission(req, 'action:promotion_manage');
+  if (denied) return denied;
+
   const body = await req.json();
 
   try {
@@ -38,6 +42,9 @@ async function promotionsCreatePost(req: Request) {
 }
 
 async function promotionsUpdatePut(req: Request) {
+  const denied = await guardPermission(req, 'action:promotion_manage');
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 
@@ -63,6 +70,8 @@ async function promotionsUpdatePut(req: Request) {
 }
 
 async function promotionsDeleteDelete(req: Request) {
+  const denied = await guardPermission(req, 'action:promotion_manage');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 

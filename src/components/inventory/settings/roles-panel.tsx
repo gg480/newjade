@@ -39,13 +39,67 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
-    label: '操作权限',
+    label: '用户 & 角色',
     permissions: [
       { key: 'action:user_manage', label: '用户管理' },
       { key: 'action:role_manage', label: '角色管理' },
+    ],
+  },
+  {
+    label: '货品管理',
+    permissions: [
+      { key: 'action:item_create', label: '创建货品' },
+      { key: 'action:item_edit', label: '编辑货品' },
+      { key: 'action:item_delete', label: '删除货品' },
+      { key: 'action:delete_item', label: '删除货品(旧)' },
+      { key: 'action:item_view', label: '查看货品' },
+      { key: 'action:item_batch_ops', label: '批量操作' },
+    ],
+  },
+  {
+    label: '销售管理',
+    permissions: [
+      { key: 'action:sale_create', label: '销售出库' },
+      { key: 'action:sale_return', label: '退货' },
+      { key: 'action:sale_bundle', label: '套装销售' },
+      { key: 'action:sale_view', label: '查看销售记录' },
+      { key: 'action:sale_edit', label: '编辑销售记录' },
+    ],
+  },
+  {
+    label: '批次管理',
+    permissions: [
+      { key: 'action:batch_create', label: '创建批次' },
+      { key: 'action:batch_edit', label: '编辑批次' },
+      { key: 'action:batch_allocate', label: '批次分配' },
+      { key: 'action:batch_view', label: '查看批次' },
+    ],
+  },
+  {
+    label: '客户管理',
+    permissions: [
+      { key: 'action:customer_create', label: '创建客户' },
+      { key: 'action:customer_edit', label: '编辑客户' },
+      { key: 'action:customer_delete', label: '删除客户' },
+      { key: 'action:customer_merge', label: '合并客户' },
+      { key: 'action:customer_view', label: '查看客户' },
+    ],
+  },
+  {
+    label: '其他权限',
+    permissions: [
       { key: 'action:export', label: '导出数据' },
-      { key: 'action:delete_item', label: '删除货品' },
+      { key: 'action:import_data', label: '数据导入' },
       { key: 'action:price_adjust', label: '调价' },
+      { key: 'action:supplier_manage', label: '供应商管理' },
+      { key: 'action:dict_manage', label: '字典管理' },
+      { key: 'action:config_manage', label: '系统配置管理' },
+      { key: 'action:log_view', label: '查看操作日志' },
+      { key: 'action:backup_manage', label: '备份管理' },
+      { key: 'action:metal_price_manage', label: '贵金属价格管理' },
+      { key: 'action:promotion_manage', label: '促销管理' },
+      { key: 'action:stocktaking_manage', label: '盘点管理' },
+      { key: 'action:restock_manage', label: '补货管理' },
     ],
   },
 ];

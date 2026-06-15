@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as salesService from '@/services/sales.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function salesGET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -29,6 +30,8 @@ async function salesGET(req: Request) {
 }
 
 async function salesPOST(req: Request) {
+  const denied = await guardPermission(req, 'action:sale_create');
+  if (denied) return denied;
   const body = await req.json();
   const { itemId, actualPrice, channel, saleDate, customerId, note } = body;
   const parsedItemId = parseInt(itemId);

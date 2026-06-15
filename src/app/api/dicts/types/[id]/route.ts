@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as dictsService from '@/services/dicts.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,6 +15,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardPermission(req, 'action:dict_manage');
+  if (denied) return denied;
   const { id } = await params;
   try {
     const result = await dictsService.deleteType(parseInt(id));

@@ -161,7 +161,7 @@ export async function createUser(data: CreateUserInput): Promise<UserInfo> {
     throw new NotFoundError('角色不存在');
   }
 
-  const passwordHash = bcrypt.hashSync(password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const user = await db.user.create({
     data: {
@@ -271,7 +271,7 @@ export async function resetUserPassword(id: number, newPassword: string): Promis
     throw new ValidationError('密码不符合安全策略要求');
   }
 
-  const passwordHash = bcrypt.hashSync(newPassword, 10);
+  const passwordHash = await bcrypt.hash(newPassword, 10);
   await db.user.update({
     where: { id },
     data: { passwordHash, mustChangePwd: true },

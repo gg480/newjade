@@ -84,13 +84,13 @@ export async function PUT(req: Request) {
     }
 
     // ⑦ 旧密码比对
-    const isOldPasswordValid = bcrypt.compareSync(oldPassword, user.passwordHash);
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
     if (!isOldPasswordValid) {
       return NextResponse.json({ code: 401, data: null, message: '旧密码错误' }, { status: 401 });
     }
 
     // ⑧ 更新数据库
-    const newHash = bcrypt.hashSync(newPassword, 10);
+    const newHash = await bcrypt.hash(newPassword, 10);
     await db.user.update({
       where: { id: session.userId },
       data: { passwordHash: newHash, mustChangePwd: false },

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import * as logsService from '@/services/logs.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 // Operation logs API endpoint
 
 export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:log_view');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get('page') || '1');
   const size = parseInt(searchParams.get('size') || '20');

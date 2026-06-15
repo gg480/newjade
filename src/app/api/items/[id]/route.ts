@@ -1,4 +1,5 @@
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 import { NextResponse } from 'next/server';
 import * as itemsService from '@/services/items.service';
 import { AppError, ValidationError } from '@/lib/errors';
@@ -20,6 +21,9 @@ async function itemByIdGet(req: Request, { params }: ItemParams) {
 }
 
 async function itemByIdPut(req: Request, { params }: ItemParams) {
+  const denied = await guardPermission(req, 'action:item_edit');
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json();
 
@@ -41,6 +45,9 @@ async function itemByIdPut(req: Request, { params }: ItemParams) {
 }
 
 async function itemByIdDelete(req: Request, { params }: ItemParams) {
+  const denied = await guardPermission(req, 'action:item_delete');
+  if (denied) return denied;
+
   const { id } = await params;
   const { searchParams } = new URL(req.url);
   const hardDelete = searchParams.get('hard') === 'true';

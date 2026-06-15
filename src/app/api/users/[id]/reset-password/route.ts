@@ -3,6 +3,7 @@ import { resetUserPassword } from '@/services/user.service';
 import { AppError } from '@/lib/errors';
 import { createLimiter } from '@/lib/rate-limiter';
 import { logAction } from '@/lib/log';
+import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 
 /**
  * PUT /api/users/:id/reset-password — 管理员重置用户密码
@@ -29,6 +30,10 @@ function getClientIP(req: Request): string {
 }
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  // 权限检查：只有拥有 user_manage 权限的用户才能重置他人密码
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
@@ -69,7 +74,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

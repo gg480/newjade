@@ -284,7 +284,7 @@ export function CheckoutMode({ onClose, onComplete, activeTab }: CheckoutModePro
       <StepIndicator currentStep={step} />
 
       {/* ===== 步骤内容区（可滚动） ===== */}
-      <div className="flex-1 overflow-y-auto px-4 pb-24">
+      <div className="flex-1 overflow-y-auto px-4 pb-32 md:pb-24">
         {step === 1 && (
           <StepCustomer
             onSelectCustomer={handleSelectCustomer}
@@ -315,7 +315,7 @@ export function CheckoutMode({ onClose, onComplete, activeTab }: CheckoutModePro
 
       {/* ===== 底部固定操作栏（Step 3 时由 StepPayment 内部处理） ===== */}
       {step !== 3 && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950 md:sticky">
+        <div className="sticky bottom-0 left-0 right-0 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950 z-10">
           <div className="mx-auto flex max-w-2xl items-center justify-between">
             <Button
               variant="outline"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listStocktakings, createStocktaking } from '@/services/stocktaking.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 // GET /api/stocktaking - 获取盘点计划列表
 export async function GET(request: NextRequest) {
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/stocktaking - 创建新的盘点计划
 export async function POST(request: NextRequest) {
+  const denied = await guardPermission(request, 'action:stocktaking_manage');
+  if (denied) return denied;
   try {
     const body = await request.json();
     const stocktaking = await createStocktaking(body);

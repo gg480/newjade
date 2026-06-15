@@ -1,6 +1,7 @@
 import * as customersService from '@/services/customers.service';
 import { NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 /**
  * POST /api/customers/[id]/merge
@@ -15,6 +16,8 @@ async function mergeCustomerPOST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await guardPermission(req, 'action:customer_merge');
+  if (denied) return denied;
   const sourceId = parseInt((await params).id);
 
   if (isNaN(sourceId)) {

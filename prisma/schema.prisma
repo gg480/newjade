@@ -250,6 +250,8 @@ model ItemImage {
   filename      String
   thumbnailPath String?  @map("thumbnail_path")
   isCover       Boolean  @default(false) @map("is_cover")
+  angleCode     String?  @map("angle_code")   // F=正面俯拍 S=侧面45° D=局部特写 X1/X2/X3=特征照1/2/3
+  sortOrder     Int      @default(0) @map("sort_order") // 同角度内的排序
   createdAt     DateTime @default(now()) @map("created_at")
 
   item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)

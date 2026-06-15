@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { listUsers, createUser } from '@/services/user.service';
 import { AppError } from '@/lib/errors';
 import { createLimiter } from '@/lib/rate-limiter';
+import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 
 // 创建用户限流：每 IP 30分钟最多5次
 const createUserLimiter = createLimiter({
@@ -19,9 +20,12 @@ function getClientIP(req: Request): string {
 
 /**
  * GET /api/users — 用户列表（分页）
- * 需要 action:user_manage 权限（middleware 鉴权 + route 二次验证）
+ * 需要 action:user_manage 权限
  */
 export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -38,7 +42,7 @@ export async function GET(req: Request) {
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
@@ -48,6 +52,9 @@ export async function GET(req: Request) {
  * 需要 action:user_manage 权限
  */
 export async function POST(req: Request) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     // 速率限制检查
     const ip = getClientIP(req);
@@ -68,7 +75,7 @@ export async function POST(req: Request) {
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

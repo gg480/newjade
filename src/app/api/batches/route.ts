@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import * as batchesService from '@/services/batches.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:batch_view');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get('page') || '1');
   const size = parseInt(searchParams.get('size') || '20');

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { cleanupDeletedItems, countDeletedItems } from '@/services/items-extra.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const denied = await guardPermission(req, 'action:item_delete');
+  if (denied) return denied;
+
   try {
     const data = await cleanupDeletedItems();
 

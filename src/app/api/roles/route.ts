@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { listRoles, createRole } from '@/services/role.service';
 import { AppError } from '@/lib/errors';
+import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 
 /**
  * GET /api/roles — 角色列表（不分页）
@@ -13,15 +14,18 @@ export async function GET() {
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
 
 /**
- * POST /api/roles — 创建角色
+ * POST /api/roles — 创建角色（需要 action:role_manage 权限）
  */
 export async function POST(req: Request) {
+  const denied = await guardPermission(req, 'action:role_manage');
+  if (denied) return denied;
+
   try {
     const body = await req.json();
     const { name, description, permissions } = body;
@@ -32,7 +36,7 @@ export async function POST(req: Request) {
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }

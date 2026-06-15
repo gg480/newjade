@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { previewReprice } from '@/services/metal-prices.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function repricePOST(req: Request) {
+  const denied = await guardPermission(req, 'action:metal_price_manage');
+  if (denied) return denied;
   const body = await req.json();
   const materialId = parseInt(body.materialId);
   const newPricePerGram = parseFloat(body.newPricePerGram);

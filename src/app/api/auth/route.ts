@@ -92,7 +92,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ code: 401, data: null, message: '用户名或密码错误' }, { status: 401 });
       }
 
-      const isValid = bcrypt.compareSync(password, user.passwordHash);
+      const isValid = await bcrypt.compare(password, user.passwordHash);
       if (!isValid) {
         recordFailedAttempt(clientIp);
         return NextResponse.json({ code: 401, data: null, message: '用户名或密码错误' }, { status: 401 });
@@ -140,11 +140,11 @@ export async function POST(req: Request) {
     // 如果数据库无密码hash，回退默认密码
     let isValid = false;
     if (user) {
-      isValid = bcrypt.compareSync(password, user.passwordHash);
+      isValid = await bcrypt.compare(password, user.passwordHash);
     } else {
       isValid = password === DEFAULT_PASSWORD;
       if (isValid) {
-        const hash = bcrypt.hashSync(DEFAULT_PASSWORD, 10);
+        const hash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
         user = await db.user.create({
           data: { username: 'admin', passwordHash: hash, mustChangePwd: false, displayName: '系统管理员' },
           include: { role: true },
@@ -247,13 +247,13 @@ export async function PUT(req: Request) {
     }
 
     // ⑦ 旧密码比对
-    const isOldPasswordValid = bcrypt.compareSync(oldPassword, user.passwordHash);
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash);
     if (!isOldPasswordValid) {
       return NextResponse.json({ code: 401, data: null, message: '旧密码错误' }, { status: 401 });
     }
 
     // ⑧ 更新数据库
-    const newHash = bcrypt.hashSync(newPassword, 10);
+    const newHash = await bcrypt.hash(newPassword, 10);
     await db.user.update({
       where: { id: session.userId },
       data: { passwordHash: newHash, mustChangePwd: false },

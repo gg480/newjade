@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { NotFoundError } from '@/lib/errors';
 import * as supplierService from '@/services/supplier.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function GET(
   _req: Request,
@@ -28,6 +29,8 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await guardPermission(req, 'action:supplier_manage');
+  if (denied) return denied;
   const { id } = await params;
   const body = await req.json();
   try {
@@ -42,9 +45,12 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await guardPermission(req, 'action:supplier_manage');
+  if (denied) return denied;
+
   const { id } = await params;
   try {
     await supplierService.deleteSupplier(parseInt(id));

@@ -1,6 +1,7 @@
 import * as customersService from '@/services/customers.service';
 import { NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
 
 async function customersGET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -35,6 +36,8 @@ async function customersGET(req: Request) {
 }
 
 async function customersPOST(req: Request) {
+  const denied = await guardPermission(req, 'action:customer_create');
+  if (denied) return denied;
   const body = await req.json();
   const { name, phone, wechat, address, notes, tags } = body;
 

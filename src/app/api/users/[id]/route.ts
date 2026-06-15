@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getUser, updateUser, deleteUser, updateUserRole, resetUserPassword } from '@/services/user.service';
 import { AppError } from '@/lib/errors';
 import { createLimiter } from '@/lib/rate-limiter';
+import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 
 // 重置密码限流：每 IP 30分钟最多5次
 const resetPasswordLimiter = createLimiter({
@@ -18,9 +19,12 @@ function getClientIP(req: Request): string {
 }
 
 /**
- * GET /api/users/:id — 用户详情
+ * GET /api/users/:id — 用户详情（需要 action:user_manage）
  */
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
@@ -33,15 +37,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
 
 /**
- * PUT /api/users/:id — 编辑用户（displayName/roleId/isActive）
+ * PUT /api/users/:id — 编辑用户（需要 action:user_manage）
  */
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
@@ -57,15 +64,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
 
 /**
- * DELETE /api/users/:id — 禁用/启用用户（切换 isActive）
+ * DELETE /api/users/:id — 禁用/启用用户（需要 action:user_manage）
  */
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
@@ -81,17 +91,18 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
 
 /**
- * PATCH /api/users/:id — 扩展方法路由
- * action=role：修改角色
- * action=reset-password：重置密码
+ * PATCH /api/users/:id — 扩展方法路由（需要 action:user_manage）
  */
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const denied = await guardPermission(req, 'action:user_manage');
+  if (denied) return denied;
+
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
@@ -128,7 +139,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.code, data: null, message: e.message }, { status: e.statusCode });
     }
-    const msg = e instanceof Error ? e.message : '服务器错误';
+    const msg = safeErrorMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
   }
 }
