@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getLabelExportData } from '@/services/export.service';
-import { ValidationError } from '@/lib/errors';
 import { guardPermission } from '@/lib/api/permission-guard';
 
 export async function POST(req: Request) {
   const denied = await guardPermission(req, 'action:export');
   if (denied) return denied;
-  const { ids } = await req.json();
-
-  // 校验 ids 是非空数组
-  if (!Array.isArray(ids) || ids.length === 0) {
-    throw new ValidationError('请选择至少一个货品');
-  }
+  const body = await req.json().catch(() => ({}));
+  const ids: number[] | undefined = Array.isArray(body.ids) ? body.ids : undefined;
 
   const { headers, rows } = await getLabelExportData({ ids });
 

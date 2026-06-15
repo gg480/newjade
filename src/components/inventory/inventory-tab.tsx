@@ -761,6 +761,16 @@ function InventoryTab() {
     }
   }
 
+  /** 导出全部货品标签数据（德佟 P2 微打 App 兼容 CSV） */
+  async function handleExportAllLabels() {
+    try {
+      await exportApi.exportAllLabels();
+      toast.success('已导出全部货品标签数据');
+    } catch (e: unknown) {
+      toast.error('导出失败: ' + (e instanceof Error ? e.message : '未知错误'));
+    }
+  }
+
   async function handleBatchCounter() {
     const counter = parseInt(batchCounterForm.counter);
     if (isNaN(counter)) {
@@ -875,6 +885,7 @@ function InventoryTab() {
         onExportCSV={handleExportCSV}
         onExportExcel={handleExportExcel}
         onExportFull={handleExportFull}
+        onExportAllLabels={handleExportAllLabels}
         exportApiInventoryUrl={exportApi.inventory()}
         isExportDisabled={sortedItems.length === 0}
         isAllSelected={isAllSelected}

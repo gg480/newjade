@@ -16,7 +16,7 @@ export interface ExportSalesParams {
 }
 
 export interface LabelExportParams {
-  ids: number[];
+  ids?: number[];
 }
 
 // ============================================================
@@ -66,11 +66,13 @@ export async function getExportInventoryData(params: ExportInventoryParams) {
 export async function getLabelExportData(params: LabelExportParams) {
   const { ids } = params;
 
+  const where: Prisma.ItemWhereInput = { isDeleted: false };
+  if (ids && ids.length > 0) {
+    where.id = { in: ids };
+  }
+
   const items = await db.item.findMany({
-    where: {
-      id: { in: ids },
-      isDeleted: false,
-    },
+    where,
     include: { material: true, type: true, spec: true },
     orderBy: { skuCode: 'asc' },
   });

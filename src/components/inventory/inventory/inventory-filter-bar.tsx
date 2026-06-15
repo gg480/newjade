@@ -134,6 +134,7 @@ interface FilterBarProps {
   onExportCSV: () => void;
   onExportExcel: () => void;
   onExportFull: () => void;
+  onExportAllLabels: () => void;
   exportApiInventoryUrl: string;
   isExportDisabled: boolean;
 
@@ -155,7 +156,7 @@ export default function InventoryFilterBar({
   showMoreFilters, onToggleMoreFilters,
   onSearch, onResetFilters,
   sortBy, onSortByChange, sortOrder, onSortOrderToggle, sortFieldLabels,
-  onCreateItem, onExportCSV, onExportExcel, onExportFull, exportApiInventoryUrl, isExportDisabled,
+  onCreateItem, onExportCSV, onExportExcel, onExportFull, onExportAllLabels, exportApiInventoryUrl, isExportDisabled,
   isAllSelected, isSomeSelected, onToggleSelectAll,
   onClearFilter,
 }: FilterBarProps) {
@@ -351,6 +352,7 @@ export default function InventoryFilterBar({
             <Button size="sm" variant="outline" className="h-9" onClick={onExportCSV} disabled={isExportDisabled}><FileDown className="h-3 w-3 mr-1" />导出CSV</Button>
             <Button size="sm" variant="outline" className="h-9" onClick={onExportExcel} disabled={isExportDisabled}><FileSpreadsheet className="h-3 w-3 mr-1" />导出Excel</Button>
             <Button size="sm" variant="outline" className="h-9" onClick={onExportFull}><Download className="h-3 w-3 mr-1" />完整导出</Button>
+            <Button size="sm" variant="outline" className="h-9" onClick={onExportAllLabels}><FileSpreadsheet className="h-3 w-3 mr-1" />导出标签数据</Button>
             {/* Mobile Select All */}
             <Button size="sm" variant="outline" className="h-9 md:hidden" onClick={onToggleSelectAll}>
               <CheckSquare className="h-3 w-3 mr-1" />
