@@ -6,7 +6,9 @@ import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 /**
  * GET /api/roles — 角色列表（不分页）
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await guardPermission(req, 'action:role_manage');
+  if (denied) return denied;
   try {
     const roles = await listRoles();
     return NextResponse.json({ code: 0, data: { items: roles }, message: 'ok' });

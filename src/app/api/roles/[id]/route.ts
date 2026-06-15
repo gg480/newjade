@@ -6,9 +6,10 @@ import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 /**
  * GET /api/roles/:id — 角色详情
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的角色ID' }, { status: 400 });
     }
@@ -27,12 +28,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 /**
  * PUT /api/roles/:id — 编辑角色（需要 action:role_manage）
  */
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guardPermission(req, 'action:role_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的角色ID' }, { status: 400 });
     }
@@ -54,12 +56,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 /**
  * DELETE /api/roles/:id — 删除角色（需要 action:role_manage）
  */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guardPermission(req, 'action:role_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的角色ID' }, { status: 400 });
     }

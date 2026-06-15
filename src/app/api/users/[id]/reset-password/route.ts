@@ -29,13 +29,14 @@ function getClientIP(req: Request): string {
     || 'unknown';
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   // 权限检查：只有拥有 user_manage 权限的用户才能重置他人密码
   const denied = await guardPermission(req, 'action:user_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的用户ID' }, { status: 400 });
     }

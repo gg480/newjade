@@ -21,12 +21,13 @@ function getClientIP(req: Request): string {
 /**
  * GET /api/users/:id — 用户详情（需要 action:user_manage）
  */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guardPermission(req, 'action:user_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的用户ID' }, { status: 400 });
     }
@@ -45,12 +46,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 /**
  * PUT /api/users/:id — 编辑用户（需要 action:user_manage）
  */
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guardPermission(req, 'action:user_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的用户ID' }, { status: 400 });
     }
@@ -72,12 +74,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 /**
  * DELETE /api/users/:id — 禁用/启用用户（需要 action:user_manage）
  */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guardPermission(req, 'action:user_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的用户ID' }, { status: 400 });
     }
@@ -99,12 +102,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 /**
  * PATCH /api/users/:id — 扩展方法路由（需要 action:user_manage）
  */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await guardPermission(req, 'action:user_manage');
   if (denied) return denied;
 
   try {
-    const id = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id = parseInt(idStr);
     if (isNaN(id)) {
       return NextResponse.json({ code: 400, data: null, message: '无效的用户ID' }, { status: 400 });
     }

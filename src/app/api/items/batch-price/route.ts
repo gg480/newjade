@@ -21,7 +21,6 @@ export async function PATCH(req: Request) {
     if (e instanceof ValidationError) {
       return NextResponse.json({ code: 400, message: e.message }, { status: 400 });
     }
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ code: 500, message: `批量调价失败: ${message}` }, { status: 500 });
+    return NextResponse.json({ code: 500, message: '批量调价失败' }, { status: 500 });
   }
 }

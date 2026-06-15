@@ -54,7 +54,6 @@ export async function POST(req: Request) {
       message: `导入完成: 成功${result.successCount}条, 失败${result.failCount}条`,
     });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ code: 500, data: null, message: `导入失败: ${message}` }, { status: 500 });
+    return NextResponse.json({ code: 500, data: null, message: '导入失败' }, { status: 500 });
   }
 }

@@ -409,6 +409,143 @@ async function test14_operationLogs() {
   assert(json?.data?.pagination?.total > 0, '操作日志非空 (之前操作产生了日志)');
 }
 
+// ========== Sprint-015 新增测试：RBAC 权限体系 ==========
+
+async function test15_rbacPermissionDenied() {
+  console.log('\n📋 测试15: RBAC 权限拒绝 — 无权限用户调用受保护 API');
+
+  // 步骤1: 以 staff 角色登录（staff 只有查看权限）
+  // 先创建一个 staff 角色的用户
+  const { json: createUser } = await request('POST', '/api/users', {
+    username: `e2e-staff-${Date.now()}`,
+    password: 'Test123!@#',
+    roleId: 3,  // staff 角色 ID=3
+  });
+  if (createUser?.code !== 0) {
+    logFail('创建 staff 用户失败');
+    return;
+  }
+  const staffUsername = createUser.data.username;
+  logPass(`staff 用户已创建: ${staffUsername}`);
+
+  // 步骤2: 用 staff 用户登录，获取 token
+  const loginRes = await fetch(`${BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: staffUsername, password: 'Test123!@#' }),
+  });
+  const loginData = await loginRes.json();
+  const staffToken = loginData?.data?.token;
+  if (!staffToken) { logFail('staff 登录失败'); return; }
+  logPass('staff 登录成功，已获取 token');
+
+  // 步骤3: 用 staff token 调用需要 action:role_manage 的 API → 应该返回 403
+  const roleRes = await fetch(`${BASE}/api/roles`, {
+    headers: { 'Authorization': `Bearer ${staffToken}` },
+  });
+  assert(roleRes.status === 403, 'staff 访问角色管理 → 403 (权限不足)');
+
+  // 步骤4: 用 staff token 调用需要 action:user_manage 的 API → 应该返回 403
+  const userRes = await fetch(`${BASE}/api/users`, {
+    headers: { 'Authorization': `Bearer ${staffToken}` },
+  });
+  assert(userRes.status === 403, 'staff 访问用户管理 → 403 (权限不足)');
+
+  // 步骤5: 用 staff token 调用需要 action:item_create 的 API → 应该返回 403
+  const itemRes = await fetch(`${BASE}/api/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${staffToken}` },
+    body: JSON.stringify({ materialId: 6, typeId: 10, costPrice: 1000, sellingPrice: 2000 }),
+  });
+  assert(itemRes.status === 403, 'staff 创建货品 → 403 (权限不足)');
+
+  // 步骤6: 用 staff token 调用需要 action:sale_create 的 API → 应该返回 403
+  const saleRes = await fetch(`${BASE}/api/sales`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${staffToken}` },
+    body: JSON.stringify({ itemId: 1, actualPrice: 1000, channel: 'store', saleDate: '2026-06-16' }),
+  });
+  assert(saleRes.status === 403, 'staff 创建销售 → 403 (权限不足)');
+
+  // 步骤7: 用 staff token 调用只读 API → 应该返回 200
+  const itemsRes = await fetch(`${BASE}/api/items?page=1&size=5`, {
+    headers: { 'Authorization': `Bearer ${staffToken}` },
+  });
+  const itemsJson = await itemsRes.json();
+  assert(itemsRes.status === 200 && itemsJson.code === 0, 'staff 查看货品列表 → 200 (允许)');
+
+  // 步骤8: 恢复 admin token（后续测试继续用 admin）
+  await login();
+}
+
+async function test16_roleManagement() {
+  console.log('\n📋 测试16: 角色管理 — 创建/编辑/删除角色');
+
+  // 步骤1: 创建新角色
+  const { status: cStatus, json: cJson } = await request('POST', '/api/roles', {
+    name: `E2E测试角色-${Date.now()}`,
+    description: '自动化测试创建',
+    permissions: ['tab:inventory', 'action:item_view'],
+  });
+  assert(cStatus === 200, '角色创建 HTTP 200');
+  assert(cJson?.code === 0, '角色创建 API code=0');
+  assert(cJson?.data?.id > 0, '角色 ID 已返回');
+  const roleId = cJson.data.id;
+  logPass(`角色已创建: id=${roleId}`);
+
+  // 步骤2: 获取角色列表，验证新角色在其中
+  const { json: listJson } = await request('GET', '/api/roles');
+  assert(listJson?.code === 0, '角色列表 API code=0');
+  assert(listJson?.data?.items?.some((r: any) => r.id === roleId), '新角色在列表中');
+
+  // 步骤3: 编辑角色
+  const { status: uStatus, json: uJson } = await request('PUT', `/api/roles/${roleId}`, {
+    name: `E2E-已编辑-${Date.now()}`,
+    permissions: ['tab:inventory', 'action:item_view', 'action:item_create'],
+  });
+  assert(uStatus === 200, '角色编辑 HTTP 200');
+  assert(uJson?.code === 0, '角色编辑 API code=0');
+
+  // 步骤4: 删除角色（非系统角色可删除）
+  const { status: dStatus, json: dJson } = await request('DELETE', `/api/roles/${roleId}`);
+  assert(dStatus === 200, '角色删除 HTTP 200');
+  assert(dJson?.code === 0, '角色删除 API code=0');
+}
+
+async function test17_userManagement() {
+  console.log('\n📋 测试17: 用户管理 — 创建/编辑/删除用户');
+
+  // 步骤1: 创建用户
+  const username = `e2e-user-${Date.now()}`;
+  const { status: cStatus, json: cJson } = await request('POST', '/api/users', {
+    username,
+    password: 'Test123!@#',
+    roleId: 2,  // manager 角色
+  });
+  assert(cStatus === 200, '用户创建 HTTP 200');
+  assert(cJson?.code === 0, '用户创建 API code=0');
+  assert(cJson?.data?.id > 0, '用户 ID 已返回');
+  const userId = cJson.data.id;
+  logPass(`用户已创建: id=${userId}, username=${username}`);
+
+  // 步骤2: 编辑用户
+  const { status: uStatus, json: uJson } = await request('PUT', `/api/users/${userId}`, {
+    roleId: 3,  // 改为 staff 角色
+  });
+  assert(uStatus === 200, '用户编辑 HTTP 200');
+  assert(uJson?.code === 0, '用户编辑 API code=0');
+
+  // 步骤3: 验证用户列表包含新用户
+  const { json: listJson } = await request('GET', '/api/users');
+  assert(listJson?.code === 0, '用户列表 API code=0');
+  assert(listJson?.data?.items?.some((u: any) => u.id === userId), '新用户在列表中');
+
+  // 步骤4: 删除用户
+  const { status: dStatus, json: dJson } = await request('DELETE', `/api/users/${userId}`);
+  assert(dStatus === 200, '用户删除 HTTP 200');
+  assert(dJson?.code === 0, '用户删除 API code=0');
+}
+
 // ========== 主流程 ==========
 
 async function main() {
@@ -457,6 +594,11 @@ async function main() {
     // 阶段9: 备份与日志
     await test13_backup();
     await test14_operationLogs();
+    
+    // 阶段10: RBAC 权限测试（Sprint-015）
+    await test15_rbacPermissionDenied();
+    await test16_roleManagement();
+    await test17_userManagement();
     
   } catch (err: any) {
     console.error('\n💥 测试执行异常:', err.message);

@@ -2,9 +2,11 @@ import { withApiLogging } from '@/lib/api/with-api-logging';
 import { NextResponse } from 'next/server';
 import * as itemsService from '@/services/items.service';
 import { AppError, ValidationError } from '@/lib/errors';
-import { guardPermission } from '@/lib/api/permission-guard';
+import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
 
 async function itemsListGet(req: Request) {
+  const denied = await guardPermission(req, 'action:item_view');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
 
   try {
@@ -28,11 +30,13 @@ async function itemsListGet(req: Request) {
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.statusCode, data: null, message: e.message }, { status: e.statusCode });
     }
-    return NextResponse.json({ code: 500, data: null, message: `查询失败: ${e.message}` }, { status: 500 });
+    return NextResponse.json({ code: 500, data: null, message: '查询失败' }, { status: 500 });
   }
 }
 
 async function itemsCreatePost(req: Request) {
+  const denied = await guardPermission(req, 'action:item_create');
+  if (denied) return denied;
   const body = await req.json();
 
   try {
@@ -48,7 +52,7 @@ async function itemsCreatePost(req: Request) {
     if (e instanceof AppError) {
       return NextResponse.json({ code: e.statusCode, data: null, message: e.message }, { status: e.statusCode });
     }
-    return NextResponse.json({ code: 500, data: null, message: `创建失败: ${e.message}` }, { status: 500 });
+    return NextResponse.json({ code: 500, data: null, message: '创建失败' }, { status: 500 });
   }
 }
 
