@@ -143,11 +143,27 @@ export async function deleteSession(token: string): Promise<void> {
 
 /**
  * Check if a user has a specific permission
+ * - Admin 角色直接放行（拥有全部权限）
+ * - 其他角色按权限列表校验
  * @param userId - User ID
  * @param permission - Permission key to check
  * @returns boolean
  */
 export async function hasPermission(userId: number, permission: string): Promise<boolean> {
-  const permissions = await getPermissions(userId);
-  return permissions.includes(permission);
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user || !user.role) return false;
+
+    // Admin 角色拥有全部权限
+    if (user.role.name === 'admin') return true;
+
+    const permissions = parsePermissions(user.role.permissions);
+    return permissions.includes(permission);
+  } catch {
+    return false;
+  }
 }
