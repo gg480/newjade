@@ -41,9 +41,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
   Package, CheckCircle, DollarSign, BarChart3, Plus, Search, Eye,
-  Pencil, DollarSign as DollarSignIcon, RotateCcw, Trash2, FileDown, Barcode, Printer, ArrowUp, ArrowDown, ArrowUpDown, Camera, Layers,
+  Pencil, DollarSign as DollarSignIcon, RotateCcw, Trash2, Barcode, Printer, ArrowUp, ArrowDown, ArrowUpDown, Camera, Layers,
   ShoppingCart, Tag, MapPin, X, Gem, CheckSquare, ChevronDown, ChevronUp, SlidersHorizontal,
-  Info, FileText, FileCheck, CalendarDays, Target, MoreHorizontal, Copy, FileSpreadsheet, Loader2, Clock,
+  Info, FileText, FileCheck, CalendarDays, Target, MoreHorizontal, Copy, Loader2, Clock,
   CircleDot, AlertCircle,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -211,13 +211,6 @@ function InventoryTab() {
     window.addEventListener('shortcut-new-item', handler);
     return () => window.removeEventListener('shortcut-new-item', handler);
   }, []);
-
-  // Listen for shortcut-export to trigger CSV export
-  useEffect(() => {
-    const handler = () => handleExportCSV();
-    window.addEventListener('shortcut-export', handler);
-    return () => window.removeEventListener('shortcut-export', handler);
-  }, [handleExportCSV]);
 
   // Extract unique counters from loaded items
   const allCounters = useMemo(() => {
@@ -550,106 +543,6 @@ function InventoryTab() {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   }
 
-  // ========== CSV Export ==========
-  function handleExportCSV() {
-    if (sortedItems.length === 0) {
-      toast.error('没有可导出的数据');
-      return;
-    }
-    const statusMap: Record<string, string> = { in_stock: '在库', sold: '已售', returned: '已退' };
-    const header = 'SKU,名称,器型,材质,状态,成本,售价,采购日期,柜台号';
-    const rows = sortedItems.map(item => {
-      const name = item.name || item.skuCode;
-      const typeName = item.typeName || '';
-      const materialName = item.materialName || '';
-      const status = statusMap[item.status] || item.status;
-      const cost = item.allocatedCost || item.estimatedCost || item.costPrice || 0;
-      const sellingPrice = item.sellingPrice || 0;
-      const purchaseDate = item.purchaseDate || '';
-      const counter = item.counter || '';
-      // Escape commas/quotes in CSV
-      const escape = (v: string) => {
-        if (v.includes(',') || v.includes('"') || v.includes('\n')) {
-          return `"${v.replace(/"/g, '""')}"`;
-        }
-        return v;
-      };
-      return [item.skuCode, escape(name), escape(typeName), escape(materialName), status, cost, sellingPrice, purchaseDate, counter].join(',');
-    });
-    const csv = '\uFEFF' + header + '\n' + rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `库存数据_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success(`已导出 ${sortedItems.length} 条库存数据`);
-  }
-
-  // ========== Excel Export (HTML table approach) ==========
-  function handleExportExcel() {
-    if (sortedItems.length === 0) {
-      toast.error('没有可导出的数据');
-      return;
-    }
-    const statusMap: Record<string, string> = { in_stock: '在库', sold: '已售', returned: '已退' };
-    const headers = ['SKU', '名称', '器型', '材质', '状态', '成本', '售价', '采购日期', '柜台号', '证书号'];
-    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-    html += '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>库存数据</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
-    html += '<body><table border="1" cellspacing="0" cellpadding="4">';
-    html += '<tr style="background-color:#059669;color:#fff;font-weight:bold">';
-    headers.forEach(h => { html += `<td>${h}</td>`; });
-    html += '</tr>';
-    sortedItems.forEach(item => {
-      html += '<tr>';
-      html += `<td>${item.skuCode || ''}</td>`;
-      html += `<td>${item.name || ''}</td>`;
-      html += `<td>${item.typeName || ''}</td>`;
-      html += `<td>${item.materialName || ''}</td>`;
-      html += `<td>${statusMap[item.status] || item.status || ''}</td>`;
-      html += `<td>${item.allocatedCost || item.estimatedCost || item.costPrice || 0}</td>`;
-      html += `<td>${item.sellingPrice || 0}</td>`;
-      html += `<td>${item.purchaseDate || ''}</td>`;
-      html += `<td>${item.counter != null ? item.counter : ''}</td>`;
-      html += `<td>${item.certNo || ''}</td>`;
-      html += '</tr>';
-    });
-    html += '</table></body></html>';
-    const blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `库存数据_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success(`已导出Excel ${sortedItems.length} 条库存数据`);
-  }
-
-  // ========== Full Export (via API with auth token) ==========
-  async function handleExportFull() {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(exportApi.inventory(), { headers });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `HTTP ${res.status}`);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `库存数据_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast.success('已完整导出全部库存数据');
-    } catch (e) {
-      toast.error('完整导出失败: ' + (e instanceof Error ? e.message : '未知错误'));
-    }
-  }
-
   // ========== Batch Operations ==========
 
   async function handleBatchSell() {
@@ -882,11 +775,7 @@ function InventoryTab() {
         onSortOrderToggle={toggleSortOrder}
         sortFieldLabels={sortFieldLabels}
         onCreateItem={() => setShowCreate(true)}
-        onExportCSV={handleExportCSV}
-        onExportExcel={handleExportExcel}
-        onExportFull={handleExportFull}
         onExportAllLabels={handleExportAllLabels}
-        exportApiInventoryUrl={exportApi.inventory()}
         isExportDisabled={sortedItems.length === 0}
         isAllSelected={isAllSelected}
         isSomeSelected={isSomeSelected}

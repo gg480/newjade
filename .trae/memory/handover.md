@@ -1,6 +1,34 @@
 # 任务交接 · Handover
 
 > 最后更新：2026-06-17 | 更新人：SOLO
+
+---
+
+## 2026-06-17 库存导出按钮清理+标签导出字段调整
+
+**状态：✅ 已完成**
+
+### 完成内容
+
+- 移除库存页面工具栏的「导出CSV」「导出Excel」「完整导出」三个按钮
+- 只保留「导出标签数据」按钮
+- 标签导出字段改为：商品名称、售价（贵金属输出克重如"12.5g"）、规格（贵金属不输出）、条形码（SKU编码）
+- 清理了 `inventory-tab.tsx` 中对应的三个处理函数和 `shortcut-export` 事件监听
+- 移除了 `inventory-filter-bar.tsx` 和 `inventory-tab.tsx` 中未使用的导入变量
+
+### 涉及文件
+
+| 文件 | 变更 |
+|------|------|
+| `src/services/export.service.ts` | 修改 `getLabelExportData` 字段逻辑 |
+| `src/components/inventory/inventory-tab.tsx` | 移除3个导出函数+shortcut监听+相关导入 |
+| `src/components/inventory/inventory/inventory-filter-bar.tsx` | 移除3个导出按钮+props |
+
+### 验证
+
+- ✅ `pnpm lint --quiet`：零新增错误
+- ✅ `pnpm build`：通过
+- ✅ 测试文件无引用已移除按钮
 > 📦 归档索引：[[archive/2026-06-sprint-009-013|Sprint-009~013 归档]]
 
 ---

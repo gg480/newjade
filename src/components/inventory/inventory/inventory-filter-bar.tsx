@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search, FileDown, FileSpreadsheet, Download, Plus, CheckSquare, ArrowDown, ArrowUp,
+  Search, FileSpreadsheet, Plus, CheckSquare, ArrowDown, ArrowUp,
   CircleDot, SlidersHorizontal, ChevronDown, ChevronUp, X,
 } from 'lucide-react';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
@@ -131,11 +131,7 @@ interface FilterBarProps {
 
   // Toolbar
   onCreateItem: () => void;
-  onExportCSV: () => void;
-  onExportExcel: () => void;
-  onExportFull: () => void;
   onExportAllLabels: () => void;
-  exportApiInventoryUrl: string;
   isExportDisabled: boolean;
 
   // Selection
@@ -156,7 +152,7 @@ export default function InventoryFilterBar({
   showMoreFilters, onToggleMoreFilters,
   onSearch, onResetFilters,
   sortBy, onSortByChange, sortOrder, onSortOrderToggle, sortFieldLabels,
-  onCreateItem, onExportCSV, onExportExcel, onExportFull, onExportAllLabels, exportApiInventoryUrl, isExportDisabled,
+  onCreateItem, onExportAllLabels, isExportDisabled,
   isAllSelected, isSomeSelected, onToggleSelectAll,
   onClearFilter,
 }: FilterBarProps) {
@@ -349,9 +345,6 @@ export default function InventoryFilterBar({
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-9" onClick={onCreateItem}><Plus className="h-3 w-3 mr-1" />新增入库</Button>
-            <Button size="sm" variant="outline" className="h-9" onClick={onExportCSV} disabled={isExportDisabled}><FileDown className="h-3 w-3 mr-1" />导出CSV</Button>
-            <Button size="sm" variant="outline" className="h-9" onClick={onExportExcel} disabled={isExportDisabled}><FileSpreadsheet className="h-3 w-3 mr-1" />导出Excel</Button>
-            <Button size="sm" variant="outline" className="h-9" onClick={onExportFull}><Download className="h-3 w-3 mr-1" />完整导出</Button>
             <Button size="sm" variant="outline" className="h-9" onClick={onExportAllLabels}><FileSpreadsheet className="h-3 w-3 mr-1" />导出标签数据</Button>
             {/* Mobile Select All */}
             <Button size="sm" variant="outline" className="h-9 md:hidden" onClick={onToggleSelectAll}>

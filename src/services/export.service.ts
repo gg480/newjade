@@ -77,16 +77,18 @@ export async function getLabelExportData(params: LabelExportParams) {
     orderBy: { skuCode: 'asc' },
   });
 
-  const headers = ['SKU编码', '商品名称', '材质', '器型', '重量', '售价', '条码'];
-  const rows = items.map(item => [
-    item.skuCode,
-    item.name || '',
-    item.material?.name || '',
-    item.type?.name || '',
-    item.spec?.weight != null ? item.spec.weight.toString() : '',
-    item.sellingPrice?.toFixed(2) || '',
-    item.skuCode,
-  ]);
+  const headers = ['商品名称', '售价', '规格', '条形码'];
+  const rows = items.map(item => {
+    const isPreciousMetal = item.material?.category === '贵金属';
+    return [
+      item.name || '',
+      isPreciousMetal && item.spec?.weight != null
+        ? `${item.spec.weight}g`
+        : item.sellingPrice?.toFixed(2) || '',
+      isPreciousMetal ? '' : (item.spec?.name || item.spec?.specDesc || ''),
+      item.skuCode,
+    ];
+  });
 
   return { headers, rows };
 }
