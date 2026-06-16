@@ -86,7 +86,6 @@ async function seedRoles() {
       where: { name: r.name },
       update: {
         description: r.description,
-        permissions: JSON.stringify(r.permissions),
         isSystem: r.isSystem,
       },
       create: {
