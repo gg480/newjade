@@ -1,7 +1,131 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-16 | 更新人：SOLO
+> 最后更新：2026-06-17 | 更新人：SOLO
 > 📦 归档索引：[[archive/2026-06-sprint-009-013|Sprint-009~013 归档]]
+
+---
+
+## 2026-06-17 新增微打标签打印 API
+
+**状态：✅ 已完成**
+
+### 完成内容
+
+- 创建 `src/app/api/print/labels/route.ts` — 微打远程数据接口
+- 支持按 keyword/materialId/typeId/status/limit 筛选
+- 返回字段：商品名称、售价（贵金属填克重）、规格（自动按器型适配）、条码（CODE-128）
+- 售价规则：贵金属→克重，其他→sellingPrice
+- 规格规则：手镯→圈口，戒指→戒圈，贵金属→克重，通用→尺寸/珠径
+- 权限控制：复用 action:item_view 权限守卫
+
+### 微打对接方式
+
+1. 微打 App → 远程数据 → 输入 URL：`http://<服务器>/api/print/labels`
+2. 字段映射到微打标签模板：商品名称、售价、规格、条码
+3. 条码选择 CODE-128 格式
+
+---
+
+## 2026-06-16 Sprint-016 测试框架重构：全部完成
+
+**状态：✅ 已完成**
+
+### 完成内容
+
+| Phase | 内容 | 状态 |
+|:-----:|------|:----:|
+| **A** | 创建新目录结构 + 合并 helpers | ✅ |
+| **B** | 提取 Smoke 测试（4 个文件） | ✅ |
+| **C** | Critical 测试按域拆分（20 个文件） | ✅ |
+| **D** | 合并 Full 回归测试（3 个文件） | ✅ |
+| **E** | 删除旧大文件（23 个文件） | ✅ |
+| **F** | 更新配置 + 体系评分 | ✅ |
+
+### 最终目录结构
+
+```
+tests/
+├── e2e/
+│   ├── smoke/          ← 冒烟测试（4个）
+│   ├── critical/       ← 关键路径（20个）
+│   │   ├── inventory/  (4)
+│   │   ├── sales/      (2)
+│   │   ├── customer/   (2)
+│   │   ├── settings/   (4)
+│   │   ├── management/ (4)
+│   │   ├── promotion/  (2)
+│   │   └── auth/       (2)
+│   ├── full/           ← 全量回归（3个）
+│   └── mobile/         ← 待创建
+├── api/                ← 3个 API 测试
+├── fixtures/           ← 新建
+├── helpers/index.ts    ← 统一入口
+├── mocks/              ← 新建
+├── debug/              ← 13个调试脚本
+├── archive/            ← 2个归档
+└── screenshots/
+```
+
+### 关键变更
+
+| 变更 | 说明 |
+|------|------|
+| 旧文件删除 | 872 行 exhaustive + 11 walkthrough + 5 business + 2 helpers = 23 个旧文件 |
+| 新文件创建 | 4 smoke + 20 critical + 3 full = 27 个新文件 |
+| 双轨评分体系 | 轨道 A（单文件级）+ 轨道 B（体系级），独立评判 |
+| 体系评分 | 轨道 B：93/100 ✅ |
+| SKILL 更新 | test-optimizer v2：双轨评分 + 独立评判 + 金字塔合规 |
+
+---
+
+## 2026-06-16 测试文件目录结构重整
+
+**状态：已交付 ✅**
+
+### 变更内容
+
+| 类别 | 变更 |
+|:----:|------|
+| **新增 Skill** | `test-optimizer` — 测试优化循环工作流（多维评分+循环优化+经验持久化） |
+| **新增索引** | `.trae/memory/tests-index.md` — 测试文件索引记忆系统 |
+| **目录重整** | `tests/` 统一按 `e2e/api/helpers/debug/archive` 分层 |
+| **配置更新** | `playwright.config.ts` — `testDir` 改为 `./tests/e2e`，`testMatch` 简化为 `**/*.spec.ts` |
+| **路径修复** | 11 个 walkthrough 文件的 import 路径同步更新 |
+| **清理** | 删除 `src/__tests__/` 下 5 个重复文件 + 6 张临时截图 |
+| **修复** | `api/restock-test.ts` — 添加认证 token（40→70 分） |
+| **修复** | `e2e/playwright-business-scenarios.spec.ts` — 删除空if块、if跳过改断言（25→45 分） |
+| **图谱** | 知识图谱 meta.json 已更新（needsRefresh=false） |
+| **经验沉淀** | Obsidian 知识库新增 `test-optimizer-循环优化工作流建立.md` |
+
+### 交付物清单
+
+| 交付物 | 路径 |
+|--------|------|
+| 测试索引记忆系统 | `.trae/memory/tests-index.md` |
+| 测试优化循环工作流 SKILL | `.trae/skills/test-optimizer/SKILL.md` |
+| AGENTS.md 映射更新 | `AGENTS.md`（新增 test-optimizer 路由） |
+| skills-index 注册 | `.trae/memory/skills-index.md`（新增 test-optimizer） |
+
+### 新目录结构
+
+```
+tests/
+├── e2e/          # Playwright E2E 测试（16个 · testDir）
+├── api/          # API 直测脚本（3个 · tsx 运行）
+├── helpers/      # 共享辅助函数（1个）
+├── debug/        # 一次性调试脚本（13个 · 不参与 CI）
+├── archive/      # 旧脚本归档（2个）
+└── screenshots/  # 历史截图
+```
+
+### 待优化文件（评分 < 75）
+
+| 文件 | 评分 | 优先级 |
+|------|:----:|:------:|
+| `e2e/playwright-business-scenarios.spec.ts` | 45 | P1 |
+| `e2e/playwright-walkthrough-new-features.spec.ts` | 60 | P2 |
+| `e2e/playwright-walkthrough-mobile.spec.ts` | 65 | P2 |
+| `e2e/playwright-walkthrough-filterbar.spec.ts` | 65 | P2 |
 
 ---
 
