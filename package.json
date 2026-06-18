@@ -14,7 +14,13 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "db:seed": "npx tsx prisma/seed.ts"
+    "db:seed": "npx tsx prisma/seed.ts",
+    "test:smoke": "npx playwright test --project=smoke",
+    "test:critical": "npx playwright test --project=critical",
+    "test:full": "npx playwright test --project=full",
+    "test:mobile": "npx playwright test --project=mobile-chromium",
+    "test:ci": "npx playwright test --project=smoke --project=critical --project=full",
+    "test:all": "npx playwright test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -87,6 +93,7 @@
     "tw-animate-css": "^1.3.5",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
+    "xlsx": "^0.18.5",
     "z-ai-web-dev-sdk": "^0.0.17",
     "zod": "^4.0.2",
     "zustand": "^5.0.6"

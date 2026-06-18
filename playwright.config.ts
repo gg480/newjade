@@ -1,8 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
-  testMatch: ['playwright-exhaustive.spec.ts', 'playwright-walkthrough-*.spec.ts', 'playwright-user-chain.spec.ts', 'playwright-business-*.spec.ts', 'scan-photo-e2e.spec.ts'],
+  testDir: './tests/e2e',
+  testMatch: ['**/*.spec.ts'],
   timeout: 120000,
   expect: { timeout: 10000 },
   fullyParallel: false,
@@ -17,12 +17,29 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'smoke',
+      testMatch: ['smoke/**/*.spec.ts'],
       use: { browserName: 'chromium' },
-      testIgnore: ['playwright-walkthrough-mobile.spec.ts'],
+    },
+    {
+      name: 'critical',
+      testMatch: ['critical/**/*.spec.ts'],
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'full',
+      testMatch: ['full/**/*.spec.ts'],
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'chromium',
+      testMatch: ['**/*.spec.ts'],
+      testIgnore: ['mobile/**', 'smoke/**', 'critical/**', 'full/**'],
+      use: { browserName: 'chromium' },
     },
     {
       name: 'mobile-chromium',
+      testMatch: ['mobile/**/*.spec.ts'],
       use: {
         browserName: 'chromium',
         viewport: { width: 375, height: 812 },
@@ -30,7 +47,6 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
-      testMatch: ['playwright-walkthrough-mobile.spec.ts'],
     },
   ],
 });

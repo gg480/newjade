@@ -1,9 +1,9 @@
 {
-  "lastAnalyzedAt": "2026-06-16T15:30:00.000Z",
-  "gitCommitHash": "09f5b79f8d2c4ec288f16ba6013b97db8daaeb15",
+  "lastAnalyzedAt": "2026-06-17T12:00:00.000Z",
+  "gitCommitHash": "0f6684eef849dbdbb834ba07118d8fe314727cee",
   "version": "1.0.0",
-  "analyzedFiles": 318,
+  "analyzedFiles": 80,
   "needsRefresh": false,
   "autoRefresh": true,
-  "lastCommitHash": "09f5b79f8d2c4ec288f16ba6013b97db8daaeb15"
+  "lastCommitHash": "0f6684eef849dbdbb834ba07118d8fe314727cee"
 }

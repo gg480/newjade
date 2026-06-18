@@ -613,4 +613,28 @@ export const exportApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+  /** 导出全量库存表格（所有字段） */
+  exportFullInventory: async () => {
+    const headers: Record<string, string> = {};
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('auth_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${BASE}/export/full`, { headers });
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        detail = errJson.message || detail;
+      } catch { /* ignore */ }
+      throw new Error('导出失败: ' + detail);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `库存全量_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };

@@ -24,6 +24,17 @@ export interface GetItemsParams {
   hasTags?: string;
 }
 
+/** 货品材质组件输入（ADR-020 镶嵌型/组合型） */
+export interface MaterialComponentInput {
+  materialId: number;
+  role: string; // main_stone / setting_material / companion_stone / component
+  weight?: number | null;
+  costPrice?: number | null;
+  sellingPrice?: number | null;
+  sortOrder?: number;
+  notes?: string | null;
+}
+
 /** 创建货品参数 */
 export interface CreateItemInput {
   skuCode?: string | null;
@@ -42,6 +53,9 @@ export interface CreateItemInput {
   purchaseDate?: string | null;
   tagIds?: (number | string)[];
   spec?: Record<string, unknown> | null;
+  // ADR-020: 货品类型与材质组件
+  compositeType?: string; // single / inlay / composite
+  components?: MaterialComponentInput[];
 }
 
 /** 更新货品参数 */
@@ -63,6 +77,9 @@ export interface UpdateItemInput {
   purchaseDate?: string;
   name?: string;
   skuCode?: string;
+  // ADR-020: 货品类型与材质组件
+  compositeType?: string;
+  components?: MaterialComponentInput[];
 }
 
 /** 批量创建货品参数 */
@@ -86,6 +103,126 @@ export interface BatchCreateInput {
 // ============================================================
 // 内部辅助函数
 // ============================================================
+
+/**
+ * 校验货品材质组件（ADR-020）
+ * 镶嵌型(inlay): 必须有 main_stone + setting_material，companion_stone 可选
+ * 组合型(composite): 至少 1 个 component
+ * 单一型(single): 无组件
+ */
+function validateComponents(compositeType: string, components?: MaterialComponentInput[]): void {
+  if (compositeType === 'single') {
+    if (components && components.length > 0) {
+      throw new ValidationError('单一型货品不应有材质组件');
+    }
+    return;
+  }
+
+  if (!components || components.length === 0) {
+    throw new ValidationError(compositeType === 'inlay' ? '镶嵌型货品必须填写材质组件' : '组合型货品必须填写材质组件');
+  }
+
+  if (compositeType === 'inlay') {
+    const roles = components.map(c => c.role);
+    if (!roles.includes('main_stone')) {
+      throw new ValidationError('镶嵌型货品必须包含主石(main_stone)');
+    }
+    if (!roles.includes('setting_material')) {
+      throw new ValidationError('镶嵌型货品必须包含镶材(setting_material)');
+    }
+    // 校验角色只能是 main_stone / setting_material / companion_stone
+    const validRoles = ['main_stone', 'setting_material', 'companion_stone'];
+    for (const c of components) {
+      if (!validRoles.includes(c.role)) {
+        throw new ValidationError(`镶嵌型货品角色无效: ${c.role}，只能是 ${validRoles.join('/')}`);
+      }
+    }
+  } else if (compositeType === 'composite') {
+    // 组合型角色只能是 component
+    for (const c of components) {
+      if (c.role !== 'component') {
+        throw new ValidationError(`组合型货品角色无效: ${c.role}，只能是 component`);
+      }
+    }
+  }
+
+  // ADR-020: 所有组件必须指定有效材质（防止直接调 API 写入 materialId=0 脏数据）
+  for (const c of components) {
+    if (!c.materialId || c.materialId <= 0) {
+      throw new ValidationError('材质组件必须指定有效材质');
+    }
+  }
+}
+
+/**
+ * 计算镶嵌型货品的动态总售价（ADR-020）
+ * 总售价 = 主石售价 + 伴石售价 + 镶材克重 × 贵金属市价
+ * 镶材市价从 MetalPrice 表实时查询
+ */
+async function calculateInlayDynamicPrice(
+  components: Array<{ role: string; materialId: number; weight?: number | null; sellingPrice?: number | null }>,
+): Promise<{ totalSellingPrice: number; settingMaterialPrice: number; settingMaterialWeight: number | null; settingMaterialName: string | null }> {
+  // 主石售价 + 伴石售价
+  const mainStone = components.find(c => c.role === 'main_stone');
+  const companionStone = components.find(c => c.role === 'companion_stone');
+  const settingMaterial = components.find(c => c.role === 'setting_material');
+
+  const mainStonePrice = mainStone?.sellingPrice ?? 0;
+  const companionStonePrice = companionStone?.sellingPrice ?? 0;
+
+  // 镶材动态价格：重量 × MetalPrice 市价
+  let settingMaterialPrice = 0;
+  let settingMaterialName: string | null = null;
+  const settingMaterialWeight = settingMaterial?.weight ?? null;
+
+  if (settingMaterial && settingMaterialWeight && settingMaterialWeight > 0) {
+    // 查询该材质的最新市价
+    const latestPrice = await db.metalPrice.findFirst({
+      where: { materialId: settingMaterial.materialId },
+      orderBy: { effectiveDate: 'desc' },
+    });
+    if (latestPrice) {
+      settingMaterialPrice = Math.round(settingMaterialWeight * latestPrice.pricePerGram * 100) / 100;
+    }
+    // 查询材质名称
+    const material = await db.dictMaterial.findUnique({
+      where: { id: settingMaterial.materialId },
+      select: { name: true },
+    });
+    settingMaterialName = material?.name ?? null;
+  }
+
+  const totalSellingPrice = Math.round((mainStonePrice + companionStonePrice + settingMaterialPrice) * 100) / 100;
+
+  return { totalSellingPrice, settingMaterialPrice, settingMaterialWeight, settingMaterialName };
+}
+
+/**
+ * 生成材质显示名称（ADR-020）
+ * 镶嵌型/组合型：三类材质名称用 + 连接，如"翡翠+18K金+钻石"
+ */
+function buildMaterialDisplayName(
+  materialName: string | null | undefined,
+  compositeType: string | undefined,
+  components: Array<{ role: string; material?: { name: string } | null }> | undefined,
+): string {
+  if (!compositeType || compositeType === 'single' || !components || components.length === 0) {
+    return materialName ?? '';
+  }
+  // 按角色顺序排列：主石 → 镶材 → 伴石（镶嵌型）或组件顺序（组合型）
+  const roleOrder = ['main_stone', 'setting_material', 'companion_stone'];
+  const sorted = compositeType === 'inlay'
+    ? [...components].sort((a, b) => {
+        const ai = roleOrder.indexOf(a.role);
+        const bi = roleOrder.indexOf(b.role);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      })
+    : components;
+  const names = sorted
+    .map(c => c.material?.name)
+    .filter((n): n is string => Boolean(n));
+  return names.length > 0 ? names.join('+') : (materialName ?? '');
+}
 
 /**
  * 自动生成 SKU 编码（纯 ASCII 格式，条码兼容）
@@ -302,6 +439,7 @@ export async function getItems(params: GetItemsParams) {
         tags: true,
         images: { where: { isCover: true }, take: 1 },
         batch: { select: { purchaseDate: true, batchCode: true, totalCost: true, quantity: true } },
+        materialComponents: { include: { material: true }, orderBy: { sortOrder: 'asc' } },
       },
       orderBy,
       skip: (page - 1) * size,
@@ -321,7 +459,8 @@ export async function getItems(params: GetItemsParams) {
   ]);
 
   const today = new Date();
-  const itemsWithExtras = items.map(item => {
+  // ADR-020: 镶嵌型需异步查询 MetalPrice 表计算动态售价，故使用 Promise.all
+  const itemsWithExtras = await Promise.all(items.map(async item => {
     const effectivePurchaseDate = item.purchaseDate || item.batch?.purchaseDate || null;
     const ageDays = effectivePurchaseDate
       ? Math.floor((today.getTime() - new Date(effectivePurchaseDate).getTime()) / (1000 * 60 * 60 * 24))
@@ -329,16 +468,46 @@ export async function getItems(params: GetItemsParams) {
     const estimatedCost = (!item.allocatedCost && item.batchId && item.batch)
       ? Math.round((item.batch.totalCost / item.batch.quantity) * 100) / 100
       : null;
+
+    // ADR-020: 镶嵌型动态售价 + 材质显示名
+    // - materialName: 库存列表显示主石材质（Item.materialId 已同步为主石材质）
+    // - materialDisplayName: 详情页/标签用，三类材质用 + 连接
+    let dynamicSellingPrice = item.sellingPrice;
+    let materialDisplayName = item.material?.name ?? null;
+    let inlayPriceBreakdown: { settingMaterialPrice: number; settingMaterialWeight: number | null; settingMaterialName: string | null } | null = null;
+
+    if (item.compositeType === 'inlay' && item.materialComponents && item.materialComponents.length > 0) {
+      const dynamic = await calculateInlayDynamicPrice(item.materialComponents);
+      dynamicSellingPrice = dynamic.totalSellingPrice;
+      inlayPriceBreakdown = {
+        settingMaterialPrice: dynamic.settingMaterialPrice,
+        settingMaterialWeight: dynamic.settingMaterialWeight,
+        settingMaterialName: dynamic.settingMaterialName,
+      };
+    }
+
+    if (item.compositeType && item.compositeType !== 'single') {
+      materialDisplayName = buildMaterialDisplayName(
+        item.material?.name,
+        item.compositeType,
+        item.materialComponents,
+      );
+    }
+
     return {
       ...item,
       purchaseDate: effectivePurchaseDate,
-      materialName: item.material?.name,
+      // 库存列表用 materialName 显示主石材质（镶嵌型已同步为主石）
+      materialName: item.material?.name ?? null,
+      materialDisplayName,
       typeName: item.type?.name,
       ageDays,
       coverImage: item.images[0]?.filename || null,
       estimatedCost,
+      sellingPrice: dynamicSellingPrice,
+      inlayPriceBreakdown,
     };
-  });
+  }));
 
   const summary = summaryRows.reduce((acc, row) => {
     if (row.status === 'in_stock') acc.statusCounts.in_stock += 1;
@@ -370,12 +539,48 @@ export async function getItems(params: GetItemsParams) {
  * @throws {ValidationError} 参数校验失败
  */
 export async function createItem(body: CreateItemInput) {
-  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, notes, supplierId, purchaseDate, tagIds, spec } = body;
+  const { skuCode, name, batchId, materialId, typeId, costPrice, sellingPrice, floorPrice, origin, counter, certNo, notes, supplierId, purchaseDate, tagIds, spec, compositeType, components } = body;
+
+  // ADR-020: 确定货品类型（默认 single）
+  const finalCompositeType = compositeType || 'single';
+  validateComponents(finalCompositeType, components);
+
+  // ADR-020: 镶嵌型/组合型价格汇算（组件价格 → Item 价格）
+  // 成本价 = 所有组件 costPrice 之和
+  // 镶嵌型售价 = 主石+伴石+镶材动态价（按 MetalPrice 实时计算）
+  // 组合型售价 = 所有组件 sellingPrice 之和
+  let computedCostPrice: number | null = null;
+  let computedSellingPrice: number | null = null;
+  if (finalCompositeType !== 'single' && components && components.length > 0) {
+    const sumCost = components.reduce((sum, c) => sum + (c.costPrice ?? 0), 0);
+    computedCostPrice = Math.round(sumCost * 100) / 100;
+
+    if (finalCompositeType === 'inlay') {
+      const dynamic = await calculateInlayDynamicPrice(components);
+      computedSellingPrice = dynamic.totalSellingPrice;
+    } else {
+      const sumSelling = components.reduce((sum, c) => sum + (c.sellingPrice ?? 0), 0);
+      computedSellingPrice = Math.round(sumSelling * 100) / 100;
+    }
+  }
+
+  // ADR-020: 镶嵌型/组合型自动同步主材质为 Item.materialId
+  // 镶嵌型取主石，组合型取首个有效组件（与前端 compositeMainMaterialId 规则一致）
+  let overriddenMaterialId: number | undefined;
+  if (finalCompositeType !== 'single' && components && components.length > 0) {
+    if (finalCompositeType === 'inlay') {
+      const mainStone = components.find(c => c.role === 'main_stone');
+      if (mainStone) overriddenMaterialId = mainStone.materialId;
+    } else if (finalCompositeType === 'composite') {
+      const firstValid = components.find(c => c.materialId > 0);
+      if (firstValid) overriddenMaterialId = firstValid.materialId;
+    }
+  }
 
   // 通货模式：从批次获取 materialId
-  let finalMaterialId = materialId;
+  let finalMaterialId = overriddenMaterialId || materialId;
   let batchData: Prisma.BatchGetPayload<{ include: { material: true } }> | null = null;
-  if (batchId && !materialId) {
+  if (batchId && !finalMaterialId) {
     batchData = await db.batch.findUnique({ where: { id: batchId }, include: { material: true } });
     if (batchData) finalMaterialId = batchData.materialId;
   }
@@ -400,7 +605,8 @@ export async function createItem(body: CreateItemInput) {
   }
 
   // 高货模式(无batchId)才校验成本价必填
-  if (!batchId && (costPrice == null || costPrice === '' || isNaN(parseFloat(String(costPrice))))) {
+  // ADR-020: 镶嵌型/组合型由组件汇算成本价，跳过前端传入值校验
+  if (!batchId && computedCostPrice === null && (costPrice == null || costPrice === '' || isNaN(parseFloat(String(costPrice))))) {
     throw new ValidationError('请输入有效的成本价');
   }
 
@@ -412,7 +618,10 @@ export async function createItem(body: CreateItemInput) {
 
   // 计算成本
   let allocatedCost: number | null = null;
-  let finalCostPrice: number | null = costPrice != null && costPrice !== '' ? parseFloat(String(costPrice)) : null;
+  // ADR-020: 镶嵌型/组合型优先用组件汇算的成本价
+  let finalCostPrice: number | null = computedCostPrice != null
+    ? computedCostPrice
+    : (costPrice != null && costPrice !== '' ? parseFloat(String(costPrice)) : null);
   if (batchId) {
     // 通货模式：从批次分摊成本
     if (!batchData) {
@@ -441,7 +650,10 @@ export async function createItem(body: CreateItemInput) {
         typeId: typeId || null,
         costPrice: finalCostPrice,
         allocatedCost,
-        sellingPrice: sellingPrice != null ? parseFloat(String(sellingPrice)) : null,
+        // ADR-020: 镶嵌型/组合型优先用组件汇算的售价
+        sellingPrice: computedSellingPrice != null
+          ? computedSellingPrice
+          : (sellingPrice != null ? parseFloat(String(sellingPrice)) : null),
         floorPrice: floorPrice != null ? parseFloat(String(floorPrice)) : null,
         origin: origin || null,
         counter: counter != null ? parseInt(String(counter)) : null,
@@ -450,14 +662,35 @@ export async function createItem(body: CreateItemInput) {
         supplierId: supplierId ? parseInt(String(supplierId)) : null,
         purchaseDate: purchaseDate || null,
         status: 'in_stock',
+        compositeType: finalCompositeType,
         ...(normalizedTagIds.length ? {
           tags: { connect: normalizedTagIds.map(id => ({ id })) },
         } : {}),
         ...(specData ? {
           spec: { create: specData },
         } : {}),
+        // ADR-020: 材质组件
+        ...(components && components.length > 0 ? {
+          materialComponents: {
+            create: components.map((c, idx) => ({
+              materialId: c.materialId,
+              role: c.role,
+              weight: c.weight ?? null,
+              costPrice: c.costPrice ?? null,
+              sellingPrice: c.sellingPrice ?? null,
+              sortOrder: c.sortOrder ?? idx,
+              notes: c.notes ?? null,
+            })),
+          },
+        } : {}),
       },
-      include: { material: true, type: true, spec: true, tags: true },
+      include: {
+        material: true,
+        type: true,
+        spec: true,
+        tags: true,
+        materialComponents: { include: { material: true }, orderBy: { sortOrder: 'asc' } },
+      },
     });
 
     // 操作日志
@@ -560,6 +793,7 @@ export async function getItemById(id: number) {
       tags: true,
       images: true,
       saleRecords: { include: { customer: true } },
+      materialComponents: { include: { material: true }, orderBy: { sortOrder: 'asc' } },
     },
   });
 
@@ -574,6 +808,31 @@ export async function getItemById(id: number) {
     : null;
   const supplierName = item.supplier?.name || item.batch?.supplier?.name || null;
 
+  // ADR-020: 镶嵌型动态售价 + 材质显示名
+  // - materialName: 主石材质（Item.materialId 已同步为主石）
+  // - materialDisplayName: 详情页/标签用，三类材质用 + 连接
+  let dynamicSellingPrice = item.sellingPrice;
+  let materialDisplayName = item.material?.name ?? null;
+  let inlayPriceBreakdown: { settingMaterialPrice: number; settingMaterialWeight: number | null; settingMaterialName: string | null } | null = null;
+
+  if (item.compositeType === 'inlay' && item.materialComponents && item.materialComponents.length > 0) {
+    const dynamic = await calculateInlayDynamicPrice(item.materialComponents);
+    dynamicSellingPrice = dynamic.totalSellingPrice;
+    inlayPriceBreakdown = {
+      settingMaterialPrice: dynamic.settingMaterialPrice,
+      settingMaterialWeight: dynamic.settingMaterialWeight,
+      settingMaterialName: dynamic.settingMaterialName,
+    };
+  }
+
+  if (item.compositeType && item.compositeType !== 'single') {
+    materialDisplayName = buildMaterialDisplayName(
+      item.material?.name,
+      item.compositeType,
+      item.materialComponents,
+    );
+  }
+
   return {
     ...item,
     images: (item.images || []).map((img) => ({
@@ -581,11 +840,15 @@ export async function getItemById(id: number) {
       url: img.filename,
     })),
     purchaseDate: effectivePurchaseDate,
-    materialName: item.material?.name,
+    // 详情页 materialName 显示主石材质（镶嵌型已同步为主石）
+    materialName: item.material?.name ?? null,
+    materialDisplayName,
     typeName: item.type?.name,
     supplierName,
     ageDays,
     coverImage: item.images.find((i) => i.isCover)?.filename || item.images[0]?.filename || null,
+    sellingPrice: dynamicSellingPrice,
+    inlayPriceBreakdown,
   };
 }
 
@@ -595,12 +858,22 @@ export async function getItemById(id: number) {
  * @throws {ValidationError} 参数校验失败、状态迁移非法
  */
 export async function updateItem(id: number, body: UpdateItemInput) {
-  const { tagIds, spec, ...data } = body;
+  const { tagIds, spec, components, ...data } = body;
 
   // 获取原始记录
   const original = await db.item.findUnique({ where: { id } });
   if (!original || original.isDeleted) {
     throw new NotFoundError('未找到');
+  }
+
+  // ADR-020: 校验材质组件
+  const finalCompositeType = data.compositeType || original.compositeType;
+  validateComponents(finalCompositeType, components);
+
+  // ADR-020: 镶嵌型自动同步主石材质为 Item.materialId
+  if (finalCompositeType === 'inlay' && components && components.length > 0) {
+    const mainStone = components.find(c => c.role === 'main_stone');
+    if (mainStone) data.materialId = mainStone.materialId;
   }
 
   // 状态迁移校验
@@ -648,6 +921,25 @@ export async function updateItem(id: number, body: UpdateItemInput) {
     }
   }
 
+  // ADR-020: 更新材质组件（全量替换）
+  if (components !== undefined) {
+    await db.itemMaterialComponent.deleteMany({ where: { itemId: id } });
+    if (components.length > 0) {
+      await db.itemMaterialComponent.createMany({
+        data: components.map((c, idx) => ({
+          itemId: id,
+          materialId: c.materialId,
+          role: c.role,
+          weight: c.weight ?? null,
+          costPrice: c.costPrice ?? null,
+          sellingPrice: c.sellingPrice ?? null,
+          sortOrder: c.sortOrder ?? idx,
+          notes: c.notes ?? null,
+        })),
+      });
+    }
+  }
+
   const item = await db.item.update({
     where: { id },
     data: {
@@ -661,7 +953,13 @@ export async function updateItem(id: number, body: UpdateItemInput) {
       supplierId: data.supplierId != null ? parseInt(String(data.supplierId)) : undefined,
       batchId: data.batchId != null ? parseInt(String(data.batchId)) : undefined,
     },
-    include: { material: true, type: true, spec: true, tags: true },
+    include: {
+      material: true,
+      type: true,
+      spec: true,
+      tags: true,
+      materialComponents: { include: { material: true }, orderBy: { sortOrder: 'asc' } },
+    },
   });
 
   // 操作日志：记录变更字段

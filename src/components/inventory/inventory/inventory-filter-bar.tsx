@@ -132,6 +132,7 @@ interface FilterBarProps {
   // Toolbar
   onCreateItem: () => void;
   onExportAllLabels: () => void;
+  onExportFullInventory: () => void;
   isExportDisabled: boolean;
 
   // Selection
@@ -152,7 +153,7 @@ export default function InventoryFilterBar({
   showMoreFilters, onToggleMoreFilters,
   onSearch, onResetFilters,
   sortBy, onSortByChange, sortOrder, onSortOrderToggle, sortFieldLabels,
-  onCreateItem, onExportAllLabels, isExportDisabled,
+  onCreateItem, onExportAllLabels, onExportFullInventory, isExportDisabled,
   isAllSelected, isSomeSelected, onToggleSelectAll,
   onClearFilter,
 }: FilterBarProps) {
@@ -346,6 +347,7 @@ export default function InventoryFilterBar({
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-9" onClick={onCreateItem}><Plus className="h-3 w-3 mr-1" />新增入库</Button>
             <Button size="sm" variant="outline" className="h-9" onClick={onExportAllLabels}><FileSpreadsheet className="h-3 w-3 mr-1" />导出标签数据</Button>
+            <Button size="sm" variant="outline" className="h-9" onClick={onExportFullInventory}><FileSpreadsheet className="h-3 w-3 mr-1" />导出全部表格</Button>
             {/* Mobile Select All */}
             <Button size="sm" variant="outline" className="h-9 md:hidden" onClick={onToggleSelectAll}>
               <CheckSquare className="h-3 w-3 mr-1" />

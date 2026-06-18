@@ -54,6 +54,10 @@ interface HighValueFormProps {
   onOpenSupplierAdd: () => void;
   onCalculatePrice: () => void;
   onApplyPrice: () => void;
+  /** ADR-020: 镶嵌型/组合型时隐藏材质选择（材质由组件编辑器录入） */
+  hideMaterialSelect?: boolean;
+  /** ADR-020: 镶嵌型/组合型的材质组件编辑器，在器型选择后渲染 */
+  materialEditor?: React.ReactNode;
 }
 
 function HighValueForm({
@@ -62,6 +66,7 @@ function HighValueForm({
   currentMaterialId, specFieldsObj, specFieldKeys, customFields, setCustomFields,
   pricingSuggestion, setPricingSuggestion, pricingLoading,
   setTagMismatch, onOpenSupplierAdd, onCalculatePrice, onApplyPrice,
+  hideMaterialSelect, materialEditor,
 }: HighValueFormProps) {
   function toggleTag(tagId: number) {
     const ids = form.tagIds.includes(tagId)
@@ -88,49 +93,75 @@ function HighValueForm({
 
   return (
     <>
-      {/* 材质级联选择 (3级: 大类 → 子类 → 材质) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="space-y-1"><Label className="text-xs">材质大类</Label>
-          <Select value={materialCategory || '_all'} onValueChange={v => {
-            setMaterialCategory(v === '_all' ? '' : v);
-            setMaterialSubType('');
-            setForm(f => ({ ...f, materialId: '' }));
-          }}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="全部大类" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">全部大类</SelectItem>
-              {MATERIAL_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1"><Label className="text-xs">子类</Label>
-          <Select value={materialSubType || '_all'} onValueChange={v => {
-            setMaterialSubType(v === '_all' ? '' : v);
-            setForm(f => ({ ...f, materialId: '' }));
-          }} disabled={!materialCategory}>
-            <SelectTrigger className="h-9"><SelectValue placeholder={materialCategory ? '全部子类' : '先选大类'} /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">全部子类</SelectItem>
-              {subTypes.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1"><Label className="text-xs">材质 <span className="text-red-500">*</span></Label>
-          <Select value={form.materialId} onValueChange={v => setForm(f => ({ ...f, materialId: v }))}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="选择材质" /></SelectTrigger>
-            <SelectContent>{filteredMaterials.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* 器型选择（材质录入前置条件） */}
       <div className="space-y-1"><Label className="text-xs">器型 <span className="text-red-500">*</span></Label>
         <Select value={form.typeId} onValueChange={v => setForm(f => ({ ...f, typeId: v }))}>
           <SelectTrigger className="h-9"><SelectValue placeholder="选择器型" /></SelectTrigger>
           <SelectContent>{types.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
+      {/* ADR-020: 材质录入 — 单一型用级联选择，镶嵌型/组合型用组件编辑器 */}
+      {!hideMaterialSelect && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1"><Label className="text-xs">材质大类</Label>
+            <Select value={materialCategory || '_all'} onValueChange={v => {
+              setMaterialCategory(v === '_all' ? '' : v);
+              setMaterialSubType('');
+              setForm(f => ({ ...f, materialId: '' }));
+            }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="全部大类" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">全部大类</SelectItem>
+                {MATERIAL_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1"><Label className="text-xs">子类</Label>
+            <Select value={materialSubType || '_all'} onValueChange={v => {
+              setMaterialSubType(v === '_all' ? '' : v);
+              setForm(f => ({ ...f, materialId: '' }));
+            }} disabled={!materialCategory}>
+              <SelectTrigger className="h-9"><SelectValue placeholder={materialCategory ? '全部子类' : '先选大类'} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">全部子类</SelectItem>
+                {subTypes.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1"><Label className="text-xs">材质 <span className="text-red-500">*</span></Label>
+            <Select value={form.materialId} onValueChange={v => setForm(f => ({ ...f, materialId: v }))}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="选择材质" /></SelectTrigger>
+              <SelectContent>{filteredMaterials.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+      {hideMaterialSelect && materialEditor}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1"><Label className="text-xs">成本价 <span className="text-red-500">*</span></Label><Input type="number" value={form.costPrice || ''} onChange={e => setForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
-        <div className="space-y-1"><Label className="text-xs">售价 <span className="text-red-500">*</span></Label><Input type="number" value={form.sellingPrice || ''} onChange={e => setForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))} className="h-9" /></div>
+        <div className="space-y-1">
+          <Label className="text-xs">成本价 <span className="text-red-500">*</span></Label>
+          <Input
+            type="number"
+            value={form.costPrice || ''}
+            onChange={e => setForm(f => ({ ...f, costPrice: parseFloat(e.target.value) || 0 }))}
+            className="h-9"
+            readOnly={hideMaterialSelect}
+            placeholder={hideMaterialSelect ? '由材质组件汇算' : ''}
+          />
+          {hideMaterialSelect && <p className="text-[11px] text-muted-foreground">由材质组件成本自动汇算</p>}
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">售价 <span className="text-red-500">*</span></Label>
+          <Input
+            type="number"
+            value={form.sellingPrice || ''}
+            onChange={e => setForm(f => ({ ...f, sellingPrice: parseFloat(e.target.value) || 0 }))}
+            className="h-9"
+            readOnly={hideMaterialSelect}
+            placeholder={hideMaterialSelect ? '由材质组件汇算' : ''}
+          />
+          {hideMaterialSelect && <p className="text-[11px] text-muted-foreground">主石+伴石售价之和（镶材动态价入库后按市价计算）</p>}
+        </div>
       </div>
       {/* Pricing Calculator */}
       {form.costPrice > 0 && form.materialId && (

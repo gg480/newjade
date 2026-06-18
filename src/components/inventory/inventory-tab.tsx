@@ -664,6 +664,16 @@ function InventoryTab() {
     }
   }
 
+  /** 导出全量库存表格（所有字段） */
+  async function handleExportFullInventory() {
+    try {
+      await exportApi.exportFullInventory();
+      toast.success('已导出全量库存表格');
+    } catch (e: unknown) {
+      toast.error('导出失败: ' + (e instanceof Error ? e.message : '未知错误'));
+    }
+  }
+
   async function handleBatchCounter() {
     const counter = parseInt(batchCounterForm.counter);
     if (isNaN(counter)) {
@@ -776,6 +786,7 @@ function InventoryTab() {
         sortFieldLabels={sortFieldLabels}
         onCreateItem={() => setShowCreate(true)}
         onExportAllLabels={handleExportAllLabels}
+        onExportFullInventory={handleExportFullInventory}
         isExportDisabled={sortedItems.length === 0}
         isAllSelected={isAllSelected}
         isSomeSelected={isSomeSelected}

@@ -4,13 +4,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, batchesApi, suppliersApi, dictsApi, pricingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import type { DictMaterial, DictType, DictTag, Batch, Supplier, PaginatedData, PricingResult } from '@/lib/api.types';
+import type { DictMaterial, DictType, DictTag, Batch, Supplier, PaginatedData, PricingResult, MaterialComponentInput } from '@/lib/api.types';
 import { parseSpecFields, SPEC_FIELD_LABEL_MAP } from './settings-tab';
 import HighValueForm from './item-create/high-value-form';
 import BatchItemForm from './item-create/batch-item-form';
+import { MaterialComponentEditor } from './shared/material-component-editor';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import SupplierQuickAddDialog from './supplier-quick-add-dialog';
 
 import { Gem, Layers } from 'lucide-react';
@@ -44,6 +47,29 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     tagIds: [] as number[],
   });
 
+  // ADR-020: 货品类型与材质组件
+  const [compositeType, setCompositeType] = useState<'single' | 'inlay' | 'composite'>('single');
+  const [materialComponents, setMaterialComponents] = useState<MaterialComponentInput[]>([]);
+
+  // ADR-020: 镶嵌型/组合型价格联动汇算
+  // 成本价 = 所有组件 costPrice 之和
+  // 售价 = 主石+伴石售价之和（镶材动态价由后端按 MetalPrice 计算，前端不汇算）
+  // 组合型售价 = 所有组件 sellingPrice 之和
+  useEffect(() => {
+    if (compositeType === 'single' || materialComponents.length === 0) return;
+    const sumCost = materialComponents.reduce((sum, c) => sum + (c.costPrice ?? 0), 0);
+    const sumSelling = compositeType === 'inlay'
+      ? materialComponents
+          .filter(c => c.role === 'main_stone' || c.role === 'companion_stone')
+          .reduce((sum, c) => sum + (c.sellingPrice ?? 0), 0)
+      : materialComponents.reduce((sum, c) => sum + (c.sellingPrice ?? 0), 0);
+    setHighValueForm(f => ({
+      ...f,
+      costPrice: Math.round(sumCost * 100) / 100,
+      sellingPrice: Math.round(sumSelling * 100) / 100,
+    }));
+  }, [compositeType, materialComponents]);
+
   const [batchForm, setBatchForm] = useState({
     batchId: '', typeId: '', sellingPrice: 0, name: '', counter: '', certNo: '', notes: '',
     weight: '', metalWeight: '', size: '', braceletSize: '', beadCount: '', beadDiameter: '', ringSize: '',
@@ -75,7 +101,24 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   );
   const highValueMaterialId = highValueForm.materialId ? Number(highValueForm.materialId) : null;
   const batchMaterialId = selectedBatch?.materialId ? Number(selectedBatch.materialId) : null;
-  const currentMaterialId = mode === 'high_value' ? highValueMaterialId : batchMaterialId;
+
+  // ADR-020: 镶嵌型/组合型时，标签按主材质联动
+  // 镶嵌型取主石 materialId，组合型取首个有效组件 materialId
+  const compositeMainMaterialId = useMemo(() => {
+    if (compositeType === 'single' || materialComponents.length === 0) return null;
+    const valid = materialComponents.filter(c => c.materialId > 0);
+    if (valid.length === 0) return null;
+    if (compositeType === 'inlay') {
+      const mainStone = valid.find(c => c.role === 'main_stone');
+      return mainStone?.materialId ?? null;
+    }
+    // 组合型：取第一个组件
+    return valid[0].materialId;
+  }, [compositeType, materialComponents]);
+
+  const currentMaterialId = mode === 'high_value'
+    ? (compositeType !== 'single' ? compositeMainMaterialId : highValueMaterialId)
+    : batchMaterialId;
 
   useEffect(() => {
     if (!open) return;
@@ -142,7 +185,8 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   function validateRequiredFields(form: typeof highValueForm | typeof batchForm, isHighValue: boolean): string | null {
     if (!form.typeId) return '请选择器型';
     // 高货模式才校验成本价，通货模式成本由批次分摊
-    if (isHighValue && !highValueForm.costPrice) return '请输入成本价';
+    // ADR-020: 镶嵌型/组合型成本价由组件汇算，跳过前端成本价校验（后端 computedCostPrice 兜底）
+    if (isHighValue && compositeType === 'single' && !highValueForm.costPrice) return '请输入成本价';
     // 器型必填规格字段
     for (const field of specFieldKeys) {
       if (specFieldsObj[field]?.required && !form[field as keyof typeof form]) {
@@ -157,14 +201,36 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     setSaving(true);
     try {
       if (mode === 'high_value') {
-        if (!highValueForm.materialId) { toast.error('请选择材质'); setSaving(false); return; }
-        if (!highValueForm.sellingPrice) { toast.error('请输入售价'); setSaving(false); return; }
+        // ADR-020: 镶嵌型/组合型材质校验，主石 materialId 作为 Item.materialId
+        let itemMaterialId: number;
+        if (compositeType !== 'single') {
+          const validComponents = materialComponents.filter(c => c.materialId > 0);
+          if (compositeType === 'inlay') {
+            const mainStone = validComponents.find(c => c.role === 'main_stone');
+            const settingMaterial = validComponents.find(c => c.role === 'setting_material');
+            if (!mainStone) { toast.error('请选择主石材质'); setSaving(false); return; }
+            if (!settingMaterial) { toast.error('请选择镶材材质'); setSaving(false); return; }
+            itemMaterialId = mainStone.materialId;
+          } else {
+            // 组合型：取第一个组件的材质作为主材质
+            if (validComponents.length === 0) { toast.error('请至少添加一个材质组件'); setSaving(false); return; }
+            itemMaterialId = validComponents[0].materialId;
+          }
+        } else {
+          if (!highValueForm.materialId) { toast.error('请选择材质'); setSaving(false); return; }
+          itemMaterialId = Number(highValueForm.materialId);
+        }
+        // ADR-020: 镶嵌型/组合型售价由组件汇算，提示引导用户填写组件售价
+        if (!highValueForm.sellingPrice) {
+          toast.error(compositeType !== 'single' ? '请填写组件售价（主石/伴石）' : '请输入售价');
+          setSaving(false); return;
+        }
         const validationError = validateRequiredFields(highValueForm, true);
         if (validationError) { toast.error(validationError); setSaving(false); return; }
         const spec: Record<string, string | number> = {};
         specFieldKeys.forEach(f => { if (highValueForm[f as keyof typeof highValueForm]) spec[f] = String(highValueForm[f as keyof typeof highValueForm]); });
         await itemsApi.createItem({
-          materialId: Number(highValueForm.materialId),
+          materialId: itemMaterialId,
           typeId: highValueForm.typeId ? Number(highValueForm.typeId) : undefined,
           costPrice: highValueForm.costPrice || undefined,
           sellingPrice: highValueForm.sellingPrice,
@@ -177,6 +243,11 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           purchaseDate: highValueForm.purchaseDate || undefined,
           spec: Object.keys(spec).length > 0 ? spec : undefined,
           tagIds: highValueForm.tagIds.length > 0 ? highValueForm.tagIds : undefined,
+          // ADR-020: 货品类型与材质组件
+          compositeType,
+          components: compositeType !== 'single' && materialComponents.length > 0
+            ? materialComponents.filter(c => c.materialId > 0)
+            : undefined,
         });
         toast.success('高货入库成功！');
       } else {
@@ -267,32 +338,85 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
           </div>
 
           {mode === 'high_value' ? (
-            <HighValueForm
-              form={highValueForm}
-              setForm={setHighValueForm}
-              materialCategory={materialCategory}
-              setMaterialCategory={setMaterialCategory}
-              materialSubType={materialSubType}
-              setMaterialSubType={setMaterialSubType}
-              materials={materials}
-              filteredMaterials={filteredMaterials}
-              subTypes={subTypes}
-              types={types}
-              tags={tags}
-              suppliers={suppliers}
-              currentMaterialId={currentMaterialId}
-              specFieldsObj={specFieldsObj}
-              specFieldKeys={specFieldKeys}
-              customFields={customFields}
-              setCustomFields={setCustomFields}
-              pricingSuggestion={pricingSuggestion}
-              setPricingSuggestion={setPricingSuggestion}
-              pricingLoading={pricingLoading}
-              setTagMismatch={setTagMismatch}
-              onOpenSupplierAdd={() => setShowSupplierAdd(true)}
-              onCalculatePrice={handleCalculatePrice}
-              onApplyPrice={handleApplyPrice}
-            />
+            <>
+              {/* ADR-020: 货品类型选择（提前到表单最前，决定后续材质录入方式） */}
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">货品类型 <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={compositeType}
+                    onValueChange={(v) => {
+                      setCompositeType(v as 'single' | 'inlay' | 'composite');
+                      if (v === 'single') {
+                        setMaterialComponents([]);
+                      } else if (v === 'inlay') {
+                        // 镶嵌型初始化主石+镶材（伴石可选，不初始化）
+                        setMaterialComponents([
+                          { materialId: 0, role: 'main_stone', weight: null, costPrice: null, sellingPrice: null, sortOrder: 0 },
+                          { materialId: 0, role: 'setting_material', weight: null, costPrice: null, sellingPrice: null, sortOrder: 1 },
+                        ]);
+                      } else {
+                        // 组合型初始化一个空组件
+                        setMaterialComponents([
+                          { materialId: 0, role: 'component', weight: null, costPrice: null, sellingPrice: null, sortOrder: 0 },
+                        ]);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">单一型</SelectItem>
+                      <SelectItem value="inlay">镶嵌型（主石+镶材+伴石）</SelectItem>
+                      <SelectItem value="composite">组合型（多材质并列）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <HighValueForm
+                form={highValueForm}
+                setForm={setHighValueForm}
+                materialCategory={materialCategory}
+                setMaterialCategory={setMaterialCategory}
+                materialSubType={materialSubType}
+                setMaterialSubType={setMaterialSubType}
+                materials={materials}
+                filteredMaterials={filteredMaterials}
+                subTypes={subTypes}
+                types={types}
+                tags={tags}
+                suppliers={suppliers}
+                currentMaterialId={currentMaterialId}
+                specFieldsObj={specFieldsObj}
+                specFieldKeys={specFieldKeys}
+                customFields={customFields}
+                setCustomFields={setCustomFields}
+                pricingSuggestion={pricingSuggestion}
+                setPricingSuggestion={setPricingSuggestion}
+                pricingLoading={pricingLoading}
+                setTagMismatch={setTagMismatch}
+                onOpenSupplierAdd={() => setShowSupplierAdd(true)}
+                onCalculatePrice={handleCalculatePrice}
+                onApplyPrice={handleApplyPrice}
+                hideMaterialSelect={compositeType !== 'single'}
+                materialEditor={
+                  compositeType !== 'single' ? (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        {compositeType === 'inlay' ? '镶嵌材质（主石+镶材+伴石）' : '组合材质（多组件）'}
+                      </Label>
+                      <MaterialComponentEditor
+                        compositeType={compositeType}
+                        components={materialComponents}
+                        onChange={setMaterialComponents}
+                        materials={materials}
+                      />
+                    </div>
+                  ) : undefined
+                }
+              />
+            </>
           ) : (
             <BatchItemForm
               form={batchForm}

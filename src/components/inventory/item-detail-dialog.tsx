@@ -11,10 +11,16 @@ import type { ItemSummary, ItemImage, DictTag, SaleRecord } from '@/lib/api.type
 // Extended detail type matching the API response
 interface ItemDetail extends ItemSummary {
   materialName?: string;
+  materialDisplayName?: string | null;
   typeName?: string;
   supplierName?: string;
   ageDays?: number;
   saleRecords?: SaleRecord[];
+  inlayPriceBreakdown?: {
+    settingMaterialPrice: number;
+    settingMaterialWeight: number | null;
+    settingMaterialName: string | null;
+  } | null;
 }
 
 import { Button } from '@/components/ui/button';
@@ -245,11 +251,60 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">SKU:</span> <span className="font-mono">{item.skuCode}</span></div>
                 <div><span className="text-muted-foreground">名称:</span> {item.name || '-'}</div>
-                <div><span className="text-muted-foreground">材质:</span> {item.materialName || '-'}</div>
+                <div><span className="text-muted-foreground">材质:</span> {item.materialDisplayName || item.materialName || '-'}</div>
                 <div><span className="text-muted-foreground">器型:</span> {item.typeName || '-'}</div>
                 <div><span className="text-muted-foreground">状态:</span> <StatusBadge status={item.status} /></div>
                 <div><span className="text-muted-foreground">库龄:</span> {item.ageDays != null ? `${item.ageDays}天` : '-'}</div>
               </div>
+
+              {/* ADR-020: 镶嵌型/组合型材质组件详情 */}
+              {item.compositeType && item.compositeType !== 'single' && item.materialComponents && item.materialComponents.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      {item.compositeType === 'inlay' ? '镶嵌材质明细' : '组合材质明细'}
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {item.materialComponents
+                        .slice()
+                        .sort((a, b) => {
+                          const order = ['main_stone', 'setting_material', 'companion_stone', 'component'];
+                          return order.indexOf(a.role) - order.indexOf(b.role);
+                        })
+                        .map(comp => {
+                          const roleLabel: Record<string, string> = {
+                            main_stone: '主石',
+                            setting_material: '镶材',
+                            companion_stone: '伴石',
+                            component: '组件',
+                          };
+                          return (
+                            <div key={comp.id} className="flex items-center justify-between text-xs bg-muted/40 rounded px-2 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-[10px] h-5">{roleLabel[comp.role] || comp.role}</Badge>
+                                <span className="font-medium">{comp.material?.name || '-'}</span>
+                                {comp.weight != null && <span className="text-muted-foreground">{comp.weight}g</span>}
+                              </div>
+                              <div className="flex items-center gap-3 text-muted-foreground">
+                                {comp.costPrice != null && <span>成本: {formatPrice(comp.costPrice)}</span>}
+                                {comp.sellingPrice != null && <span>售价: {formatPrice(comp.sellingPrice)}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    {/* 镶嵌型动态售价拆分 */}
+                    {item.compositeType === 'inlay' && item.inlayPriceBreakdown && (
+                      <div className="text-xs text-muted-foreground bg-emerald-50 dark:bg-emerald-950/20 rounded px-2 py-1.5">
+                        售价构成: 主石售价 + 伴石售价 + {item.inlayPriceBreakdown.settingMaterialName || '镶材'}
+                        {item.inlayPriceBreakdown.settingMaterialWeight != null && ` ${item.inlayPriceBreakdown.settingMaterialWeight}g`}
+                        {' × 贵金属市价'} = <span className="font-bold text-emerald-700 dark:text-emerald-400">{formatPrice(item.sellingPrice)}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               <Separator />
 

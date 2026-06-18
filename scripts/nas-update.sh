@@ -1,23 +1,27 @@
 #!/bin/sh
 # ============================================================
 # Jade ERP - NAS 安全更新部署脚本
-# 用法：sh nas-update.sh [--no-backup]
-# 流程：备份DB → 记录版本 → pull → down → up → 健康检查 → 成功/回滚
+# 用法：sh nas-update.sh [--no-backup] [--tag <sha-tag>]
+# 流程：备份DB → 记录版本 → pull 新镜像 → down → up → 健康检查 → 成功/回滚
+# 支持：Docker Hub + 阿里云 ACR 双仓库
 # ============================================================
 set -e
 
-CONTAINER_NAME="${CONTAINER_NAME:-jade-inventory}"
+CONTAINER_NAME="${CONTAINER_NAME:-jade-erp}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5000/api/health}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-30}"
 HEALTH_INTERVAL="${HEALTH_INTERVAL:-5}"
 NO_BACKUP=false
+TARGET_TAG=""
 
 for arg in "$@"; do
   case "$arg" in
     --no-backup) NO_BACKUP=true ;;
+    --tag=*) TARGET_TAG="${arg#*=}" ;;
     -h|--help)
-      echo "用法: sh nas-update.sh [--no-backup]"
-      echo "  --no-backup  跳过数据库备份（不推荐）"
+      echo "用法: sh nas-update.sh [options]"
+      echo "  --no-backup   跳过数据库备份（不推荐）"
+      echo "  --tag=<tag>   指定部署的镜像标签（如 sha-abc123），默认使用 latest"
       exit 0
       ;;
   esac
@@ -64,8 +68,9 @@ if [ "$NO_BACKUP" = false ]; then
       }
     else
       echo "  容器未运行，直接备份数据库文件..."
-      if [ -f "./data/db/custom.db" ]; then
-        cp "./data/db/custom.db" "${BACKUP_DIR}/custom_preupdate_${TIMESTAMP}.db"
+      JADE_DB_DIR="${JADE_DB_DIR:-./data/db}"
+      if [ -f "${JADE_DB_DIR}/custom.db" ]; then
+        cp "${JADE_DB_DIR}/custom.db" "${BACKUP_DIR}/custom_preupdate_${TIMESTAMP}.db"
       fi
     fi
     echo "  备份保存至: ${BACKUP_DIR}/custom_preupdate_${TIMESTAMP}.db"
@@ -78,16 +83,52 @@ fi
 # ==== Step 3: 拉取新镜像 ====
 echo ""
 echo "=== [3/5] 拉取新镜像 ==="
-docker compose pull 2>/dev/null || {
-  echo "  docker compose pull 失败，尝试 docker pull..."
-  IMAGE=$(grep "image:" docker-compose.yml 2>/dev/null | head -1 | awk '{print $2}' | sed 's/\${JADE_VERSION:-latest}/latest/g')
-  if [ -n "${IMAGE}" ]; then
-    docker pull "${IMAGE}"
-  else
-    echo "[ERROR] 无法确定镜像地址"
-    exit 1
+
+# 从 .env 读取 JADE_IMAGE，如果指定了 --tag 则替换 tag
+if [ -f ".env" ]; then
+  JADE_IMAGE=$(grep "^JADE_IMAGE=" .env | head -1 | cut -d= -f2-)
+fi
+JADE_IMAGE="${JADE_IMAGE:-jade-erp:latest}"
+
+# 如果指定了 --tag，替换镜像的 tag 部分
+if [ -n "${TARGET_TAG}" ]; then
+  # 移除原有 tag，替换为新 tag
+  JADE_IMAGE_NO_TAG=$(echo "${JADE_IMAGE}" | sed 's/:[^:]*$//')
+  JADE_IMAGE="${JADE_IMAGE_NO_TAG}:${TARGET_TAG}"
+  echo "  指定标签: ${JADE_IMAGE}"
+fi
+
+echo "  镜像地址: ${JADE_IMAGE}"
+
+# 尝试拉取镜像（最多重试 3 次）
+PULL_SUCCESS=false
+for i in 1 2 3; do
+  echo "  拉取尝试 [${i}/3]..."
+  if docker pull "${JADE_IMAGE}" 2>/dev/null; then
+    PULL_SUCCESS=true
+    break
   fi
-}
+  echo "  拉取失败，等待 5 秒后重试..."
+  sleep 5
+done
+
+if [ "${PULL_SUCCESS}" = false ]; then
+  echo "[ERROR] 镜像拉取失败，请检查："
+  echo "  1. 镜像地址是否正确: ${JADE_IMAGE}"
+  echo "  2. 网络是否可达"
+  echo "  3. 镜像仓库认证是否配置"
+  exit 1
+fi
+
+# 更新 .env 中的 JADE_IMAGE
+if [ -f ".env" ]; then
+  if grep -q "^JADE_IMAGE=" .env; then
+    sed -i.bak "s|^JADE_IMAGE=.*|JADE_IMAGE=${JADE_IMAGE}|g" .env
+    rm -f .env.bak
+  else
+    echo "JADE_IMAGE=${JADE_IMAGE}" >> .env
+  fi
+fi
 
 # ==== Step 4: 停止旧容器并启动新版本 ====
 echo ""
@@ -124,7 +165,7 @@ if [ "${SUCCESS}" = true ]; then
   echo ""
   echo "============================================"
   echo "  部署成功！"
-  echo "  新版本: $(grep JADE_VERSION .env 2>/dev/null | cut -d= -f2 || echo latest)"
+  echo "  新版本: ${JADE_IMAGE}"
   echo "============================================"
   exit 0
 fi

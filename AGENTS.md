@@ -89,9 +89,13 @@
 | NAS 部署 | `nas-deploy`（项目定制） | SHIP |
 | E2E 测试 | `playwright-e2e`（项目定制） | VERIFY |
 | 文档/ADR | `documentation-and-adrs` | SHIP |
+| 数据库变更/migration | `db-migration`（项目定制） | BUILD |
+| 数据库迁移/生产部署 | `db-migration` → `shipping-and-launch` | BUILD→SHIP |
 | 方案咨询 | `solution-consultant`（项目定制） | DEFINE |
 | Sprint 处理 | `task-sprint-processor`（项目定制） | PLAN |
 | 刷新知识图谱 | `refresh-knowledge-graph`（项目定制） | VERIFY |
+| 测试质量优化/虚假测试修复 | `test-optimizer`（项目定制） | VERIFY→REVIEW |
+| Excel 数据治理/规格补全/材质修正 | `excel-data-governance`（项目定制） | VERIFY |
 
 ---
 

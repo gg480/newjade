@@ -260,6 +260,49 @@ export interface ItemSummary {
   spec?: ItemSpec | null;
   images?: ItemImage[];
   tags?: DictTag[];
+  // ADR-020: 货品类型与材质组件
+  compositeType?: string; // single / inlay / composite
+  materialComponents?: ItemMaterialComponent[];
+  // ADR-020: 材质显示名（三类材质用 + 连接，如"翡翠+18K金+钻石"），用于详情页/标签
+  materialDisplayName?: string | null;
+  // ADR-020: 镶嵌型动态售价明细（用于标签拆分显示）
+  inlayPriceBreakdown?: {
+    settingMaterialPrice: number;
+    settingMaterialWeight: number | null;
+    settingMaterialName: string | null;
+  } | null;
+}
+
+/** 货品材质组件（ADR-020 镶嵌型/组合型） */
+export interface ItemMaterialComponent {
+  id: number;
+  itemId: number;
+  materialId: number;
+  role: string; // main_stone / setting_material / companion_stone / component
+  weight: number | null;
+  costPrice: number | null;
+  sellingPrice: number | null;
+  sortOrder: number;
+  notes: string | null;
+  material?: DictMaterial;
+}
+
+/** 镶嵌型售价拆分（用于标签显示） */
+export interface InlayPriceBreakdown {
+  settingMaterialPrice: number;
+  settingMaterialWeight: number | null;
+  settingMaterialName: string | null;
+}
+
+/** 货品材质组件输入（表单提交用） */
+export interface MaterialComponentInput {
+  materialId: number;
+  role: string;
+  weight?: number | null;
+  costPrice?: number | null;
+  sellingPrice?: number | null;
+  sortOrder?: number;
+  notes?: string | null;
 }
 
 export interface SkuLookupResult {
@@ -888,6 +931,9 @@ export interface CreateItemBody {
   notes?: string;
   spec?: Partial<ItemSpec>;
   tags?: number[];
+  // ADR-020: 货品类型与材质组件
+  compositeType?: string;
+  components?: MaterialComponentInput[];
 }
 
 export type UpdateItemBody = Partial<CreateItemBody>;

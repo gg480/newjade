@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, dictsApi } from '@/lib/api';
-import type { ItemSummary, DictMaterial, DictType, DictTag } from '@/lib/api.types';
+import type { ItemSummary, DictMaterial, DictType, DictTag, MaterialComponentInput, ItemMaterialComponent } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge } from './shared';
@@ -10,9 +10,11 @@ import { parseSpecFields } from './settings-tab';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import EditBasicFields from './item-edit/edit-basic-fields';
 import EditSpecFields from './item-edit/edit-spec-fields';
+import { MaterialComponentEditor } from './shared/material-component-editor';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
@@ -30,6 +32,9 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
   const [materials, setMaterials] = useState<DictMaterial[]>([]);
   const [materialCategory, setMaterialCategory] = useState('');
   const [materialSubType, setMaterialSubType] = useState('');
+  // ADR-020: 货品类型与材质组件
+  const [compositeType, setCompositeType] = useState<'single' | 'inlay' | 'composite'>('single');
+  const [materialComponents, setMaterialComponents] = useState<MaterialComponentInput[]>([]);
   const [form, setForm] = useState({
     name: '', sellingPrice: 0, floorPrice: 0, counter: '', certNo: '', notes: '', origin: '',
     tagIds: [] as number[],
@@ -100,6 +105,19 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
           beadDiameter: specObj.beadDiameter || '',
           ringSize: specObj.ringSize || '',
         });
+        // ADR-020: 加载货品类型与材质组件
+        setCompositeType((data.compositeType as 'single' | 'inlay' | 'composite') || 'single');
+        setMaterialComponents(
+          (data.materialComponents || []).map((c: ItemMaterialComponent) => ({
+            materialId: c.materialId,
+            role: c.role,
+            weight: c.weight,
+            costPrice: c.costPrice,
+            sellingPrice: c.sellingPrice,
+            sortOrder: c.sortOrder,
+            notes: c.notes,
+          }))
+        );
       }).catch(() => {
         toast.error('加载货品信息失败');
       }).finally(() => setLoading(false));
@@ -235,6 +253,11 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
         typeId: form.typeId ? Number(form.typeId) : undefined,
         spec: Object.keys(spec).length > 0 ? spec : undefined,
         tagIds: form.tagIds,
+        // ADR-020: 货品类型与材质组件
+        compositeType,
+        components: compositeType !== 'single' && materialComponents.length > 0
+          ? materialComponents.filter(c => c.materialId > 0)
+          : compositeType === 'single' ? [] : undefined,
       });
       toast.success('货品更新成功！');
       onOpenChange(false);
@@ -442,6 +465,36 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
               setCustomFields={setCustomFields}
               onTagToggle={toggleTag}
             />
+            {/* ADR-020: 货品类型选择 + 材质组件编辑器 */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div>
+                <Label className="text-xs text-muted-foreground">货品类型</Label>
+                <Select
+                  value={compositeType}
+                  onValueChange={(v) => {
+                    setCompositeType(v as 'single' | 'inlay' | 'composite');
+                    if (v === 'single') setMaterialComponents([]);
+                  }}
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">单一型</SelectItem>
+                    <SelectItem value="inlay">镶嵌型（主石+镶材+伴石）</SelectItem>
+                    <SelectItem value="composite">组合型（多材质并列）</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {compositeType !== 'single' && (
+                <MaterialComponentEditor
+                  compositeType={compositeType}
+                  components={materialComponents}
+                  onChange={setMaterialComponents}
+                  materials={materials}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <div className="py-8 text-center text-muted-foreground">未找到货品信息</div>

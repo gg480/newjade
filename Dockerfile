@@ -58,11 +58,25 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 # package.json — 脚本入口定义
 COPY --from=builder /app/package.json ./package.json
-# public — 静态资源
+# public — 静态资源（含 version.json）
 COPY --from=builder /app/public ./public
 # entrypoint — 启动脚本（含备份/迁移/验证逻辑）
 COPY scripts/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+
+# 写入构建时版本信息（由 CI 传入或 git 自动获取）
+ARG BUILD_TIME
+ARG GIT_SHA
+ARG GIT_BRANCH
+RUN if [ -f /app/public/version.json ]; then \
+      node -e "
+        const v = require('./public/version.json');
+        v.buildTime = '${BUILD_TIME:-unknown}';
+        v.gitSha = '${GIT_SHA:-unknown}';
+        v.gitBranch = '${GIT_BRANCH:-unknown}';
+        require('fs').writeFileSync('./public/version.json', JSON.stringify(v, null, 2));
+      "; \
+    fi
 
 # 暴露服务端口
 EXPOSE 5000
