@@ -297,11 +297,11 @@ export default function SettingsImportDataPanel({
         <CardContent>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>• 请先下载模板，按模板格式填写数据后再上传</p>
-            <p>• CSV文件需使用 <code className="px-1 py-0.5 bg-muted rounded text-xs">UTF-8</code> 编码，Excel另存为CSV时选择"CSV UTF-8"</p>
+            <p>• CSV文件需使用 <code className="px-1 py-0.5 bg-muted rounded text-xs">UTF-8</code> 编码，Excel另存为CSV时选择&ldquo;CSV UTF-8&rdquo;</p>
             <p>• <b>库存导入</b>必填字段：名称；选填数量(默认1)、材质、器型、成本价(单价)、匹配码等；材质/器型可从名称自动推断</p>
             <p>• <b>销售导入</b>必填字段：名称或SKU编号、成交价；如SKU不存在则按匹配码→名称+成本价匹配，匹配不到自动创建已售货品</p>
             <p>• <b>匹配码</b>用于关联库存和销售数据：在库存CSV和销售CSV中使用相同的匹配码，系统自动关联</p>
-            <p>• 开启"自动创建"后，系统会自动创建CSV中提到但字典中不存在的材质、器型</p>
+            <p>• 开启&ldquo;自动创建&rdquo;后，系统会自动创建CSV中提到但字典中不存在的材质、器型</p>
             <p>• 名称+成本价+证书号相同的库存货品自动跳过不重复导入</p>
             <p>• 建议先少量测试导入，确认无误后再大批量导入</p>
           </div>

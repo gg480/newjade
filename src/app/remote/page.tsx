@@ -36,9 +36,8 @@ export default function RemotePage() {
     }
   }, []);
 
-  // 定期轮询
+  // 定期轮询（首次拉取由第一次轮询触发）
   useEffect(() => {
-    fetchHistory();
     const interval = setInterval(fetchHistory, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchHistory]);

@@ -330,7 +330,7 @@ const RestockTab: React.FC = () => {
             <div className="text-center py-12">
               <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">暂无入货建议</h3>
-              <p className="text-muted-foreground mt-2">点击"生成建议"按钮生成入货建议</p>
+              <p className="text-muted-foreground mt-2">点击&ldquo;生成建议&rdquo;按钮生成入货建议</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
