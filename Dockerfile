@@ -69,13 +69,7 @@ ARG BUILD_TIME
 ARG GIT_SHA
 ARG GIT_BRANCH
 RUN if [ -f /app/public/version.json ]; then \
-      node -e "
-        const v = require('./public/version.json');
-        v.buildTime = '${BUILD_TIME:-unknown}';
-        v.gitSha = '${GIT_SHA:-unknown}';
-        v.gitBranch = '${GIT_BRANCH:-unknown}';
-        require('fs').writeFileSync('./public/version.json', JSON.stringify(v, null, 2));
-      "; \
+      node -e "const v=require('./public/version.json');v.buildTime='${BUILD_TIME:-unknown}';v.gitSha='${GIT_SHA:-unknown}';v.gitBranch='${GIT_BRANCH:-unknown}';require('fs').writeFileSync('./public/version.json',JSON.stringify(v,null,2));"; \
     fi
 
 # 暴露服务端口
