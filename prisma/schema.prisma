@@ -47,6 +47,8 @@ model DictMaterial {
   metalPrices     MetalPrice[]
   tagMaterials    DictTagMaterial[]
   seasonalFactors SeasonalFactor[]
+  // ADR-020: 作为货品材质组件的被引用方
+  materialComponents ItemMaterialComponent[]
 
   @@unique([name, subType])
   @@map("dict_material")
@@ -186,6 +188,8 @@ model Item {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   isDeleted     Boolean  @default(false) @map("is_deleted")
+  // ADR-020: 货品类型 — single(单一) / inlay(镶嵌) / composite(组合)
+  compositeType String   @default("single") @map("composite_type")
 
   material      DictMaterial @relation(fields: [materialId], references: [id])
   type          DictType?    @relation(fields: [typeId], references: [id])
@@ -195,12 +199,18 @@ model Item {
   images        ItemImage[]
   tags          DictTag[]    @relation("ItemTags")
   itemTags      ItemTag[]
+  // ADR-020: 材质组件（镶嵌型/组合型用）
+  materialComponents ItemMaterialComponent[]
   saleRecords     SaleRecord[]
   saleReturns     SaleReturn[]
   promotionItems       PromotionItem[]
   priceChangeLogs      PriceChangeLog[]
   stocktakingDetails   StocktakingDetail[]
   restockRecommendation RestockRecommendation?
+  // 内容推广模块关联（ContentTopic/ContentDraft/ContentPromotion）
+  contentTopicItems      ContentTopicItem[]
+  contentDraftItems      ContentDraftItem[]
+  contentPromotionItems  ContentPromotionItem[]
 
   @@index([status])
   @@index([materialId])
@@ -220,6 +230,34 @@ model ItemTag {
 
   @@id([itemId, tagId])
   @@map("item_tag")
+}
+
+// ──────────────────────────────────────────────
+// 9b. item_material_component — 货品材质组件（ADR-020 镶嵌型/组合型）
+// ──────────────────────────────────────────────
+// 镶嵌型(inlay): main_stone(主石,必) + setting_material(镶材,必) + companion_stone(伴石,可选)
+// 组合型(composite): component(可多条)
+// 定价规则(镶嵌型):
+//   成本 = 各组件 costPrice 之和（手动录入）
+//   售价 = main_stone.sellingPrice + companion_stone.sellingPrice + setting_material.weight × MetalPrice.市价（动态）
+model ItemMaterialComponent {
+  id           Int      @id @default(autoincrement())
+  itemId       Int      @map("item_id")
+  materialId   Int      @map("material_id")
+  // 角色: main_stone(主石) / setting_material(镶材) / companion_stone(伴石) / component(组合型组件)
+  role         String
+  weight       Float?   // 组件重量（克），镶材用于动态计算售价
+  costPrice    Float?   @map("cost_price") // 组件成本（手动录入）
+  sellingPrice Float?   @map("selling_price") // 组件售价（主石/伴石手动录入；镶材为 null 表示按 MetalPrice 动态计算）
+  sortOrder    Int      @default(0) @map("sort_order")
+  notes        String?  // 如"配石0.5ct"
+
+  item     Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  material DictMaterial @relation(fields: [materialId], references: [id])
+
+  @@index([itemId])
+  @@index([materialId])
+  @@map("item_material_component")
 }
 
 // ──────────────────────────────────────────────
@@ -617,4 +655,164 @@ model PriceChangeLog {
   @@index([itemId])
   @@index([createdAt])
   @@map("price_change_log")
+}
+
+// ══════════════════════════════════════════════
+// 内容推广模块（Content Promotion）
+// 用于小红书等内容平台运营：选题→文案→推广→反馈
+// 注意：与现有 Promotion（促销活动）完全独立，使用 Content 前缀区分
+// ══════════════════════════════════════════════
+
+// ──────────────────────────────────────────────
+// 31. content_topics — 内容选题表
+// ──────────────────────────────────────────────
+model ContentTopic {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  topicType   String    // product / category / season / trend
+  status      String    @default("draft") // draft / analyzed / pending / approved / rejected / archived
+  source      String    // ai / manual / web_fetch
+  sourceUrl   String?   @map("source_url")
+  keywords    Json      // SQLite 不支持 String[]，用 Json 存储 string[]
+  aiMetadata  Json?     @map("ai_metadata")
+  rating      Int?
+  ratingNote  String?   @map("rating_note")
+  ratedBy     String?   @map("rated_by")
+  ratedAt     DateTime? @map("rated_at")
+  createdBy   String    @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  items       ContentTopicItem[]
+  contents    ContentDraft[]
+
+  @@index([status])
+  @@index([source])
+  @@index([rating])
+  @@map("content_topics")
+}
+
+// ──────────────────────────────────────────────
+// 32. content_drafts — 内容文案表
+// ──────────────────────────────────────────────
+model ContentDraft {
+  id             String    @id @default(cuid())
+  topicId        String?   @map("topic_id")
+  title          String
+  body           String
+  tags           Json      // SQLite 不支持 String[]，用 Json 存储 string[]
+  coverImage     String?   @map("cover_image")
+  images         Json      // SQLite 不支持 String[]，用 Json 存储 string[]
+  contentMode    String    @map("content_mode") // 种草 / 科普 / 故事 / 对比
+  version        Int       @default(1)
+  status         String    @default("draft") // draft / pending_review / approved / rejected / published
+  reviewNote     String?   @map("review_note")
+  reviewerId     String?   @map("reviewer_id")
+  reviewedAt     DateTime? @map("reviewed_at")
+  aiModel        String?   @map("ai_model")
+  aiPrompt       String?   @map("ai_prompt")
+  violationFlags Json?     @map("violation_flags")
+  createdBy      String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  topic          ContentTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  items          ContentDraftItem[]
+  promotions     ContentPromotion[]
+
+  @@index([topicId])
+  @@index([status])
+  @@map("content_drafts")
+}
+
+// ──────────────────────────────────────────────
+// 33. content_promotions — 内容推广记录表
+// ──────────────────────────────────────────────
+model ContentPromotion {
+  id              String    @id @default(cuid())
+  contentId       String    @map("content_id")
+  channel         String    @default("xiaohongshu")
+  externalNoteId  String?   @map("external_note_id")
+  externalNoteUrl String?   @map("external_note_url")
+  status          String    @default("scheduled") // scheduled / published / offline / archived
+  scheduledAt     DateTime? @map("scheduled_at")
+  publishedAt     DateTime? @map("published_at")
+  offlineAt       DateTime? @map("offline_at")
+  offlineReason   String?   @map("offline_reason")
+  createdBy       String    @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  content         ContentDraft @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  items           ContentPromotionItem[]
+  metrics         ContentMetric[]
+
+  @@index([contentId])
+  @@index([status])
+  @@map("content_promotions")
+}
+
+// ──────────────────────────────────────────────
+// 34. content_metrics — 内容反馈数据表（时序）
+// ──────────────────────────────────────────────
+model ContentMetric {
+  id            String   @id @default(cuid())
+  promotionId   String   @map("promotion_id")
+  syncedAt      DateTime @default(now()) @map("synced_at")
+  viewCount     Int      @default(0) @map("view_count")
+  likeCount     Int      @default(0) @map("like_count")
+  commentCount  Int      @default(0) @map("comment_count")
+  shareCount    Int      @default(0) @map("share_count")
+  collectCount  Int      @default(0) @map("collect_count")
+  dataSource    String   @default("manual") @map("data_source")
+  notes         String?
+
+  promotion     ContentPromotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@index([promotionId])
+  @@index([syncedAt])
+  @@map("content_metrics")
+}
+
+// ──────────────────────────────────────────────
+// 35. content_topic_items — 选题与货品关联表
+// ──────────────────────────────────────────────
+model ContentTopicItem {
+  topicId String @map("topic_id")
+  itemId  Int    @map("item_id")
+
+  topic   ContentTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  item    Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([topicId, itemId])
+  @@map("content_topic_items")
+}
+
+// ──────────────────────────────────────────────
+// 36. content_draft_items — 文案与货品关联表
+// ──────────────────────────────────────────────
+model ContentDraftItem {
+  draftId String @map("draft_id")
+  itemId  Int    @map("item_id")
+
+  draft   ContentDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  item    Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([draftId, itemId])
+  @@map("content_draft_items")
+}
+
+// ──────────────────────────────────────────────
+// 37. content_promotion_items — 推广与货品关联表
+// ──────────────────────────────────────────────
+model ContentPromotionItem {
+  promotionId String @map("promotion_id")
+  itemId      Int    @map("item_id")
+
+  promotion   ContentPromotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  item        Item             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, itemId])
+  @@map("content_promotion_items")
 }
