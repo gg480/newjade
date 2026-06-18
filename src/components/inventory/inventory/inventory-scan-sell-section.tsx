@@ -68,6 +68,10 @@ export default function InventoryScanSellSection({
               <Camera className="h-4 w-4" />
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+            <Barcode className="h-3 w-3" />
+            扫描枪已启用：直接扫码即可出库（无需聚焦输入框）
+          </p>
         </CardContent>
       </Card>
 

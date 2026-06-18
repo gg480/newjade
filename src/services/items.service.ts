@@ -595,7 +595,7 @@ export async function createItem(body: CreateItemInput) {
 
   // 校验标签-材质兼容性
   const normalizedTagIds = Array.isArray(tagIds)
-    ? tagIds.map((id) => parseInt(id, 10)).filter((id: number) => !Number.isNaN(id))
+    ? tagIds.map((id) => Number(id)).filter((id: number) => !Number.isNaN(id))
     : [];
   const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, finalMaterialId);
   if (invalidTagData) {
@@ -646,14 +646,14 @@ export async function createItem(body: CreateItemInput) {
         name,
         batchCode: batchId ? (await db.batch.findUnique({ where: { id: batchId } }))?.batchCode : null,
         batchId: batchId || null,
-        materialId: finalMaterialId || null,
+        materialId: finalMaterialId ?? undefined,
         typeId: typeId || null,
         costPrice: finalCostPrice,
         allocatedCost,
         // ADR-020: 镶嵌型/组合型优先用组件汇算的售价
         sellingPrice: computedSellingPrice != null
           ? computedSellingPrice
-          : (sellingPrice != null ? parseFloat(String(sellingPrice)) : null),
+          : (sellingPrice != null ? parseFloat(String(sellingPrice)) : 0),
         floorPrice: floorPrice != null ? parseFloat(String(floorPrice)) : null,
         origin: origin || null,
         counter: counter != null ? parseInt(String(counter)) : null,
@@ -888,7 +888,7 @@ export async function updateItem(id: number, body: UpdateItemInput) {
     : original.materialId;
   if (tagIds !== undefined) {
     const normalizedTagIds = Array.isArray(tagIds)
-      ? tagIds.map((tid) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
+      ? tagIds.map((tid) => Number(tid)).filter((tid: number) => !Number.isNaN(tid))
       : [];
     const invalidTagData = await validateTagMaterialCompatibility(normalizedTagIds, effectiveMaterialId);
     if (invalidTagData) {
@@ -902,7 +902,7 @@ export async function updateItem(id: number, body: UpdateItemInput) {
   if (tagIds !== undefined) {
     await db.itemTag.deleteMany({ where: { itemId: id } });
     const normalizedTagIds = Array.isArray(tagIds)
-      ? tagIds.map((tid) => parseInt(tid, 10)).filter((tid: number) => !Number.isNaN(tid))
+      ? tagIds.map((tid) => Number(tid)).filter((tid: number) => !Number.isNaN(tid))
       : [];
     if (normalizedTagIds.length > 0) {
       await db.itemTag.createMany({ data: normalizedTagIds.map((tid: number) => ({ itemId: id, tagId: tid })) });
@@ -1082,7 +1082,7 @@ export async function batchCreateItems(body: BatchCreateInput) {
           typeId: parsedTypeId,
           costPrice: finalCostPrice,
           allocatedCost,
-          sellingPrice: parsedSellingPrice,
+          sellingPrice: parsedSellingPrice ?? 0,
           origin: null,
           counter: parsedCounter,
           supplierId: parsedSupplierId,

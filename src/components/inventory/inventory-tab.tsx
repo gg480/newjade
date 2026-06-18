@@ -3,10 +3,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, salesApi, dictsApi, batchesApi, exportApi, customersApi } from '@/lib/api';
 import type { ItemSummary, DictMaterial, DictType, DictTag, Batch, Customer, PaginatedData, ItemsQueryParams, CreateSaleBody, BatchPriceAdjustResult } from '@/lib/api.types';
+import type { LabelItem } from './label-print-dialog';
 import { CustomerSearchSelect } from './customer-search-select';
 import { itemsApiEnhanced } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
+import { useBarcodeScanner } from '@/hooks/use-barcode-scanner';
 import { formatPrice, StatusBadge, EmptyState, LoadingSkeleton, ConfirmDialog } from './shared';
 import ItemCreateDialog from './item-create-dialog';
 import FactoryModeWrapper from './create/factory-mode-wrapper';
@@ -113,7 +115,7 @@ function InventoryTab() {
     if (!scannerComponent) {
       try {
         const mod = await import('@/components/inventory/barcode-scanner');
-        setScannerComponent(() => mod.default || mod.BarcodeScanner);
+        setScannerComponent(() => mod.default as unknown as React.ComponentType<object>);
       } catch (e) { console.error('[InventoryTab]', e);
         toast.error('扫码组件加载失败，请刷新页面重试');
         return;
@@ -138,7 +140,7 @@ function InventoryTab() {
   const [batchDeleteHard, setBatchDeleteHard] = useState(false);
 
   // Batch price adjust form
-  const [batchPriceForm, setBatchPriceForm] = useState({ mode: 'percent', target: 'sellingPrice', value: '', direction: 'increase' as 'increase' | 'decrease' });
+  const [batchPriceForm, setBatchPriceForm] = useState<{ mode: 'percent' | 'fixed'; target: 'sellingPrice' | 'minimumPrice'; value: string; direction: 'increase' | 'decrease' }>({ mode: 'percent', target: 'sellingPrice', value: '', direction: 'increase' });
 
   // Batch counter form
   const [batchCounterForm, setBatchCounterForm] = useState({ counter: '' });
@@ -337,16 +339,16 @@ function InventoryTab() {
         if (filters.has_tags) params.has_tags = filters.has_tags;
         params.sort_by = sortBy;
         params.sort_order = sortOrder;
-        const data = await itemsApi.getItems(params);
-        if (process.env.NODE_ENV !== 'production') console.log('[InventoryTab] loadData OK, items=', data?.items?.length, 'pagination=', data?.pagination);
+        const data = await itemsApi.getItems(params) as unknown as Record<string, unknown>;
+        if (process.env.NODE_ENV !== 'production') console.log('[InventoryTab] loadData OK, items=', (data as Record<string, unknown>).items);
         if (!cancelled) {
-          setItems(data.items || []);
-          setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-          setSummary(data.summary || {
+          setItems((data.items || []) as ItemSummary[]);
+          setPagination((data.pagination || { total: 0, page: 1, size: 20, pages: 0 }) as { total: number; page: number; size: number; pages: number });
+          setSummary((data.summary || {
             statusCounts: { in_stock: 0, sold: 0, returned: 0 },
             totalCost: 0,
             totalMarketValue: 0,
-          });
+          }) as typeof summary);
         }
       } catch (e) { console.error('[InventoryTab] loadData FAILED:', e); if (!cancelled) toast.error('加载库存失败'); } finally { if (process.env.NODE_ENV !== 'production') console.log('[InventoryTab] loadData FINALLY, cancelled=', cancelled); if (!cancelled) setLoading(false); }
     };
@@ -389,7 +391,7 @@ function InventoryTab() {
   function openLightbox(itemId: number) {
     const idx = galleryImages.findIndex((img: { itemId: number }) => img.itemId === itemId);
     if (idx >= 0) {
-      setLightboxImages(galleryImages);
+      setLightboxImages(galleryImages.map(img => ({ ...img, url: img.url ?? '' })));
       setLightboxIndex(idx);
       setLightboxOpen(true);
     }
@@ -440,7 +442,7 @@ function InventoryTab() {
       // 优先通过销售退货 API 处理（含 SaleReturn 记录 + 退款审计）
       // 如果货品有最近的销售记录，走正规退货流程
       try {
-        const saleResult = await salesApi.getSales({ itemId: item.id, status: 'completed', page: 1, size: 1 });
+        const saleResult = await salesApi.getSales({ itemId: item.id, page: 1, size: 1 });
         const lastSale = saleResult?.items?.[0];
         if (lastSale) {
           await salesApi.returnSale({
@@ -508,7 +510,7 @@ function InventoryTab() {
     try {
       const item = await itemsApi.lookupBySku(scanSku.trim());
       if (item.status === 'in_stock') {
-        setSaleDialog({ open: true, item });
+        setSaleDialog({ open: true, item: item as unknown as ItemSummary });
         setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' });
         setScanSku('');
       } else {
@@ -523,11 +525,12 @@ function InventoryTab() {
 
   async function handleBarcodeScan(code: string) {
     setShowScanner(false);
+    setScanSku(''); // 清空输入框（扫描枪字符可能已注入 input）
     setScanLoading(true);
     try {
       const item = await itemsApi.lookupBySku(code.trim());
       if (item.status === 'in_stock') {
-        setSaleDialog({ open: true, item });
+        setSaleDialog({ open: true, item: item as unknown as ItemSummary });
         setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' });
       } else {
         toast.error(`货品 ${item.skuCode} 当前状态为「${item.status === 'sold' ? '已售' : item.status === 'returned' ? '已退' : item.status}」，无法出库`);
@@ -538,6 +541,9 @@ function InventoryTab() {
       setScanLoading(false);
     }
   }
+
+  // 全局扫描枪监听（HID 键盘模拟器模式）：USB/蓝牙扫描枪扫码后自动触发出库
+  useBarcodeScanner({ onComplete: handleBarcodeScan });
 
   function toggleSortOrder() {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
@@ -684,7 +690,7 @@ function InventoryTab() {
     setBatchProgress({ current: 0, total: selectedItems.length });
 
     const results = await Promise.allSettled(
-      selectedItems.map(item => itemsApi.updateItem(item.id, { counter: String(counter) }))
+      selectedItems.map(item => itemsApi.updateItem(item.id, { counter }))
     );
     const successCount = results.filter(r => r.status === 'fulfilled').length;
     const failCount = results.filter(r => r.status === 'rejected').length;
@@ -764,7 +770,7 @@ function InventoryTab() {
         onToggleStatusFilter={toggleStatusFilter}
         statusCounts={statusCounts}
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={(fn) => setFilters(fn as unknown as (prev: typeof filters) => typeof filters)}
         searchField={searchField}
         onSearchFieldChange={setSearchField}
         materials={materials}
@@ -778,7 +784,7 @@ function InventoryTab() {
         showMoreFilters={showMoreFilters}
         onToggleMoreFilters={() => setShowMoreFilters(!showMoreFilters)}
         onSearch={() => { setPagination(p => ({ ...p, page: 1 })); refresh(); }}
-        onResetFilters={() => { setFilters({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' }); setActiveStatuses(new Set(['in_stock'])); }}
+        onResetFilters={() => { setFilters({ materialCategory: '', materialId: '', typeId: '', tagId: '', status: '', keyword: '', counter: '', batchId: '', has_tags: '', minPrice: '', maxPrice: '', purchaseStartDate: '', purchaseEndDate: '' }); setActiveStatuses(new Set(['in_stock'])); }}
         sortBy={sortBy}
         onSortByChange={setSortBy}
         sortOrder={sortOrder}
@@ -853,7 +859,7 @@ function InventoryTab() {
       ) : (
         <>
           <InventoryDesktopTable
-            sortedItems={sortedItems}
+            sortedItems={sortedItems.map(i => ({ ...i, coverImage: i.coverImage ?? undefined })) as any}
             selectedIds={selectedIds}
             isAllSelected={isAllSelected}
             isSomeSelected={isSomeSelected}
@@ -876,7 +882,7 @@ function InventoryTab() {
           />
 
         <InventoryMobileCards
-          sortedItems={sortedItems}
+          sortedItems={sortedItems.map(i => ({ ...i, coverImage: i.coverImage ?? undefined })) as any}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onOpenLightbox={openLightbox}
@@ -1312,11 +1318,11 @@ function InventoryTab() {
       />
 
       {/* Label Print Dialog */}
-      <LabelPrintDialog item={printLabelItem} open={printLabelItem !== null} onOpenChange={open => { if (!open) setPrintLabelItem(null); }} />
+      <LabelPrintDialog item={printLabelItem as unknown as LabelItem} open={printLabelItem !== null} onOpenChange={open => { if (!open) setPrintLabelItem(null); }} />
 
       {/* Barcode Scanner Dialog - dynamically imported to avoid loading html5-qrcode at tab load */}
       {showScanner && scannerComponent && (() => {
-        const ScannerComponent = scannerComponent;
+        const ScannerComponent = scannerComponent as React.ComponentType<{ open: boolean; onClose: () => void; onScan: (code: string) => void }>;
         return <ScannerComponent open={showScanner} onClose={() => setShowScanner(false)} onScan={handleBarcodeScan} />;
       })()}
 
@@ -1326,7 +1332,7 @@ function InventoryTab() {
         sortedItems={sortedItems}
         onClose={() => setSelectedItemId(null)}
         onEdit={(id: number) => { setSelectedItemId(null); setEditItemId(id); }}
-        onQuickSell={(item: ItemSummary) => { setSelectedItemId(null); setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '' }); }}
+        onQuickSell={(item: ItemSummary) => { setSelectedItemId(null); setSaleDialog({ open: true, item }); setSaleForm({ actualPrice: item.sellingPrice, channel: 'store', saleDate: new Date().toISOString().slice(0, 10), note: '', customerId: '' }); }}
         onRestoreToStock={handleRestoreToStock}
         getTagColor={getTagColor}
       />

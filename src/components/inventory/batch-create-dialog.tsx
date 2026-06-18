@@ -109,12 +109,12 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
     setSaving(true);
     try {
       if (!form.materialId) { toast.error('请选择材质'); setSaving(false); return; }
-      if (!form.quantity || form.quantity < 1) { toast.error('请输入有效数量'); setSaving(false); return; }
+      if (!form.quantity || Number(form.quantity) < 1) { toast.error('请输入有效数量'); setSaving(false); return; }
       await batchesApi.createBatch({
         batchCode: form.batchCode,
         materialId: Number(form.materialId),
         typeId: form.typeId ? Number(form.typeId) : undefined,
-        quantity: form.quantity,
+        quantity: Number(form.quantity),
         totalCost: form.totalCost || 0,
         costAllocMethod: form.costAllocMethod,
         supplierId: form.supplierId ? Number(form.supplierId) : undefined,
@@ -367,7 +367,7 @@ function BatchCreateDialog({ open, onOpenChange, onSuccess, initialMaterialId, i
         open={showSupplierAdd}
         onOpenChange={setShowSupplierAdd}
         onCreated={(s) => {
-          suppliersApi.getSuppliers().then(res => setSuppliers((res as Record<string, unknown>)?.items as Supplier[] || res || [])).catch(() => {});
+          suppliersApi.getSuppliers().then(res => setSuppliers(((res as any)?.items as Supplier[]) || (res as unknown as Supplier[]) || [])).catch(() => {});
           setForm(f => ({ ...f, supplierId: String(s.id) }));
           setQuickSupplierId(String(s.id));
         }}

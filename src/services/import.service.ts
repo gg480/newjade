@@ -77,9 +77,10 @@ export async function createItemWithGeneratedSku(
   for (let attempt = 0; attempt < 8; attempt++) {
     const skuCode = await generateSkuCode(materialId, typeId);
     try {
+      const { id: _unusedId, ...restData } = data as any;
       await db.item.create({
         data: {
-          ...data,
+          ...restData,
           skuCode,
         },
       });
@@ -542,7 +543,7 @@ export async function importItemsCsvRows(
             typeId: typeId,
             costPrice: cost && !isNaN(cost) ? cost : null,
             allocatedCost: cost && !isNaN(cost) ? cost : null,
-            sellingPrice: price && !isNaN(price) ? price : null,
+            sellingPrice: price && !isNaN(price) ? price : 0,
             counter: counter && !isNaN(counter) ? counter : null,
             purchaseDate: parsedDate,
             origin: origin || null,

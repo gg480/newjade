@@ -23,7 +23,7 @@ interface CustomerMergeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** 目标客户（合并到的客户） */
-  targetCustomer: { id: number; name: string; phone?: string; customerCode?: string; tags?: string[] } | null;
+  targetCustomer: { id: number; name: string; phone?: string | null; customerCode?: string; tags?: string[] } | null;
   /** 合并完成后回调 */
   onMerged?: () => void;
 }
@@ -100,8 +100,18 @@ export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerg
       if (maxAmount && !isNaN(parseFloat(maxAmount))) params.max_amount = maxAmount;
 
       const data = await salesApi.getSales(params);
-      const items = data?.items || [];
-      setResults(items);
+      const rawItems = data?.items || [];
+      setResults(rawItems.map((r: any) => ({
+        id: r.id,
+        saleNo: r.saleNo,
+        saleDate: r.saleDate,
+        actualPrice: r.actualPrice,
+        channel: r.channel,
+        itemSku: r.itemSku || r.item?.skuCode || r.skuCode || '',
+        itemName: r.itemName || r.item?.name || r.name || '',
+        customerId: r.customerId,
+        customerName: r.customerName || r.customer?.name || null,
+      })));
       setSelectedIds(new Set());
       setSelectAll(false);
     } catch (error) {
@@ -124,8 +134,18 @@ export function CustomerMergeDialog({ open, onOpenChange, targetCustomer, onMerg
         include_returned: 'false',
       };
       const data = await salesApi.getSales(params);
-      const items = data?.items || [];
-      setResults(items);
+      const rawItems = data?.items || [];
+      setResults(rawItems.map((r: any) => ({
+        id: r.id,
+        saleNo: r.saleNo,
+        saleDate: r.saleDate,
+        actualPrice: r.actualPrice,
+        channel: r.channel,
+        itemSku: r.itemSku || r.item?.skuCode || r.skuCode || '',
+        itemName: r.itemName || r.item?.name || r.name || '',
+        customerId: r.customerId,
+        customerName: r.customerName || r.customer?.name || null,
+      })));
       setSelectedIds(new Set());
       setSelectAll(false);
     } catch (error) {

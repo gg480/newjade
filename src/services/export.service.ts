@@ -218,8 +218,8 @@ export async function getLabelExportData(params: LabelExportParams) {
  */
 export async function getExportSalesData(params: ExportSalesParams) {
   const where: Prisma.SaleRecordWhereInput = {};
-  if (params.startDate) where.saleDate = { ...where.saleDate, gte: params.startDate };
-  if (params.endDate) where.saleDate = { ...where.saleDate, lte: params.endDate };
+  if (params.startDate) where.saleDate = { gte: params.startDate };
+  if (params.endDate) where.saleDate = { ...(where.saleDate as object), lte: params.endDate };
 
   const sales = await db.saleRecord.findMany({
     where,

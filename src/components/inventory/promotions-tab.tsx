@@ -191,7 +191,7 @@ function PromotionsTab() {
   // 处理促销活动状态变更
   async function handleStatusChange(id: number, status: string) {
     try {
-      await updatePromotion(id, { status });
+      await promotionsApi.updatePromotion(id, { status });
       toast.success('更新促销活动状态成功！');
       refresh();
     } catch (error) {
@@ -394,8 +394,7 @@ function PromotionsTab() {
         <EmptyState 
           icon={Target}
           title="暂无促销活动"
-          description="点击上方「新建促销」按钮创建第一个促销活动"
-          action={<Button onClick={() => setShowCreate(true)}>新建促销</Button>}
+          desc="点击上方「新建促销」按钮创建第一个促销活动"
         />
       ) : (
         <Card>

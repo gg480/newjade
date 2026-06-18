@@ -272,7 +272,7 @@ export default function SettingsDictsPanel() {
     if (!editTag) return;
     const mid = tagMaterialFilter ? parseInt(tagMaterialFilter, 10) : undefined;
     try {
-      await dictsApi.updateTag(editTag.id, { name: tagForm.name, groupName: tagForm.groupName || null });
+      await dictsApi.updateTag(editTag.id, { name: tagForm.name, groupName: tagForm.groupName || undefined });
       toast.success('标签更新成功');
       setEditTag(null);
       setTagForm({ name: '', groupName: '' });
@@ -549,7 +549,7 @@ export default function SettingsDictsPanel() {
                       <div className="flex items-center gap-1.5">
                         {m.name}
                         {m.category === '贵金属' && (
-                          <Lock className="h-3 w-3 text-amber-500 inline-block" title="贵金属为系统标准分类，不可修改" />
+                          <span title="贵金属为系统标准分类，不可修改"><Lock className="h-3 w-3 text-amber-500 inline-block" /></span>
                         )}
                       </div>
                     </TableCell>

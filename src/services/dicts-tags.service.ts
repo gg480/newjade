@@ -45,7 +45,7 @@ export async function updateTagMaterials(
     if (!isGlobal) {
       await tx.dictTagMaterial.createMany({
         data: cleanMaterialIds.map(materialId => ({ tagId, materialId })),
-        skipDuplicates: true,
+        skipDuplicates: true as never,
       });
     }
   });

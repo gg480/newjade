@@ -167,7 +167,7 @@ export default function NotificationBell() {
     try {
       setError(null);
       const data = await notificationsApi.getNotifications({ page: 1, size: 20 });
-      setItems(data.items || []);
+      setItems((data.items || []) as NotificationItem[]);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '加载通知失败';
       setError(msg);

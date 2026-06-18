@@ -76,7 +76,7 @@ interface CustomerTableRow extends Customer {
 }
 
 // 客户画像详情类型
-interface CustomerProfileDetail extends CustomerDetail {
+interface CustomerProfileDetail extends Omit<CustomerDetail, 'tags' | 'notes'> {
   purchaseStats?: {
     totalSpending: number;
     orderCount: number;
@@ -144,7 +144,7 @@ export function CustomersTable({
       {visibleCustomers.map(c => {
         const vip = getVipLevel(c.totalSpending || 0);
         const VipIcon = vip.icon;
-        const customerTags = Array.isArray(c.tags) ? c.tags : [];
+        const customerTags: string[] = Array.isArray(c.tags) ? c.tags : [];
         const isExpanded = expandedCustomerId === c.id;
         return (
           <Card key={c.id} className="group/card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer" onClick={() => onProfileClick(c)}>
@@ -161,7 +161,7 @@ export function CustomersTable({
                     </a>
                   )}
                   {c.wechat && (
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-sky-600 md:opacity-0 md:group-hover/card:opacity-100" onClick={() => { navigator.clipboard.writeText(c.wechat).then(() => toast.success('微信号已复制到剪贴板')).catch(() => toast.error('复制失败')); }} title="复制微信号">
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-sky-600 md:opacity-0 md:group-hover/card:opacity-100" onClick={() => { navigator.clipboard.writeText(c.wechat ?? '').then(() => toast.success('微信号已复制到剪贴板')).catch(() => toast.error('复制失败')); }} title="复制微信号">
                       <MessageCircle className="h-3.5 w-3.5" />
                     </Button>
                   )}
@@ -306,8 +306,8 @@ export function CustomersTable({
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="font-mono shrink-0">{sr.item?.skuCode || sr.saleNo}</span>
                                 <Badge variant="outline" className="text-[10px] h-4 shrink-0">{sr.channel === 'store' ? '门店' : '微信'}</Badge>
-                                {sr.item?.batchCode && (
-                                  <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">{sr.item.batchCode}</Badge>
+                                {(sr.item as any)?.batchCode && (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">{(sr.item as any).batchCode}</Badge>
                                 )}
                               </div>
                               <span className="font-medium text-emerald-600 shrink-0">{formatPrice(sr.actualPrice)}</span>

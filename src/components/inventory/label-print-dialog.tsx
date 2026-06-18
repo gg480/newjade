@@ -8,7 +8,7 @@ import { Printer } from 'lucide-react';
 import type { ItemSummary, ItemSpec } from '@/lib/api.types';
 
 // 标签打印所需的货品字段
-interface LabelItem extends ItemSummary {
+export interface LabelItem extends ItemSummary {
   materialName?: string;
   materialDisplayName?: string | null;
   typeName?: string;
@@ -58,28 +58,29 @@ function LabelPrintDialog({ item, open, onOpenChange }: { item: LabelItem | null
 
   // 打印：打开新窗口，将 Canvas 转图片嵌入 HTML
   function handlePrint() {
+    const i = item!;
     const barcodeDataUrl = barcodeCanvasRef.current?.toDataURL('image/png') || '';
     const printWindow = window.open('', '_blank', 'width=400,height=300');
     if (!printWindow) return;
 
-    const sku = item.skuCode || '';
+    const sku = i.skuCode || '';
     // ADR-020: 镶嵌型/组合型材质显示三类名称用 + 连接
-    const materialDisplay = item.materialDisplayName || item.materialName || '-';
-    const materialType = `${materialDisplay} · ${item.typeName || '-'}`;
-    const originLine = item.origin ? `<div class="info-line">产地: ${item.origin}</div>` : '';
+    const materialDisplay = i.materialDisplayName || i.materialName || '-';
+    const materialType = `${materialDisplay} · ${i.typeName || '-'}`;
+    const originLine = i.origin ? `<div class="info-line">产地: ${i.origin}</div>` : '';
     const specLine = specParts ? `<div class="info-line">${specParts}</div>` : '';
 
     // ADR-020: 镶嵌型标签售价拆分显示
     // 售价在标签上显示为主石+伴石售价+贵金属金属克重
     let priceLine = '';
-    if (item.compositeType === 'inlay' && item.materialComponents && item.materialComponents.length > 0) {
-      const mainStone = item.materialComponents.find(c => c.role === 'main_stone');
-      const companionStone = item.materialComponents.find(c => c.role === 'companion_stone');
-      const settingMaterial = item.materialComponents.find(c => c.role === 'setting_material');
+    if (i.compositeType === 'inlay' && i.materialComponents && i.materialComponents.length > 0) {
+      const mainStone = i.materialComponents.find(c => c.role === 'main_stone');
+      const companionStone = i.materialComponents.find(c => c.role === 'companion_stone');
+      const settingMaterial = i.materialComponents.find(c => c.role === 'setting_material');
       const mainStonePrice = mainStone?.sellingPrice ?? 0;
       const companionStonePrice = companionStone?.sellingPrice ?? 0;
       const settingWeight = settingMaterial?.weight != null ? `${settingMaterial.weight}g` : '';
-      const settingName = item.inlayPriceBreakdown?.settingMaterialName || settingMaterial?.material?.name || '镶材';
+      const settingName = i.inlayPriceBreakdown?.settingMaterialName || settingMaterial?.material?.name || '镶材';
 
       // 拆分行：主石¥xxx + 伴石¥xxx + 镶材Xg
       const parts: string[] = [];
@@ -90,13 +91,13 @@ function LabelPrintDialog({ item, open, onOpenChange }: { item: LabelItem | null
         ? `<div class="info-line">${parts.join(' + ')}</div>`
         : '';
       // 总售价
-      const totalPriceLine = item.sellingPrice != null
-        ? `<div class="price">\u00a5${item.sellingPrice.toFixed(2)}</div>`
+      const totalPriceLine = i.sellingPrice != null
+        ? `<div class="price">\u00a5${i.sellingPrice.toFixed(2)}</div>`
         : '';
       priceLine = breakdownLine + totalPriceLine;
     } else {
-      priceLine = item.sellingPrice != null
-        ? `<div class="price">\u00a5${item.sellingPrice.toFixed(2)}</div>`
+      priceLine = i.sellingPrice != null
+        ? `<div class="price">\u00a5${i.sellingPrice.toFixed(2)}</div>`
         : '';
     }
 

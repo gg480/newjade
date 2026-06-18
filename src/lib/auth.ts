@@ -6,9 +6,22 @@ import crypto from 'crypto';
 
 const SESSION_TTL_DAYS = 7; // 7-day session expiry
 
+/** OpenClaw API Key 前缀，用于在 middleware 中区分认证类型 */
+export const OPENCLAW_KEY_PREFIX = 'oc_';
+
 /** 生成密码学安全的随机 session token（使用 crypto.randomBytes） */
 export function generateToken(): string {
   return `session-${crypto.randomBytes(32).toString('base64url')}`;
+}
+
+/** 生成 OpenClaw API Key（长效，供外部系统调用） */
+export function generateOpenClawKey(): string {
+  return `${OPENCLAW_KEY_PREFIX}${crypto.randomBytes(24).toString('base64url')}`;
+}
+
+/** 判断 token 是否为 OpenClaw API Key（以 oc_ 开头） */
+export function isOpenClawKey(token: string): boolean {
+  return token.startsWith(OPENCLAW_KEY_PREFIX);
 }
 
 /** Clean expired sessions from the database */
@@ -166,4 +179,37 @@ export async function hasPermission(userId: number, permission: string): Promise
   } catch {
     return false;
   }
+}
+
+/**
+ * 验证 OpenClaw API Key（长效，存 SysConfig）
+ * 用于外部系统（OpenClaw）调用 ERP 内容推广 API
+ * @param key - 以 oc_ 开头的 API Key
+ * @returns true 表示 Key 有效
+ */
+export async function validateOpenClawKey(key: string): Promise<boolean> {
+  if (!isOpenClawKey(key)) return false;
+
+  try {
+    const config = await db.sysConfig.findUnique({
+      where: { key: 'openclaw_api_key' },
+    });
+
+    // 未配置 Key → 拒绝所有 OpenClaw 调用
+    if (!config || !config.value) return false;
+
+    // 常量时间比较，防止时序攻击
+    return safeEqual(key, config.value);
+  } catch (e) {
+    console.error('[Auth] validateOpenClawKey:', e);
+    return false;
+  }
+}
+
+/** 常量时间字符串比较，防止时序攻击 */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return crypto.timingSafeEqual(bufA, bufB);
 }

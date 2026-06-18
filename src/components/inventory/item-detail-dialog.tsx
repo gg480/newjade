@@ -30,6 +30,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
 import { Trash2, Star, Upload, ImageIcon, ZoomIn, ImageOff } from 'lucide-react';
+import ItemPromotionHistory from './content-promotion/item-promotion-history';
 
 // Image with loading state helper
 function ImageWithLoading({ src, alt, className, onClick }: { src: string; alt: string; className?: string; onClick?: () => void }) {
@@ -74,7 +75,7 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
     setLoading(true);
     try {
       const data = await itemsApi.getItem(id);
-      setItem(data);
+      setItem(data as ItemDetail);
       // Set initial selected image to cover image or first image
       if (data.images && data.images.length > 0) {
         const coverIdx = data.images.findIndex((img: ItemImage) => img.isCover);
@@ -387,13 +388,16 @@ function ItemDetailDialog({ itemId, open, onOpenChange }: { itemId: number | nul
                       {item.saleRecords.map((sr: SaleRecord) => (
                         <div key={sr.id} className="p-2 bg-muted/50 rounded text-sm">
                           <div className="flex justify-between"><span className="font-mono text-xs">{sr.saleNo}</span><span className="font-medium">{formatPrice(sr.actualPrice)}</span></div>
-                          <div className="text-xs text-muted-foreground">{sr.saleDate} · {sr.channel === 'store' ? '门店' : '微信'}{sr.customerName ? ` · ${sr.customerName}` : ''}</div>
+                          <div className="text-xs text-muted-foreground">{sr.saleDate} · {sr.channel === 'store' ? '门店' : '微信'}{sr.customer?.name ? ` · ${sr.customer.name}` : ''}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </>
               )}
+
+              {/* Promotion History: 关联该商品的所有推广记录及反馈数据 */}
+              <ItemPromotionHistory itemId={item.id} />
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">未找到货品信息</div>

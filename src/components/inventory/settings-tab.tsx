@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { dictsApi, configApi, suppliersApi, metalApi, backupApi, importApi, request } from '@/lib/api';
-import type { DictMaterial, DictType, DictTag, MetalPrice, SysConfig, ImportResult } from '@/lib/api.types';
+import type { DictMaterial, DictType, DictTag, MetalPrice, SysConfig, ImportResult, BackupResult } from '@/lib/api.types';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import { toast } from 'sonner';
 import { formatPrice, EmptyState, LoadingSkeleton } from './shared';
@@ -318,7 +318,7 @@ function SettingsTab() {
         ? await importApi.importItems(importFile, options)
         : await importApi.importSales(importFile, { autoCreate });
       setImportResult(result);
-      toast.success(`导入完成: 成功${result.successCount}条, 失败${result.failCount}条`);
+      toast.success(`导入完成: 成功${result.successCount ?? result.success}条, 失败${result.failCount ?? result.failed}条`);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : '导入失败'); } finally { setImporting(false); }
   }
 
@@ -341,11 +341,10 @@ function SettingsTab() {
     setCsvImporting(true); setCsvResult(null);
     try {
       const result = await importApi.importCsvItems(csvFile);
-      setCsvResult(result);
+      setCsvResult(result as typeof result & { skipped: number; duplicated: number });
       const parts = [`成功${result.success}件`];
-      const resultExt = result as ImportResult & { duplicated?: number };
-      if (resultExt.duplicated > 0) parts.push(`重复跳过${resultExt.duplicated}件`);
-      if (result.skipped > 0) parts.push(`跳过${result.skipped}行`);
+      if ((result.duplicated ?? 0) > 0) parts.push(`重复跳过${result.duplicated}件`);
+      if ((result.skipped ?? 0) > 0) parts.push(`跳过${result.skipped}行`);
       if (result.errors.length === 0) {
         toast.success(`CSV导入完成: ${parts.join('，')}`);
       } else {
@@ -589,7 +588,7 @@ function SettingsTab() {
               if (!restoreFile) return;
               setRestoring(true);
               try {
-                const result = await backupApi.restore(restoreFile);
+                const result = await backupApi.restore(restoreFile) as BackupResult & { preRestoreBackupFilename?: string };
                 const preName = result?.preRestoreBackupFilename;
                 toast.success(preName ? `数据库恢复成功（已先备份: ${preName}），页面将在3秒后刷新` : '数据库恢复成功，页面将在3秒后刷新');
                 setShowRestoreConfirm(false);

@@ -25,6 +25,16 @@ import type {
   CurrentUser, UserInfo, RoleInfo, UpdateLaborCostBody,
 } from './api.types';
 
+// 内容推广模块类型
+import type {
+  TopicListParams, CreateTopicRequest, RateTopicRequest, ReviewTopicRequest,
+  DraftListParams, CreateDraftRequest, UpdateDraftRequest, ReviewDraftRequest,
+  PromotionListParams, CreatePromotionRequest, UpdatePromotionStatusRequest,
+  CreateMetricRequest, ContentItemListParams,
+  ContentTopic, ContentDraft, ContentPromotion, ContentMetric,
+  SafeContentItem, HealthCheckResponse, ViolationCheckResult,
+  ItemPromotionHistory, MetricSummary, AIConfig, UpdateAIConfigRequest,
+} from '@/types/promotion';
 const BASE = '/api';
 
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -50,6 +60,9 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
   if (!res.ok) {
     const detail = json?.message || `HTTP ${res.status} ${res.statusText}`;
     throw new Error(`请求失败: ${detail}`);
+  }
+  if (!json) {
+    throw new Error('服务器返回为空');
   }
   if (json.code !== 0 && json.code !== 200) {
     throw new Error(json.message || '请求失败');
@@ -184,6 +197,10 @@ export const itemsApi = {
     request<null>(`/items/${itemId}/images?image_id=${imageId}`, { method: 'DELETE' }),
   setCoverImage: (itemId: number, imageId: number) =>
     request<null>(`/items/${itemId}/images`, { method: 'PUT', body: JSON.stringify({ imageId }) }),
+  getPriceChangeLogs: (itemId: number, params?: { page?: number; size?: number }) => {
+    const qs = params ? buildQueryString(params as Record<string, string | number | boolean | undefined | null>) : '';
+    return request<{ logs: Array<{ id: number; oldPrice: number; newPrice: number; changeAmount: number; changePercent: number; reason: string; operator: string; createdAt: string }>; total: number }>(`/items/${itemId}/price-logs${qs}`);
+  },
 };
 
 // ========== Sales ==========
@@ -636,5 +653,141 @@ export const exportApi = {
     a.download = `库存全量_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  },
+};
+
+// ========== Content Promotion（内容推广模块） ==========
+
+/** 安全内容 API（供 OpenClaw 调用，前端一般不直接使用） */
+export const contentApi = {
+  /** 获取商品公开信息（无敏感字段） */
+  getItems: (params?: ContentItemListParams) =>
+    request<PaginatedData<SafeContentItem>>(`/content/items${buildQueryString(params ? {
+      page: params.page,
+      limit: params.limit,
+      status: params.status,
+      has_images: params.hasImages,
+      material_id: params.materialId,
+      type_id: params.typeId,
+      min_price: params.minPrice,
+      max_price: params.maxPrice,
+    } : {})}`),
+
+  /** 获取图片 URL（直接返回 URL，不通过 request 封装） */
+  getImageUrl: (filename: string) =>
+    `${BASE}/content/images/${filename}`,
+
+  /** 健康检查 */
+  health: () =>
+    request<HealthCheckResponse>('/content/health'),
+};
+
+/** 推广管理 API（供 ERP 前端调用） */
+export const promotionApi = {
+  // ── 选题管理 ──
+  topics: {
+    list: (params?: TopicListParams) =>
+      request<PaginatedData<ContentTopic>>(`/promotion/topics${buildQueryString(params ? {
+        page: params.page,
+        limit: params.limit,
+        status: params.status,
+        source: params.source,
+        topic_type: params.topicType,
+        min_rating: params.minRating,
+        max_rating: params.maxRating,
+        keyword: params.keyword,
+      } : {})}`),
+
+    create: (data: CreateTopicRequest) =>
+      request<ContentTopic>('/promotion/topics', { method: 'POST', body: JSON.stringify(data) }),
+
+    get: (id: string) =>
+      request<ContentTopic>(`/promotion/topics/${id}`),
+
+    rate: (id: string, data: RateTopicRequest) =>
+      request<ContentTopic>(`/promotion/topics/${id}/rating`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    review: (id: string, data: ReviewTopicRequest) =>
+      request<ContentTopic>(`/promotion/topics/${id}/review`, { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+
+  // ── 文案管理 ──
+  contents: {
+    list: (params?: DraftListParams) =>
+      request<PaginatedData<ContentDraft>>(`/promotion/contents${buildQueryString(params ? {
+        page: params.page,
+        limit: params.limit,
+        status: params.status,
+        topic_id: params.topicId,
+        content_mode: params.contentMode,
+        keyword: params.keyword,
+      } : {})}`),
+
+    create: (data: CreateDraftRequest) =>
+      request<ContentDraft>('/promotion/contents', { method: 'POST', body: JSON.stringify(data) }),
+
+    get: (id: string) =>
+      request<ContentDraft>(`/promotion/contents/${id}`),
+
+    update: (id: string, data: UpdateDraftRequest) =>
+      request<ContentDraft>(`/promotion/contents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    review: (id: string, data: ReviewDraftRequest) =>
+      request<ContentDraft>(`/promotion/contents/${id}/review`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    /** 违禁词检测 */
+    check: (id: string) =>
+      request<ViolationCheckResult>(`/promotion/contents/${id}/check`, { method: 'POST' }),
+  },
+
+  // ── 推广管理 ──
+  promotions: {
+    list: (params?: PromotionListParams) =>
+      request<PaginatedData<ContentPromotion & { contentTitle: string }>>(`/promotion/promotions${buildQueryString(params ? {
+        page: params.page,
+        limit: params.limit,
+        status: params.status,
+        channel: params.channel,
+        content_id: params.contentId,
+      } : {})}`),
+
+    create: (data: CreatePromotionRequest) =>
+      request<ContentPromotion>('/promotion/promotions', { method: 'POST', body: JSON.stringify(data) }),
+
+    updateStatus: (id: string, data: UpdatePromotionStatusRequest) =>
+      request<ContentPromotion>(`/promotion/promotions/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  },
+
+  // ── 反馈数据 ──
+  metrics: {
+    get: (promotionId: string) =>
+      request<ContentMetric[]>(`/promotion/metrics/${promotionId}`),
+
+    create: (promotionId: string, data: CreateMetricRequest) =>
+      request<ContentMetric>(`/promotion/metrics/${promotionId}`, { method: 'POST', body: JSON.stringify(data) }),
+
+    /** 获取反馈汇总（趋势图数据） */
+    summary: (promotionId: string) =>
+      request<MetricSummary>(`/promotion/metrics/${promotionId}/summary`),
+  },
+
+  // ── 商品推广历史 ──
+  items: {
+    history: (itemId: number) =>
+      request<ItemPromotionHistory[]>(`/promotion/items/${itemId}/history`),
+  },
+
+  // ── AI 配置 ──
+  config: {
+    get: () =>
+      request<AIConfig & { openclawApiKeyConfigured: boolean; baiduApiKeyConfigured: boolean }>(
+        '/promotion/config',
+      ),
+
+    update: (data: UpdateAIConfigRequest) =>
+      request<AIConfig & { openclawApiKeyConfigured: boolean; baiduApiKeyConfigured: boolean }>(
+        '/promotion/config',
+        { method: 'PUT', body: JSON.stringify(data) },
+      ),
   },
 };

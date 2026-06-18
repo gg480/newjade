@@ -71,7 +71,7 @@ function BatchesTab() {
       try {
         const data = await batchesApi.getBatches({ page: pagination.page, size: pagination.size });
         if (!cancelled) {
-          setBatches(data.items || []);
+          setBatches((data.items || []) as BatchTableRow[]);
           setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
       } catch (e) { console.error('[BatchesTab]', e); if (!cancelled) toast.error('加载批次失败'); } finally { if (!cancelled) setLoading(false); }
@@ -220,8 +220,8 @@ function BatchesTab() {
         <BatchesTable
           filteredBatches={filteredBatches}
           onViewDetail={setDetailBatchId}
-          onEdit={openEditDialog}
-          onDelete={setDeleteBatch}
+          onEdit={(b) => openEditDialog(b as BatchTableRow)}
+          onDelete={(b) => setDeleteBatch(b as BatchTableRow)}
           onAllocate={handleAllocate}
           allocMethodLabels={allocMethodLabels}
         />
@@ -249,7 +249,7 @@ function BatchesTab() {
           onOpenChange={open => { if (!open) setQuickAddBatch(null); }}
           onSuccess={() => { setQuickAddBatch(null); refresh(); }}
           defaultBatchId={quickAddBatch.id}
-          defaultBatchInfo={{ materialId: quickAddBatch.materialId, supplierId: quickAddBatch.supplierId, typeId: quickAddBatch.typeId, purchaseDate: quickAddBatch.purchaseDate }}
+          defaultBatchInfo={{ materialId: quickAddBatch.materialId ?? undefined, supplierId: quickAddBatch.supplierId ?? undefined, typeId: quickAddBatch.typeId ?? undefined, purchaseDate: quickAddBatch.purchaseDate ?? undefined }}
         />
       )}
 

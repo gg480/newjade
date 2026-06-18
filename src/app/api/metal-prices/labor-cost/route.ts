@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { updateLaborCostPerGram } from '@/services/metal-prices.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
-import { AppError, ValidationError, NotFoundError } from '@/lib/errors';
+import { AppError, ValidationError } from '@/lib/errors';
 
 /**
  * PUT /api/metal-prices/labor-cost
  * 更新材质的工费单价
  * body: { materialId: number, laborCostPerGram: number }
  */
-async function laborCostPUT(request: NextRequest) {
+async function laborCostPUT(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body.materialId !== 'number' || typeof body.laborCostPerGram !== 'number') {

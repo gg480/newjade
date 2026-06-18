@@ -60,7 +60,7 @@ function formatUser(user: Prisma.UserGetPayload<{ include: { role: true } }>): U
     roleName: user.role?.name ?? '',
     isActive: user.isActive,
     mustChangePwd: user.mustChangePwd,
-    lastLoginAt: user.lastLoginAt?.toISOString?.() ?? user.lastLoginAt ?? null,
+    lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
     createdAt: user.createdAt?.toISOString?.() ?? user.createdAt ?? '',
   };
 }
@@ -199,7 +199,7 @@ export async function updateUser(id: number, data: UpdateUserInput): Promise<Use
 
   const updateData: Prisma.UserUpdateInput = {};
   if (data.displayName !== undefined) updateData.displayName = data.displayName.trim();
-  if (data.roleId !== undefined) updateData.roleId = data.roleId;
+  if (data.roleId !== undefined) updateData.role = { connect: { id: data.roleId } };
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
   const updated = await db.user.update({

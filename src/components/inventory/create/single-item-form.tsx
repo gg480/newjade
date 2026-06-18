@@ -312,7 +312,7 @@ function SingleItemForm({ photos, defaultMaterial, onSubmitted, onSubmitAnother,
       } as unknown as Parameters<typeof pricingApi.calculate>[0]);
       // 转换响应格式
       setPricingSuggestion({
-        suggestedPrice: (result as unknown as { suggestedPrice?: number })?.suggestedPrice || (result as Record<string, number>).recommendedPrice || 0,
+        suggestedPrice: (result as unknown as { suggestedPrice?: number })?.suggestedPrice || (result as unknown as Record<string, number>).recommendedPrice || 0,
         floorPrice: (result as unknown as { floorPrice?: number })?.floorPrice,
         grossMargin: (result as unknown as { grossMargin?: number })?.grossMargin,
       });
@@ -374,7 +374,7 @@ function SingleItemForm({ photos, defaultMaterial, onSubmitted, onSubmitAnother,
         spec: Object.keys(spec).length > 0 ? spec : undefined,
       };
 
-      const createdItem = await itemsApi.createItem(body as CreateItemBody);
+      const createdItem = await itemsApi.createItem(body as unknown as CreateItemBody);
 
       // 2. 上传照片
       const uploadPromises = visiblePhotos
@@ -656,7 +656,7 @@ function SingleItemForm({ photos, defaultMaterial, onSubmitted, onSubmitAnother,
           <div className="space-y-2">
             <Label className="text-xs font-medium">规格参数</Label>
             <SpecFieldsRenderer
-              form={form as unknown as Record<string, unknown>}
+              form={form as unknown as Record<string, string | number | number[]>}
               onChange={(field, value) => setForm(f => ({ ...f, [field]: value }))}
               specFieldsObj={specFieldsObj}
               specFieldKeys={specFieldKeys}

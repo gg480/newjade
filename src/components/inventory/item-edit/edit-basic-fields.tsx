@@ -11,7 +11,7 @@ interface EditBasicFieldsProps {
     tagIds: number[];
     weight: string; metalWeight: string; size: string; braceletSize: string; beadCount: string; beadDiameter: string; ringSize: string;
   };
-  onChange: (field: string, value: unknown) => void;
+  onChange: (field: string, value: string | number) => void;
   isFieldChanged: (field: string) => boolean;
 }
 

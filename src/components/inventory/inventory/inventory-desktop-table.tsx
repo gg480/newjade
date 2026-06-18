@@ -174,7 +174,7 @@ export default function InventoryDesktopTable({
                   {/* Tags */}
                   <TableCell>
                     {(() => {
-                      const tgs: unknown[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+                      const tgs: unknown[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? (item.tags as unknown as string).split(',').filter(Boolean) : []) : [];
                       const tagLabels: string[] = tgs.map((t: unknown) => typeof t === 'string' ? t : (t as DictTag).name || '');
                       if (tagLabels.length === 0) return <span className="text-muted-foreground">—</span>;
                       return <div className="flex flex-wrap gap-1 max-w-[160px]">{tagLabels.slice(0, 3).map((t: string, i: number) => (
@@ -201,7 +201,7 @@ export default function InventoryDesktopTable({
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{item.purchaseDate || '-'}</TableCell>
                   <TableCell><StatusBadge status={item.status} /></TableCell>
-                  <TableCell className={item.ageDays > 90 ? 'text-red-600 font-medium' : ''}>{item.ageDays != null ? `${item.ageDays}天` : '-'}</TableCell>
+                  <TableCell className={(item.ageDays ?? 0) > 90 ? 'text-red-600 font-medium' : ''}>{item.ageDays != null ? `${item.ageDays}天` : '-'}</TableCell>
                   {/* Actions */}
                   <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">

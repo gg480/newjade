@@ -528,7 +528,7 @@ async function doFetchCompetitorGoldPrices(): Promise<CompetitorGoldPrice[]> {
     if (isNaN(gold)) continue;
 
     result.push({
-      name: item.typename || item.name,
+      name: (item.typename || item.name) ?? '',
       gold,
       platinum: item.platinum ?? null,
       goldbar: item.goldbar ?? null,

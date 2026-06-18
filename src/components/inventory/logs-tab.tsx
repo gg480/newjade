@@ -365,7 +365,7 @@ function LogsTab() {
                             {log.detail && (
                               <button
                                 className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                                onClick={(e) => { e.stopPropagation(); handleCopyDetail(log.detail, log.id); }}
+                                onClick={(e) => { e.stopPropagation(); handleCopyDetail(log.detail ?? '', log.id); }}
                                 title="复制详情"
                               >
                                 {copiedId === log.id ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
@@ -410,7 +410,7 @@ function LogsTab() {
                       </p>
                       <button
                         className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-1"
-                        onClick={() => handleCopyDetail(log.detail, log.id)}
+                        onClick={() => handleCopyDetail(log.detail ?? '', log.id)}
                         title="复制详情"
                       >
                         {copiedId === log.id ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}

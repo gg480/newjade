@@ -31,6 +31,7 @@ const NAV_GROUPS: NavGroup[] = [
     { id: 'sales' as TabId, label: '销售记录' },
     { id: 'customers' as TabId, label: '客户管理' },
     { id: 'promotions' as TabId, label: '促销活动' },
+    { id: 'content-promotion' as TabId, label: '内容推广' },
   ]},
   { id: 'settings', label: '系统设置', icon: Settings, children: [
     { id: 'settings' as TabId, label: '系统设置' },
@@ -63,7 +64,7 @@ function useFilteredNavGroups(): NavGroup[] {
 function getGroupId(tabId: TabId): string {
   if (tabId === 'dashboard') return 'dashboard';
   if (['inventory', 'batches', 'stocktaking', 'restock'].includes(tabId)) return 'inventory';
-  if (['sales', 'customers', 'promotions'].includes(tabId)) return 'sales';
+  if (['sales', 'customers', 'promotions', 'content-promotion'].includes(tabId)) return 'sales';
   return 'settings';
 }
 

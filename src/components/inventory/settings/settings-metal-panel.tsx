@@ -150,7 +150,7 @@ export default function SettingsMetalPanel() {
   // 预览调价：行情价 * marketRatio + 工费 作为新克价
   async function handlePreviewReprice(materialId: number, newPrice: number) {
     try {
-      const result = await metalApi.previewReprice({ materialId, newPricePerGram: newPrice });
+      const result = await metalApi.previewReprice({ materialId, newPricePerGram: newPrice }) as unknown as { affectedItems: Array<{ itemId: number; skuCode: string; name?: string; oldPrice: number; newPrice: number }>; oldPrice: number; newPrice: number };
       setRepricePreview({ ...result, materialId, newPrice });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '预览失败');
@@ -160,7 +160,7 @@ export default function SettingsMetalPanel() {
   async function handleConfirmReprice() {
     if (!repricePreview) return;
     try {
-      await metalApi.confirmReprice({ materialId: repricePreview.materialId, newPricePerGram: repricePreview.newPrice });
+      await metalApi.confirmReprice({ materialId: repricePreview.materialId!, newPricePerGram: repricePreview.newPrice! });
       toast.success('调价已确认，相关货品已更新');
       setRepricePreview(null);
       await refreshMaterials();
@@ -171,7 +171,7 @@ export default function SettingsMetalPanel() {
 
   async function handlePriceHistory(materialId: number, materialName: string) {
     try {
-      const h = await metalApi.getPriceHistory({ material_id: materialId });
+      const h = await metalApi.getPriceHistory({ material_id: String(materialId) });
       setPriceHistory(h || []);
       setPriceHistoryMaterial(materialName);
       setShowPriceHistory(true);

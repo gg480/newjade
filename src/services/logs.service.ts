@@ -50,7 +50,7 @@ export async function getLogs(params: GetLogsParams): Promise<PaginatedLogs> {
   if (action) where.action = action;
   if (targetType) where.targetType = targetType;
   if (search) {
-    where.detail = { contains: search, mode: Prisma.QueryMode.insensitive };
+    where.detail = { contains: search };
   }
   if (startDate || endDate) {
     where.createdAt = {};

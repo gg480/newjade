@@ -42,17 +42,18 @@ export interface PromotionWithItemCount {
   status: string;
   createdAt: Date;
   itemCount: number;
-  items?: ItemBrief[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  items?: any[];
 }
 
 export interface ItemBrief {
   id: number;
   skuCode: string;
-  name?: string;
+  name: string | null;
   materialName?: string;
   typeName?: string;
   sellingPrice: number;
-  coverImage?: string;
+  coverImage?: string | null;
 }
 
 // ============================================================

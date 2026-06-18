@@ -6,7 +6,7 @@ import type { ItemSummary, DictMaterial, DictType, DictTag, MaterialComponentInp
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { formatPrice, StatusBadge } from './shared';
-import { parseSpecFields } from './settings-tab';
+import { parseSpecFields, SPEC_FIELD_LABEL_MAP } from './settings-tab';
 import { MATERIAL_CATEGORIES } from '@/lib/constants';
 import EditBasicFields from './item-edit/edit-basic-fields';
 import EditSpecFields from './item-edit/edit-spec-fields';
@@ -85,7 +85,7 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
       setLoading(true);
       itemsApi.getItem(itemId).then((data: ItemSummary) => {
         setItem(data);
-        const specObj = data.spec || {};
+        const specObj = (data.spec ?? {}) as Record<string, string | number | null>;
         setForm({
           name: data.name || '',
           sellingPrice: data.sellingPrice || 0,
@@ -97,13 +97,13 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
           tagIds: data.tags ? data.tags.map((t: DictTag) => t.id) : [],
           materialId: String(data.materialId || ''),
           typeId: String(data.typeId || ''),
-          weight: specObj.weight || '',
-          metalWeight: specObj.metalWeight || '',
-          size: specObj.size || '',
-          braceletSize: specObj.braceletSize || '',
-          beadCount: specObj.beadCount || '',
-          beadDiameter: specObj.beadDiameter || '',
-          ringSize: specObj.ringSize || '',
+          weight: String(specObj.weight ?? ''),
+          metalWeight: String(specObj.metalWeight ?? ''),
+          size: String(specObj.size ?? ''),
+          braceletSize: String(specObj.braceletSize ?? ''),
+          beadCount: String(specObj.beadCount ?? ''),
+          beadDiameter: String(specObj.beadDiameter ?? ''),
+          ringSize: String(specObj.ringSize ?? ''),
         });
         // ADR-020: 加载货品类型与材质组件
         setCompositeType((data.compositeType as 'single' | 'inlay' | 'composite') || 'single');
@@ -223,13 +223,8 @@ function ItemEditDialog({ itemId, open, onOpenChange, onSuccess }: { itemId: num
     return getChangedFieldsCount() > 0;
   }
 
-  function onFieldChange(field: keyof typeof form, value: string | number | number[]) {
+  function onFieldChange(field: string, value: string | number | number[]) {
     setForm(f => ({ ...f, [field]: value }));
-  }
-
-  function toggleTag(tagId: number) {
-    const ids = form.tagIds.includes(tagId) ? form.tagIds.filter(id => id !== tagId) : [...form.tagIds, tagId];
-    setForm(f => ({ ...f, tagIds: ids }));
   }
 
   async function handleSave() {

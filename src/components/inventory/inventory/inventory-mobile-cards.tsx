@@ -128,7 +128,7 @@ export default function InventoryMobileCards({
             </div>
             {/* Tags */}
             {(() => {
-              const tgs: unknown[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+              const tgs: unknown[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? (item.tags as unknown as string).split(',').filter(Boolean) : []) : [];
               const tagLabels: string[] = tgs.map((t: unknown) => typeof t === 'string' ? t : (t as DictTag).name || '');
               if (tagLabels.length === 0) return null;
               return (

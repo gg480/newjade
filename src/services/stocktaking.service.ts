@@ -38,8 +38,9 @@ export interface StocktakingDetailItem {
   systemQty: number;
   actualQty: number;
   variance: number;
-  notes?: string;
-  item?: { material?: { name?: string }; type?: { name?: string } };
+  notes: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  item?: any;
 }
 
 export interface StocktakingWithDetails {
@@ -47,8 +48,8 @@ export interface StocktakingWithDetails {
   type: string;
   status: string;
   startDate: string;
-  endDate?: string;
-  notes?: string;
+  endDate: string | null;
+  notes: string | null;
   createdAt: Date;
   details: StocktakingDetailItem[];
 }

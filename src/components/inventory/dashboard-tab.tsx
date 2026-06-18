@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { dashboardApi, configApi, batchesApi, itemsApi, salesApi, customersApi, request } from '@/lib/api';
-import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams } from '@/lib/api.types';
+import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, StockAgingItem, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge, PaybackBar, EmptyState, LoadingSkeleton, CHART_COLORS } from './shared';
 
@@ -180,7 +180,7 @@ function DashboardTab() {
     const ac = new AbortController();
     batchesApi.getBatches({ size: 100 }).then((data: PaginatedData<Batch>) => {
       if (!ac.signal.aborted) {
-        setBatchEntryProgress((data.items || []).filter((b: Batch) => (b.itemsCount || 0) < (b.quantity || 0)));
+        setBatchEntryProgress((data.items || []).filter(b => (b.itemsCount || 0) < (b.quantity || 0)) as (Batch & { materialName?: string; itemsCount?: number })[]);
       }
     }).catch(() => {});
     return () => ac.abort();
@@ -351,9 +351,9 @@ function DashboardTab() {
       setTopCustomers(v2(9, []));
       setSalesByChannel(v2(10, []));
       // Sparkline data from monthly trend (index 11)
-      const monthlyTrend = v2(11, []);
+      const monthlyTrend = v2<TrendDataPoint[]>(11, []);
       if (Array.isArray(monthlyTrend) && monthlyTrend.length > 0) {
-        const lastMonth = monthlyTrend[monthlyTrend.length - 1];
+        const lastMonth = monthlyTrend[monthlyTrend.length - 1] as (TrendDataPoint & { daysCount?: number }) | undefined;
         const daysInMonth = lastMonth?.daysCount || new Date().getDate();
         const monthRevenue = lastMonth?.revenue || 0;
         const today = new Date();
@@ -455,14 +455,14 @@ function DashboardTab() {
   // ===== Heatmap calendar computation =====
   const heatmapCalendar = useMemo(() => {
     if (!heatmapData?.days?.length) return null;
-    const days = heatmapData.days;
+    const days = heatmapData.days as unknown as { date: string; intensity: number; count: number; revenue: number }[];
     // Find the range of months to display
     const dates = days.map((d: { date: string }) => d.date);
     const minDate = dates.reduce((a: string, b: string) => a < b ? a : b);
     const maxDate = dates.reduce((a: string, b: string) => a > b ? a : b);
 
     // Build a map for quick lookup
-    const dayMap = new Map(days.map((d: { date: string }) => [d.date, d]));
+    const dayMap = new Map(days.map((d: { date: string; intensity: number; count: number; revenue: number }) => [d.date, d]));
 
     // Generate all months between minDate and maxDate
     const months: { year: number; month: number; label: string }[] = [];
@@ -484,8 +484,8 @@ function DashboardTab() {
       const lastDay = new Date(m.year, m.month + 1, 0);
       const startDow = firstDay.getDay(); // 0=Sun
 
-      const weeks: ({ date: string; dayNum: number; intensity: number; count: number } | null)[][] = [];
-      let currentWeek: ({ date: string; dayNum: number; intensity: number; count: number } | null)[] = [];
+      const weeks: ({ date: string; dayNum: number; intensity: number; count: number; revenue: number; } | null)[][] = [];
+      let currentWeek: ({ date: string; dayNum: number; intensity: number; count: number; revenue: number; } | null)[] = [];
 
       // Pad start
       for (let i = 0; i < startDow; i++) currentWeek.push(null);
@@ -953,7 +953,7 @@ function DashboardTab() {
           {/* 周转天数 */}
           {turnoverData.length > 0 && (() => {
             const latest = turnoverData[turnoverData.length - 1];
-            const turnoverDays = latest.turnoverRate > 0 ? Math.round(30 / latest.turnoverRate) : 0;
+            const turnoverDays = (latest.turnoverRate ?? 0) > 0 ? Math.round(30 / (latest.turnoverRate ?? 0)) : 0;
             return (
               <Card className="card-glow relative overflow-hidden border-l-4 border-l-emerald-500 hover:scale-[1.01] transition-transform duration-200 cursor-default shadow-sm hover:shadow-md">
                 <CardContent className="p-4">
@@ -1124,9 +1124,9 @@ function DashboardTab() {
               {/* 成交利润 */}
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-2">成交利润分布</p>
-                {distByType.profitDistribution?.length > 0 ? (
+                {distByType.profitDistribution != null && distByType.profitDistribution.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.profitDistribution.sort((a: { totalProfit: number }, b: { totalProfit: number }) => b.totalProfit - a.totalProfit)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.profitDistribution!.sort((a: { typeName: string; profit: number }, b: { typeName: string; profit: number }) => b.profit - a.profit)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -1139,9 +1139,9 @@ function DashboardTab() {
               {/* 成交数量 */}
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-2">成交数量分布</p>
-                {distByType.countDistribution?.length > 0 ? (
+                {distByType.countDistribution != null && distByType.countDistribution.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.countDistribution.sort((a: { salesCount: number }, b: { salesCount: number }) => b.salesCount - a.salesCount)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.countDistribution!.sort((a: { typeName: string; count: number }, b: { typeName: string; count: number }) => b.count - a.count)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -1154,9 +1154,9 @@ function DashboardTab() {
               {/* 毛利率分布 */}
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-2">平均毛利率分布</p>
-                {distByType.marginDistribution?.length > 0 ? (
+                {distByType.marginDistribution != null && distByType.marginDistribution.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByType.marginDistribution.sort((a: { avgMargin: number }, b: { avgMargin: number }) => b.avgMargin - a.avgMargin)} layout="vertical" margin={{ left: 48 }}>
+                    <BarChart data={distByType.marginDistribution!.sort((a: { typeName: string; margin: number }, b: { typeName: string; margin: number }) => b.margin - a.margin)} layout="vertical" margin={{ left: 48 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="typeName" width={48} tick={{ fontSize: 11 }} />
@@ -1193,11 +1193,11 @@ function DashboardTab() {
                   </ResponsiveContainer>
                 </div>
               ) : null}
-              {distByMaterial.profitDistribution?.length > 0 ? (
+              {distByMaterial.profitDistribution != null && distByMaterial.profitDistribution.length > 0 ? (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">成交利润分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.profitDistribution.sort((a: { totalProfit: number }, b: { totalProfit: number }) => b.totalProfit - a.totalProfit)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.profitDistribution!.sort((a: { materialName: string; profit: number }, b: { materialName: string; profit: number }) => b.profit - a.profit)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -1207,11 +1207,11 @@ function DashboardTab() {
                   </ResponsiveContainer>
                 </div>
               ) : null}
-              {distByMaterial.countDistribution?.length > 0 ? (
+              {distByMaterial.countDistribution != null && distByMaterial.countDistribution.length > 0 ? (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">成交数量分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.countDistribution.sort((a: { salesCount: number }, b: { salesCount: number }) => b.salesCount - a.salesCount)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.countDistribution!.sort((a: { materialName: string; count: number }, b: { materialName: string; count: number }) => b.count - a.count)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -1221,11 +1221,11 @@ function DashboardTab() {
                   </ResponsiveContainer>
                 </div>
               ) : null}
-              {distByMaterial.marginDistribution?.length > 0 ? (
+              {distByMaterial.marginDistribution != null && distByMaterial.marginDistribution.length > 0 ? (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">平均毛利率分布</p>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={distByMaterial.marginDistribution.sort((a: { avgMargin: number }, b: { avgMargin: number }) => b.avgMargin - a.avgMargin)} layout="vertical" margin={{ left: 56 }}>
+                    <BarChart data={distByMaterial.marginDistribution!.sort((a: { materialName: string; margin: number }, b: { materialName: string; margin: number }) => b.margin - a.margin)} layout="vertical" margin={{ left: 56 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 10 }} />
                       <YAxis type="category" dataKey="materialName" width={56} tick={{ fontSize: 11 }} />
@@ -1553,8 +1553,8 @@ function DashboardTab() {
           <CardTitle className="text-base flex items-center gap-2">
             <Flame className="h-4 w-4 text-emerald-600" />
             销售热力图（近3个月）
-            {heatmapData?.maxRevenue > 0 && (
-              <span className="text-xs text-muted-foreground font-normal ml-2">最高日销 {formatPrice(heatmapData.maxRevenue)}</span>
+            {(heatmapData?.maxRevenue ?? 0) > 0 && (
+              <span className="text-xs text-muted-foreground font-normal ml-2">最高日销 {formatPrice(heatmapData!.maxRevenue ?? 0)}</span>
             )}
           </CardTitle>
         </CardHeader>
@@ -1685,7 +1685,7 @@ function DashboardTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {customerFreq?.distribution?.length > 0 ? (
+            {customerFreq != null && customerFreq.distribution.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={customerFreq.distribution} margin={{ top: 10 }}>
@@ -1725,17 +1725,17 @@ function DashboardTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={Math.max(topCustomers.length * 38, 200)} margin={{ left: 10, right: 30 }}>
+            <ResponsiveContainer width="100%" height={Math.max(topCustomers.length * 38, 200)}>
               <BarChart data={topCustomers.slice(0, 10).map((c: TopCustomerItem, idx: number) => ({ ...c, rank: idx + 1 }))} layout="vertical" margin={{ top: 4, right: 20, bottom: 4, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tickFormatter={v => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} tick={{ fontSize: 10 }} />
                 <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => formatPrice(v)} />
-                <Bar dataKey="totalSpending" name="累计消费" radius={[0, 4, 4, 0]} label={({ name, value, rank }: { name: string; value: number; rank: number }) => {
+                <Bar dataKey="totalSpending" name="累计消费" radius={[0, 4, 4, 0]} label={(({ name, value, rank }: { name: string; value: number; rank: number }) => {
                   const medalEmojis: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
                   const medal = medalEmojis[rank] || '';
                   return medal;
-                }}>
+                }) as any}>
                   {topCustomers.slice(0, 10).map((_: TopCustomerItem, idx: number) => {
                     const barColors = ['#f59e0b', '#94a3b8', '#d97706', '#059669', '#0ea5e9', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#6366f1'];
                     return <Cell key={idx} fill={barColors[idx % barColors.length]} />;
@@ -1998,7 +1998,7 @@ function DashboardTab() {
                           <TableCell className="font-mono text-sm">{item.skuCode}</TableCell>
                           <TableCell>{item.materialName}</TableCell>
                           <TableCell>{item.typeName || '-'}</TableCell>
-                          <TableCell className="text-right">{formatPrice(item.allocatedCost || item.estimatedCost || item.costPrice)}</TableCell>
+                          <TableCell className="text-right">{formatPrice(item.allocatedCost || (item as any).estimatedCost || item.costPrice)}</TableCell>
                           <TableCell className="text-right font-bold text-red-600">{item.ageDays}天</TableCell>
                         </TableRow>
                       ))}

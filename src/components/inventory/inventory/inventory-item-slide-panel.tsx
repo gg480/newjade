@@ -40,7 +40,7 @@ function ItemSlideContent({
 }) {
   const cost = item.allocatedCost || item.estimatedCost || item.costPrice || 0;
   const margin = item.sellingPrice > 0 ? ((item.sellingPrice - cost) / item.sellingPrice * 100) : 0;
-  const itemTagsRaw: (string | DictTag)[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? item.tags.split(',').filter(Boolean) : []) : [];
+  const itemTagsRaw: (string | DictTag)[] = item.tags ? (Array.isArray(item.tags) ? item.tags : typeof item.tags === 'string' ? (item.tags as unknown as string).split(',').filter(Boolean) : []) : [];
   const itemTags: string[] = itemTagsRaw.map(t => typeof t === 'string' ? t : t.name || '');
   const specFields = item.specFields ? (typeof item.specFields === 'string' ? (() => { try { return JSON.parse(item.specFields); } catch { return {}; } })() : item.specFields) : {};
 
@@ -263,7 +263,7 @@ function PanelDetails({
               const displayVal = typeof val === 'object' && val !== null ? (val as Record<string, unknown>)?.value ?? '' : val;
               return (
                 <div key={key} className="text-xs p-1.5 bg-muted/50 rounded">
-                  <span className="text-muted-foreground">{specLabelMap[key] || key}:</span> {displayVal}
+                  <span className="text-muted-foreground">{specLabelMap[key] || key}:</span> {String(displayVal)}
                 </div>
               );
             })}
@@ -345,7 +345,7 @@ function MobileDetails({
           {Object.entries(specFields).map(([key, val]) => {
             const specLabelMap: Record<string, string> = { weight: '克重', metalWeight: '金重', size: '尺寸', braceletSize: '圈口', beadCount: '颗数', beadDiameter: '珠径', ringSize: '戒圈' };
             const displayVal = typeof val === 'object' && val !== null ? (val as Record<string, unknown>)?.value ?? '' : val;
-            return <span key={key} className="text-xs px-2 py-0.5 bg-muted/50 rounded">{specLabelMap[key] || key}: {displayVal}</span>;
+            return <span key={key} className="text-xs px-2 py-0.5 bg-muted/50 rounded">{specLabelMap[key] || key}: {String(displayVal)}</span>;
           })}
         </div>
       )}

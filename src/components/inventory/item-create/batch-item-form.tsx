@@ -74,7 +74,7 @@ function BatchItemForm({
       <div className="space-y-1"><Label className="text-xs">所属批次 <span className="text-red-500">*</span></Label>
         <Select value={form.batchId} onValueChange={v => setForm(f => ({ ...f, batchId: v }))}>
           <SelectTrigger className="h-9"><SelectValue placeholder="选择批次" /></SelectTrigger>
-          <SelectContent>{batches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode} - {b.materialName}</SelectItem>)}</SelectContent>
+          <SelectContent>{batches.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.batchCode} - {b.material?.name || ''}</SelectItem>)}</SelectContent>
         </Select>
         {form.batchId && (() => {
           const b = batches.find(x => String(x.id) === String(form.batchId));

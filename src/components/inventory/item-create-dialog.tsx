@@ -4,9 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { itemsApi, batchesApi, suppliersApi, dictsApi, pricingApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import type { DictMaterial, DictType, DictTag, Batch, Supplier, PaginatedData, PricingResult, MaterialComponentInput } from '@/lib/api.types';
+import type { DictMaterial, DictType, DictTag, Batch, Supplier, PaginatedData, MaterialComponentInput } from '@/lib/api.types';
 import { parseSpecFields, SPEC_FIELD_LABEL_MAP } from './settings-tab';
-import HighValueForm from './item-create/high-value-form';
+import HighValueForm, { PricingSuggestion } from './item-create/high-value-form';
 import BatchItemForm from './item-create/batch-item-form';
 import { MaterialComponentEditor } from './shared/material-component-editor';
 
@@ -30,7 +30,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   const [saving, setSaving] = useState(false);
   const [showSupplierAdd, setShowSupplierAdd] = useState(false);
   const [tagMismatch, setTagMismatch] = useState<{ mode: 'high_value' | 'batch'; invalidTagIds: number[]; invalidTagNames: string[] } | null>(null);
-  const [pricingSuggestion, setPricingSuggestion] = useState<(PricingResult & { suggestedPrice?: number }) | null>(null);
+  const [pricingSuggestion, setPricingSuggestion] = useState<PricingSuggestion | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, boolean>>({});
 
@@ -281,7 +281,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
     } catch (error: unknown) {
       // 处理标签与材质不匹配的特殊错误
       if (error instanceof Error && error.message?.includes('TAG_MATERIAL_MISMATCH')) {
-        const details = (error as Record<string, unknown>).details as Record<string, unknown> | undefined;
+        const details = (error as unknown as Record<string, unknown>).details as Record<string, unknown> | undefined;
         const invalidTagIds = (details?.invalidTagIds as number[]) || [];
         const invalidTagNames = (details?.invalidTagNames as string[]) || [];
         setTagMismatch({ mode, invalidTagIds, invalidTagNames });
@@ -304,7 +304,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         typeId: highValueForm.typeId ? Number(highValueForm.typeId) : undefined,
         weight: highValueForm.weight ? parseFloat(highValueForm.weight) : undefined,
       });
-      setPricingSuggestion(result);
+      setPricingSuggestion(result as unknown as PricingSuggestion);
     } catch (error) {
       handleError(error, { title: '定价计算失败' });
     } finally {
@@ -313,8 +313,9 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
   }
 
   function handleApplyPrice() {
-    if (pricingSuggestion?.suggestedPrice) {
-      setHighValueForm(f => ({ ...f, sellingPrice: pricingSuggestion.suggestedPrice }));
+    const sp = pricingSuggestion?.suggestedPrice;
+    if (sp) {
+      setHighValueForm(f => ({ ...f, sellingPrice: sp }));
     }
   }
 
@@ -436,7 +437,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
               customFields={customFields}
               setCustomFields={setCustomFields}
               setTagMismatch={setTagMismatch}
-              selectedBatch={selectedBatch}
+              selectedBatch={selectedBatch ?? null}
             />
           )}
         </div>
@@ -450,7 +451,7 @@ function ItemCreateDialog({ open, onOpenChange, onSuccess, defaultBatchId, defau
         open={showSupplierAdd}
         onOpenChange={setShowSupplierAdd}
         onCreated={(s) => {
-          suppliersApi.getSuppliers().then((res: unknown) => setSuppliers((res as { items?: unknown[] })?.items || res || [])).catch(() => {});
+          suppliersApi.getSuppliers().then((res: unknown) => { const data = res as { items?: Supplier[] }; setSuppliers(data?.items || []); }).catch(() => {});
           setHighValueForm(f => ({ ...f, supplierId: String(s.id) }));
         }}
       />

@@ -216,10 +216,10 @@ export async function getSales(params: GetSalesParams) {
 
   // 金额范围过滤
   if (minAmount !== undefined && !isNaN(minAmount)) {
-    where.actualPrice = { ...(where.actualPrice || {}), gte: minAmount };
+    where.actualPrice = { gte: minAmount };
   }
   if (maxAmount !== undefined && !isNaN(maxAmount)) {
-    where.actualPrice = { ...(where.actualPrice || {}), lte: maxAmount };
+    where.actualPrice = { lte: maxAmount };
   }
 
   if (!includeReturned) {

@@ -33,9 +33,13 @@ const BRACELET_SIZES = [50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72];
 const RING_SIZES = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
 
 function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKeys, customFields, setCustomFields, onTagToggle }: EditSpecFieldsProps) {
+  function getFieldValue(field: string): string {
+    const v = form[field as keyof typeof form];
+    return v != null ? String(v) : '';
+  }
   function renderSizeSelect(field: string, sizes: number[]) {
     const isCustom = customFields[field] || false;
-    const value = form[field as keyof typeof form] || '';
+    const value = getFieldValue(field);
     const label = SPEC_FIELD_LABEL_MAP[field] || field;
     const isRequired = specFieldsObj[field]?.required ?? false;
     const isOther = !sizes.includes(Number(value)) && value !== '';
@@ -118,7 +122,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                   <Input
                     type="number"
                     step="0.01"
-                    value={form[field as keyof typeof form] || ''}
+                    value={getFieldValue(field)}
                     onChange={e => onChange(field, e.target.value)}
                     className="h-9 pr-8"
                     placeholder={label}
@@ -136,7 +140,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                 </Label>
                 <Input
                   type="text"
-                  value={form[field as keyof typeof form] || ''}
+                  value={getFieldValue(field)}
                   onChange={e => onChange(field, e.target.value)}
                   className="h-9"
                   placeholder="例: 35×25×8 mm"
@@ -153,7 +157,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                 <Input
                   type="number"
                   min="1"
-                  value={form[field as keyof typeof form] || ''}
+                  value={getFieldValue(field)}
                   onChange={e => onChange(field, e.target.value)}
                   className="h-9"
                   placeholder={label}
@@ -171,7 +175,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
                   <Input
                     type="number"
                     step="0.5"
-                    value={form[field as keyof typeof form] || ''}
+                    value={getFieldValue(field)}
                     onChange={e => onChange(field, e.target.value)}
                     className="h-9 pr-10"
                     placeholder={label}
@@ -189,7 +193,7 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
               </Label>
               <Input
                 type="text"
-                value={form[field as keyof typeof form] || ''}
+                value={getFieldValue(field)}
                 onChange={e => onChange(field, e.target.value)}
                 className="h-9"
                 placeholder={label}
@@ -216,9 +220,9 @@ function EditSpecFields({ form, onChange, tags, item, specFieldsObj, specFieldKe
     <>
       {renderSmartSpecFields()}
       <div className="space-y-2">
-        <Label className="text-xs">标签{item.materialName ? <span className="text-muted-foreground ml-1">— 材质：{item.materialName}</span> : ''}</Label>
+        <Label className="text-xs">标签{item?.material?.name ? <span className="text-muted-foreground ml-1">— 材质：{item.material.name}</span> : ''}</Label>
         {groupKeys.length === 0 && (
-          <p className="text-xs text-muted-foreground">该材质暂无可用标签，请在系统设置中为 {item.materialName || '当前材质'} 添加标签</p>
+          <p className="text-xs text-muted-foreground">该材质暂无可用标签，请在系统设置中为 {item?.material?.name || '当前材质'} 添加标签</p>
         )}
         {groupKeys.map(group => (
           <div key={group}>

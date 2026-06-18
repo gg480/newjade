@@ -198,7 +198,7 @@ function aggregateByMaterial(sales: Array<{ actualPrice: number; materialName: s
 }
 
 /** 按器型分类聚合 */
-function aggregateByType(sales: Array<{ actualPrice: number; typeName: string }>): Map<string, { amount: number; count: number }> {
+function aggregateByType(sales: Array<{ actualPrice: number; typeName?: string | null }>): Map<string, { amount: number; count: number }> {
   const map = new Map<string, { amount: number; count: number }>();
   for (const s of sales) {
     const name = s.typeName || '未知';

@@ -201,6 +201,12 @@ export interface Batch {
   notes: string | null;
   createdAt: string;
   itemsCount?: number;
+  // API 返回的计算/虚拟字段
+  materialName?: string | null;
+  soldCount?: number;
+  revenue?: number;
+  paybackRate?: number;
+  status?: string;
   material?: DictMaterial;
   type?: DictType;
   supplier?: Supplier;
@@ -226,6 +232,7 @@ export interface ItemImage {
   itemId: number;
   filename: string;
   thumbnailPath: string | null;
+  url?: string;
   isCover: boolean;
   createdAt: string;
 }
@@ -252,6 +259,13 @@ export interface ItemSummary {
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
+  // API 返回的计算/虚拟字段
+  materialName?: string | null;
+  typeName?: string | null;
+  specFields?: Record<string, unknown>;
+  ageDays?: number;
+  estimatedCost?: number | null;
+  coverImage?: string | null;
   // Relations
   material?: DictMaterial;
   type?: DictType;
@@ -345,6 +359,9 @@ export interface DashboardSummary {
   monthRevenue: number;
   monthProfit: number;
   monthSoldCount: number;
+  statusCounts?: Record<string, number>;
+  todayRevenue?: number;
+  todayProfit?: number;
 }
 
 export interface BatchProfitItem {
@@ -357,6 +374,7 @@ export interface BatchProfitItem {
   profit: number;
   paybackRate: number;
   status: string;
+  itemsCount?: number;
 }
 
 export interface StockAgingItem {
@@ -493,6 +511,9 @@ export interface DistributionByType {
   profitByType: Array<{ typeName: string; profit: number }>;
   countByType: Array<{ typeName: string; count: number }>;
   marginByType: Array<{ typeName: string; margin: number }>;
+  profitDistribution?: Array<{ typeName: string; profit: number }>;
+  countDistribution?: Array<{ typeName: string; count: number }>;
+  marginDistribution?: Array<{ typeName: string; margin: number }>;
 }
 
 export interface DistributionByMaterial {
@@ -500,6 +521,9 @@ export interface DistributionByMaterial {
   profitByMaterial: Array<{ materialName: string; profit: number }>;
   countByMaterial: Array<{ materialName: string; count: number }>;
   marginByMaterial: Array<{ materialName: string; margin: number }>;
+  profitDistribution?: Array<{ materialName: string; profit: number }>;
+  countDistribution?: Array<{ materialName: string; count: number }>;
+  marginDistribution?: Array<{ materialName: string; margin: number }>;
 }
 
 export interface TurnoverDataPoint {
@@ -507,12 +531,14 @@ export interface TurnoverDataPoint {
   sellCount: number;
   revenue: number;
   avgSellingDays: number;
+  turnoverRate?: number;
 }
 
 export interface HeatmapData {
   days: string[];
   channels: string[];
   data: number[][];
+  maxRevenue?: number;
 }
 
 export interface CustomerFrequency {
@@ -666,9 +692,15 @@ export interface Notification {
 
 export interface ImportResult {
   success: number;
+  successCount?: number;
   failed: number;
+  failCount?: number;
+  skipped?: number;
+  duplicated?: number;
   errors: string[];
   items?: ItemSummary[];
+  autoCreated?: { materials: string[]; types: string[] };
+  inferred?: { row: number; field: string; value: string }[];
 }
 
 // ========== 导出URL ==========
@@ -754,6 +786,7 @@ export interface BackupResult {
   filename: string;
   size: number;
   message: string;
+  preRestoreBackupFilename?: string;
 }
 
 // ========== 图像上传结果 ==========
@@ -807,6 +840,7 @@ export interface SalesQueryParams extends PaginationQueryParams {
   unlinked_only?: string;
   keyword?: string;
   item_keyword?: string;
+  itemId?: number;
   min_amount?: string;
   max_amount?: string;
   include_returned?: string;
@@ -846,6 +880,7 @@ export interface DashboardQueryParams {
   months?: number;
   aging_days?: number;
   limit?: number;
+  min_days?: number;
 }
 
 export interface MetalPriceHistoryParams extends PaginationQueryParams {
@@ -870,6 +905,7 @@ export interface CreateDictMaterialBody {
   origin?: string;
   costPerGram?: number;
   sortOrder?: number;
+  isActive?: boolean;
 }
 
 export interface CreateDictTypeBody {
@@ -881,6 +917,7 @@ export interface CreateDictTypeBody {
 export interface CreateDictTagBody {
   name: string;
   groupName?: string;
+  isActive?: boolean;
 }
 
 export interface CreateCustomerBody {
@@ -920,17 +957,22 @@ export type UpdateBatchBody = Partial<CreateBatchBody>;
 export interface CreateItemBody {
   skuCode?: string;
   name?: string;
-  materialId: number;
+  materialId?: number;
   typeId?: number;
   costPrice?: number;
   sellingPrice: number;
   floorPrice?: number;
   origin?: string;
   counter?: number;
+  certNo?: string;
   batchId?: number;
+  purchaseDate?: string;
+  supplierId?: number;
   notes?: string;
   spec?: Partial<ItemSpec>;
   tags?: number[];
+  tagIds?: number[];
+  status?: string;
   // ADR-020: 货品类型与材质组件
   compositeType?: string;
   components?: MaterialComponentInput[];
@@ -953,6 +995,7 @@ export interface CreateBundleSaleBody {
   itemIds: number[];
   totalPrice: number;
   allocMethod: string;
+  chainItemIds?: number[];
   saleDate: string;
   channel: string;
   customerId?: number;
@@ -983,7 +1026,9 @@ export interface RepriceBody {
 
 export interface PricingBody {
   materialId: number;
-  weight: number;
+  costPrice?: number;
+  typeId?: number;
+  weight?: number;
   metalWeight?: number;
   laborCost?: number;
   margin?: number;

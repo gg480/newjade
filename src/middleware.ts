@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { validateToken } from '@/lib/auth';
+import { validateToken, validateOpenClawKey, isOpenClawKey } from '@/lib/auth';
 import { globalLimiter } from '@/lib/rate-limiter';
 
 export const runtime = 'nodejs';
@@ -96,7 +96,27 @@ export async function middleware(request: NextRequest) {
     ));
   }
 
-  // 验证 token
+  // 双 Token 认证：OpenClaw API Key（oc_ 前缀）走独立验证路径
+  if (isOpenClawKey(token)) {
+    const valid = await validateOpenClawKey(token);
+    if (!valid) {
+      return addSecurityHeaders(NextResponse.json(
+        { code: 401, data: null, message: 'OpenClaw API Key 无效' },
+        { status: 401 }
+      ));
+    }
+    // OpenClaw 调用：注入系统级标识，userId=0 表示非人类用户
+    requestHeaders.set('x-user-id', '0');
+    requestHeaders.set('x-auth-type', 'openclaw');
+
+    const res = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    res.headers.set('X-Request-Id', id);
+    return addSecurityHeaders(res);
+  }
+
+  // 验证用户会话 token
   const session = await validateToken(token);
   if (!session.valid || !session.userId) {
     return addSecurityHeaders(NextResponse.json(
@@ -107,6 +127,7 @@ export async function middleware(request: NextRequest) {
 
   // 将用户信息注入请求头
   requestHeaders.set('x-user-id', String(session.userId));
+  requestHeaders.set('x-auth-type', 'session');
 
   const res = NextResponse.next({
     request: { headers: requestHeaders },

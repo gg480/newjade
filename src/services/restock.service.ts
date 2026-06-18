@@ -370,7 +370,7 @@ export async function generateRestockRecommendations(input: GenerateRestockInput
         return db.restockRecommendation.upsert({
           where: { itemId: rec.itemId },
           update: dbRec,
-          create: dbRec,
+          create: dbRec as any,
         });
       })
     );
@@ -497,7 +497,7 @@ export async function calculateSeasonalFactors(): Promise<{
     const totalSales = monthlySales.reduce((sum, month) => sum + month.sales, 0);
     const avgMonthlySales = totalSales / 12;
 
-    const upsertPromises = [];
+    const upsertPromises: Promise<unknown>[] = [];
 
     for (const monthData of monthlySales) {
       const factor = avgMonthlySales > 0 ? monthData.sales / avgMonthlySales : 1.0;

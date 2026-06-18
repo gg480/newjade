@@ -12,8 +12,8 @@ export const SPEC_FIELD_LABEL_MAP: Record<string, string> = {
 };
 
 interface SpecFieldsRendererProps {
-  form: Record<string, unknown>;
-  onChange: (field: string, value: unknown) => void;
+  form: Record<string, string | number | number[]>;
+  onChange: (field: string, value: string | number) => void;
   specFieldsObj: Record<string, { required: boolean }>;
   specFieldKeys: string[];
   customFields: Record<string, boolean>;
@@ -28,7 +28,7 @@ function SpecFieldsRenderer({ form, onChange, specFieldsObj, specFieldKeys, cust
 
   function renderSizeSelect(field: string, sizes: number[]) {
     const isCustom = customFields[field] || false;
-    const value = form[field] || '';
+    const value = String(form[field] ?? '');
     const label = SPEC_FIELD_LABEL_MAP[field] || field;
     const isRequired = specFieldsObj[field]?.required ?? false;
 
@@ -81,7 +81,7 @@ function SpecFieldsRenderer({ form, onChange, specFieldsObj, specFieldKeys, cust
             <div key={field} className="space-y-1">
               <Label className="text-xs">{label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}</Label>
               <div className="relative">
-                <Input type="number" step="0.01" value={form[field] || ''} onChange={e => onChange(field, e.target.value)} className="h-9 pr-8" placeholder={label} />
+                <Input type="number" step="0.01" value={String(form[field] ?? '')} onChange={e => onChange(field, e.target.value)} className="h-9 pr-8" placeholder={label} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">g</span>
               </div>
             </div>
@@ -91,7 +91,7 @@ function SpecFieldsRenderer({ form, onChange, specFieldsObj, specFieldKeys, cust
           return (
             <div key={field} className="space-y-1">
               <Label className="text-xs">{label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}</Label>
-              <Input type="text" value={form[field] || ''} onChange={e => onChange(field, e.target.value)} className="h-9" placeholder="例: 35×25×8 mm" />
+              <Input type="text" value={String(form[field] ?? '')} onChange={e => onChange(field, e.target.value)} className="h-9" placeholder="例: 35×25×8 mm" />
             </div>
           );
         }
@@ -99,7 +99,7 @@ function SpecFieldsRenderer({ form, onChange, specFieldsObj, specFieldKeys, cust
           return (
             <div key={field} className="space-y-1">
               <Label className="text-xs">{label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}</Label>
-              <Input type="number" min="1" value={form[field] || ''} onChange={e => onChange(field, e.target.value)} className="h-9" placeholder={label} />
+              <Input type="number" min="1" value={String(form[field] ?? '')} onChange={e => onChange(field, e.target.value)} className="h-9" placeholder={label} />
             </div>
           );
         }
@@ -108,7 +108,7 @@ function SpecFieldsRenderer({ form, onChange, specFieldsObj, specFieldKeys, cust
             <div key={field} className="space-y-1">
               <Label className="text-xs">{label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}</Label>
               <div className="relative">
-                <Input type="number" step="0.5" value={form[field] || ''} onChange={e => onChange(field, e.target.value)} className="h-9 pr-10" placeholder={label} />
+                <Input type="number" step="0.5" value={String(form[field] ?? '')} onChange={e => onChange(field, e.target.value)} className="h-9 pr-10" placeholder={label} />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">mm</span>
               </div>
             </div>
@@ -117,7 +117,7 @@ function SpecFieldsRenderer({ form, onChange, specFieldsObj, specFieldKeys, cust
         return (
           <div key={field} className="space-y-1">
             <Label className="text-xs">{label}{isRequired && <span className="text-red-500 ml-0.5">*</span>}</Label>
-            <Input type="text" value={form[field] || ''} onChange={e => onChange(field, e.target.value)} className="h-9" placeholder={label} />
+            <Input type="text" value={String(form[field] ?? '')} onChange={e => onChange(field, e.target.value)} className="h-9" placeholder={label} />
           </div>
         );
       })}

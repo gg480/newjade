@@ -36,6 +36,7 @@ const PERMISSION_GROUPS = [
       { key: 'tab:promotions', label: '促销活动' },
       { key: 'tab:restock', label: '入货建议' },
       { key: 'tab:stocktaking', label: '库存盘点' },
+      { key: 'tab:content-promotion', label: '内容推广' },
     ],
   },
   {
@@ -43,6 +44,13 @@ const PERMISSION_GROUPS = [
     permissions: [
       { key: 'action:user_manage', label: '用户管理' },
       { key: 'action:role_manage', label: '角色管理' },
+    ],
+  },
+  {
+    label: '内容推广',
+    permissions: [
+      { key: 'action:content_view', label: '查看内容推广' },
+      { key: 'action:content_manage', label: '管理内容推广' },
     ],
   },
   {

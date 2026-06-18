@@ -51,7 +51,7 @@ export default function ScanPhotoMode({ onClose }: ScanPhotoModeProps) {
 
   // ── 扫码状态 ──
   const [skuCode, setSkuCode] = useState('');
-  const [itemInfo, setItemInfo] = useState<{ id: number; name: string | null; materialName: string | null; typeName: string | null } | null>(null);
+  const [itemInfo, setItemInfo] = useState<{ id: number; name: string | null; materialName: string | null; typeName: string | null; skuCode?: string } | null>(null);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [skuLoading, setSkuLoading] = useState(false);
 
@@ -62,7 +62,7 @@ export default function ScanPhotoMode({ onClose }: ScanPhotoModeProps) {
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   // ── 当前选中的角度 ──
-  const [currentAngle, setCurrentAngle] = useState(ANGLES[0].code);
+  const [currentAngle, setCurrentAngle] = useState<string>(ANGLES[0].code);
 
   // ── 已拍照片 ──
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);

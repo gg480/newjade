@@ -52,6 +52,13 @@ const StocktakingTab = dynamic(
   }),
   { ssr: false, loading: () => <LoadingSkeleton /> }
 );
+const ContentPromotionTab = dynamic(
+  () => import('@/components/inventory/content-promotion/content-promotion-tab').catch(() => {
+    console.error('Content promotion tab chunk failed to load');
+    return { default: () => <div className="p-8 text-center text-muted-foreground">内容推广加载失败</div> };
+  }),
+  { ssr: false, loading: () => <LoadingSkeleton /> }
+);
 import { MobileNav, DesktopNav, ShortcutsHelpDialog } from '@/components/inventory/navigation';
 import { Gem, Package, ShoppingCart, Zap, Clock, ArrowUp, HelpCircle, WifiOff, ShieldAlert, Loader2 } from 'lucide-react';
 import { itemsApi, salesApi, batchesApi, authApi } from '@/lib/api';
@@ -330,6 +337,7 @@ export default function JadeInventoryPage() {
       promotions: `促销活动 - ${storeName}进销存`,
       restock: `入货建议 - ${storeName}进销存`,
       stocktaking: `库存盘点 - ${storeName}进销存`,
+      'content-promotion': `内容推广 - ${storeName}进销存`,
     };
     document.title = titleMap[activeTab] || `${storeName}进销存管理系统`;
     return () => { document.title = '兴盛艺珠宝进销存管理系统'; };
@@ -491,6 +499,7 @@ export default function JadeInventoryPage() {
       case 'promotions': return <PromotionsTab />;
       case 'restock': return <RestockTab />;
       case 'stocktaking': return <StocktakingTab />;
+      case 'content-promotion': return <ContentPromotionTab />;
       default: return <DashboardTab />;
     }
   };
@@ -681,7 +690,7 @@ export default function JadeInventoryPage() {
           <DialogFooter>
             <Button
               onClick={handleForceChangePassword}
-              disabled={pwdChanging || !pwdOld || !pwdNew || !pwdConfirm || (pwdNew && calcPasswordStrength(pwdNew).score <= 2)}
+              disabled={!!(pwdChanging || !pwdOld || !pwdNew || !pwdConfirm || (pwdNew && calcPasswordStrength(pwdNew).score <= 2))}
               className="w-full bg-amber-600 hover:bg-amber-700 text-white"
             >
               {pwdChanging ? (

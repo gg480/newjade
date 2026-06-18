@@ -53,7 +53,7 @@ export async function calculatePrice(data: CalculatePriceInput): Promise<PriceCa
   // 根据材质类型调整加价倍数
   let markup = defaultMarkup;
   if (materialId) {
-    const material = await db.dictMaterial.findUnique({ where: { id: materialId } });
+    const material = await db.dictMaterial.findUnique({ where: { id: Number(materialId) } });
     if (material) {
       const name = material.name.toLowerCase();
       if (name.includes('金') || name.includes('钻') || name.includes('钻石')) {
@@ -89,7 +89,7 @@ export async function calculatePrice(data: CalculatePriceInput): Promise<PriceCa
   let metalCost: number | null = null;
   let laborCost: number | null = null;
   if (weight && materialId) {
-    const material = await db.dictMaterial.findUnique({ where: { id: materialId } });
+    const material = await db.dictMaterial.findUnique({ where: { id: Number(materialId) } });
     if (material?.costPerGram && weight > 0) {
       metalCost = Math.round(weight * material.costPerGram * 100) / 100;
       laborCost = Math.round((costPrice - metalCost) * 100) / 100;

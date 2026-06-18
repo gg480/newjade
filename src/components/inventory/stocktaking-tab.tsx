@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { stocktakingApi, itemsApi } from '@/lib/api';
+import type { ItemSummary } from '@/lib/api.types';
 import {
   Card,
   CardContent,
@@ -34,49 +35,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Input,
-  InputDescription,
-  InputLabel,
-  InputWrapper,
-} from '@/components/ui/input';
-import {
-  Textarea,
-  TextareaDescription,
-  TextareaLabel,
-  TextareaWrapper,
-} from '@/components/ui/textarea';
-import {
-  Button,
-  buttonVariants,
-} from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   Checkbox,
 } from '@/components/ui/checkbox';
 import {
   Label,
 } from '@/components/ui/label';
-import {
-  Badge,
-  badgeVariants,
-} from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import {
-  Calendar,
-  CalendarContent,
-  CalendarDay,
-  CalendarHeader,
-  CalendarMonth,
-  CalendarMonthHeader,
-  CalendarNextButton,
-  CalendarPreviousButton,
-  CalendarTitle,
-} from '@/components/ui/calendar';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
@@ -142,7 +117,7 @@ const StocktakingTab: React.FC = () => {
   const [selectedStocktaking, setSelectedStocktaking] = useState<Stocktaking | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<ItemSummary[]>([]);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [newStocktaking, setNewStocktaking] = useState({
     type: 'regular' as 'regular' | 'random',
@@ -406,7 +381,7 @@ const StocktakingTab: React.FC = () => {
                   <Calendar
                     mode="single"
                     selected={new Date(newStocktaking.startDate)}
-                    onSelect={(date) => setNewStocktaking({...newStocktaking, startDate: format(date, 'yyyy-MM-dd')})}
+                    onSelect={(date) => setNewStocktaking({...newStocktaking, startDate: format(date ?? new Date(), 'yyyy-MM-dd')})}
                   />
                 </PopoverContent>
               </Popover>
@@ -440,7 +415,7 @@ const StocktakingTab: React.FC = () => {
                       <Label htmlFor={`item-${item.id}`} className="flex-1">
                         <div className="font-medium">{item.skuCode}</div>
                         <div className="text-sm text-gray-500">
-                          {item.name || '未命名'} - {item.material.name} - {item.type?.name || '无类型'}
+                          {item.name || '未命名'} - {item.material?.name || '-'} - {item.type?.name || '无类型'}
                         </div>
                       </Label>
                     </div>

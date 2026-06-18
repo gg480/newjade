@@ -12,10 +12,6 @@ interface BundleItem extends ItemSummary {
   typeName?: string;
 }
 
-interface BundleCustomer extends Customer {
-  phone?: string | null;
-}
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

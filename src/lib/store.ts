@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type TabId = 'dashboard' | 'inventory' | 'sales' | 'batches' | 'customers' | 'logs' | 'settings'
-  | 'promotions' | 'restock' | 'stocktaking';
+  | 'promotions' | 'restock' | 'stocktaking' | 'content-promotion';
 
 export interface NavGroup {
   id: string;

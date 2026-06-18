@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       header: true,
       skipEmptyLines: true,
       encoding: 'UTF-8',
-    });
+    } as Papa.ParseConfig) as unknown as Papa.ParseResult<Record<string, string>>;
 
     if (parseResult.errors.length > 0 && parseResult.data.length === 0) {
       return NextResponse.json({

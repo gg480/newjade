@@ -101,7 +101,7 @@ function PromotionItemSelect({
         const itemsData = await itemsApi.getItems(params as any);
         
         if (!cancelled) {
-          setItems(itemsData.items || []);
+          setItems((itemsData.items || []) as PromotionItem[]);
           setPagination(itemsData.pagination || { total: 0, page: 1, size: 20, pages: 0 });
         }
       } catch (error) {

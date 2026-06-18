@@ -137,7 +137,7 @@ function SalesTab() {
   const [todayStats, setTodayStats] = useState<{ count: number; revenue: number; profit: number } | null>(null);
 
   // Sparkline data
-  const [sparklineData, setSparklineData] = useState<TrendDataPoint[]>([]);
+  const [sparklineData, setSparklineData] = useState<Array<{ date: string; revenue: number; profit: number }>>([]);
   const [sparkLoading, setSparkLoading] = useState(true);
 
   // Refresh key for manual reload triggers (create, return, search, etc.)
@@ -241,7 +241,7 @@ function SalesTab() {
         const trend = await dashboardApi.getTrend({ months: 1 });
         if (!cancelled && trend && trend.length > 0) {
           setSparklineData(trend.map((t: TrendDataPoint) => ({
-            date: t.yearMonth || t.date || t.label,
+            date: t.yearMonth,
             revenue: t.revenue || 0,
             profit: t.profit || 0,
           })));
@@ -771,7 +771,7 @@ function SalesTab() {
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-sky-600 hover:text-sky-700" onClick={() => handlePrintReceipt(sale)} title="打印小票">
                               <Printer className="h-3 w-3 mr-1" />小票
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-orange-600 hover:text-orange-700" onClick={() => openReturnDialog(sale)} title="退货" disabled={sale.returnedAt}>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-orange-600 hover:text-orange-700" onClick={() => openReturnDialog(sale)} title="退货" disabled={!!sale.returnedAt}>
                               <RotateCcw className="h-3 w-3 mr-1" />{sale.returnedAt ? '已退' : '退货'}
                             </Button>
                           </div>
@@ -828,7 +828,7 @@ function SalesTab() {
               const isExpanded = expandedSaleId === sale.id;
               const marginPct = sale.actualPrice > 0 ? ((profit / sale.actualPrice) * 100).toFixed(1) : '0.0';
               return (
-              <Card key={sale.id} className={`hover:shadow-md transition-shadow cursor-pointer ${sale.grossProfit > 0 ? 'border-l-2 border-l-emerald-400' : sale.grossProfit < 0 ? 'border-l-2 border-l-red-400' : ''} ${selectedSaleIds.has(String(sale.id)) ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`} onClick={() => toggleExpand(sale.id)}>
+              <Card key={sale.id} className={`hover:shadow-md transition-shadow cursor-pointer ${profit > 0 ? 'border-l-2 border-l-emerald-400' : profit < 0 ? 'border-l-2 border-l-red-400' : ''} ${selectedSaleIds.has(String(sale.id)) ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}`} onClick={() => toggleExpand(sale.id)}>
                 <CardContent className="p-4 space-y-2">
                   {/* Header: saleNo + channel + checkbox */}
                   <div className="flex items-center justify-between">
@@ -848,9 +848,9 @@ function SalesTab() {
                   {/* Price + Profit row */}
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold text-emerald-600">{formatPrice(sale.actualPrice)}</span>
-                    <span className={`text-sm font-medium inline-flex items-center gap-1 ${sale.grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {sale.grossProfit > 0 ? <ArrowUp className="h-3 w-3" /> : sale.grossProfit < 0 ? <ArrowDown className="h-3 w-3" /> : null}
-                      {sale.grossProfit >= 0 ? '+' : ''}{formatPrice(sale.grossProfit)}
+                    <span className={`text-sm font-medium inline-flex items-center gap-1 ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {profit > 0 ? <ArrowUp className="h-3 w-3" /> : profit < 0 ? <ArrowDown className="h-3 w-3" /> : null}
+                      {profit >= 0 ? '+' : ''}{formatPrice(profit)}
                     </span>
                   </div>
                   {/* Meta row: date + customer */}
@@ -883,7 +883,7 @@ function SalesTab() {
                     <Button size="sm" variant="outline" className="h-7 px-3 text-xs text-sky-600" onClick={() => handlePrintReceipt(sale)}>
                       <Printer className="h-3 w-3 mr-1" />小票
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs text-orange-600" onClick={() => openReturnDialog(sale)} disabled={sale.returnedAt}>
+                    <Button size="sm" variant="outline" className="h-7 px-3 text-xs text-orange-600" onClick={() => openReturnDialog(sale)} disabled={!!sale.returnedAt}>
                       <RotateCcw className="h-3 w-3 mr-1" />{sale.returnedAt ? '已退' : '退货'}
                     </Button>
                   </div>
@@ -1176,7 +1176,7 @@ function SalesTab() {
                 }
               }}
               className="bg-orange-600 hover:bg-orange-700"
-              disabled={returnForm.refundAmount <= 0 || returnSubmitting || returnDialog.sale?.returnedAt || (returnDialog.sale && returnForm.refundAmount > returnDialog.sale.actualPrice)}
+              disabled={returnForm.refundAmount <= 0 || returnSubmitting || !!returnDialog.sale?.returnedAt || !!(returnDialog.sale && returnForm.refundAmount > returnDialog.sale.actualPrice)}
             >
               {returnSubmitting ? '处理中...' : returnDialog.sale?.returnedAt ? '已退货' : '确认退货'}
             </Button>
@@ -1402,7 +1402,7 @@ function SalesTab() {
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => { setDetailSale(null); handlePrintReceipt(detailSale); }}>
                   <Printer className="h-3 w-3 mr-1" />打印小票
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 text-orange-600" onClick={() => { setDetailSale(null); openReturnDialog(detailSale); }} disabled={detailSale.returnedAt}>
+                <Button size="sm" variant="outline" className="flex-1 text-orange-600" onClick={() => { setDetailSale(null); openReturnDialog(detailSale); }} disabled={!!detailSale.returnedAt}>
                   <RotateCcw className="h-3 w-3 mr-1" />{detailSale.returnedAt ? '已退货' : '退货'}
                 </Button>
               </div>

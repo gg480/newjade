@@ -50,7 +50,7 @@ function PromotionCreateDialog({
 }: { 
   open: boolean; 
   onClose: (o: boolean) => void; 
-  onSubmit: (data: PromotionFormData) => void;
+  onSubmit: (data: Record<string, unknown>) => void | Promise<void>;
   initialData?: PromotionEditData 
 }) {
   const [form, setForm] = useState<PromotionFormData>({
@@ -173,8 +173,8 @@ function PromotionCreateDialog({
     try {
       await onSubmit({
         ...form,
-        discountValue: form.discountValue || undefined,
-        condition: form.condition || undefined,
+        discountValue: form.discountValue,
+        condition: form.condition,
       });
     } catch (error) {
       handleError(error, { title: '操作失败' });

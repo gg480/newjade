@@ -58,8 +58,8 @@ export function BatchesTable({
                     <TableCell className="text-right">{formatPrice(b.totalCost)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {b.quantity > 0 ? formatPrice(b.totalCost / b.quantity) : '-'}
-                      {b.soldCount > 0 && (() => {
-                        const avgSellingPrice = (b.revenue || 0) / b.soldCount;
+                      {(b.soldCount ?? 0) > 0 && (() => {
+                        const avgSellingPrice = (b.revenue || 0) / (b.soldCount ?? 1);
                         return <span className="text-[10px] block text-emerald-600">均售价¥{Math.round(avgSellingPrice).toLocaleString()}</span>;
                       })()}
                     </TableCell>
@@ -90,7 +90,7 @@ export function BatchesTable({
                       })()}
                     </TableCell>
                     <TableCell><Badge variant="outline">{allocMethodLabels[b.costAllocMethod] || b.costAllocMethod}</Badge></TableCell>
-                    <TableCell className="text-right">{b.soldCount}/{b.quantity}</TableCell>
+                    <TableCell className="text-right">{b.soldCount ?? 0}/{b.quantity}</TableCell>
                     <TableCell className="text-right font-medium">{formatPrice(b.revenue)}</TableCell>
                     <TableCell className="text-right">
                       {(() => {
@@ -109,8 +109,8 @@ export function BatchesTable({
                         );
                       })()}
                     </TableCell>
-                    <TableCell><PaybackBar rate={b.paybackRate} /></TableCell>
-                    <TableCell><StatusBadge status={b.status} /></TableCell>
+                    <TableCell><PaybackBar rate={b.paybackRate ?? 0} /></TableCell>
+                    <TableCell><StatusBadge status={b.status ?? ''} /></TableCell>
                     <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => onViewDetail(b.id)} title="查看详情"><Eye className="h-3 w-3" /></Button>
@@ -137,7 +137,7 @@ export function BatchesTable({
               {/* Header: batch code + status */}
               <div className="flex items-center justify-between">
                 <span className="font-mono text-sm font-medium">{b.batchCode}</span>
-                <StatusBadge status={b.status} />
+                <StatusBadge status={b.status ?? ''} />
               </div>
               {/* Material + entry progress */}
               <div className="flex items-center justify-between text-sm">
@@ -172,8 +172,8 @@ export function BatchesTable({
                   <p className="text-xs text-muted-foreground">总成本</p>
                   <p className="font-medium">{formatPrice(b.totalCost)}</p>
                   {b.quantity > 0 && <p className="text-xs text-muted-foreground">单价 {formatPrice(b.totalCost / b.quantity)}</p>}
-                  {b.soldCount > 0 && (() => {
-                    const avgSellingPrice = (b.revenue || 0) / b.soldCount;
+                  {(b.soldCount ?? 0) > 0 && (() => {
+                    const avgSellingPrice = (b.revenue || 0) / (b.soldCount ?? 1);
                     return <p className="text-xs text-emerald-600">均售价 {formatPrice(avgSellingPrice)}</p>;
                   })()}
                 </div>
@@ -204,13 +204,13 @@ export function BatchesTable({
               <div className="pt-1">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                   <span>回本进度</span>
-                  <span>{(b.paybackRate * 100).toFixed(1)}%</span>
+                  <span>{(b.paybackRate ?? 0) > 0 ? `${((b.paybackRate ?? 0) * 100).toFixed(0)}%` : '-'}</span>
                 </div>
-                <PaybackBar rate={b.paybackRate} />
+                <PaybackBar rate={b.paybackRate ?? 0} />
               </div>
               {/* Sold count */}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>已售 {b.soldCount}/{b.quantity}</span>
+                <span>已售 {b.soldCount ?? 0}/{b.quantity}</span>
                 {b.purchaseDate && (
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{b.purchaseDate}</span>
                 )}

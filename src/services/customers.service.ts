@@ -404,7 +404,8 @@ export async function updateCustomer(id: number, data: UpdateCustomerInput) {
     throw new NotFoundError('未找到');
   }
 
-  const updateData: Prisma.CustomerUpdateInput = { ...data };
+  const { tags: _tags, ...restData } = data;
+  const updateData: Prisma.CustomerUpdateInput = { ...restData };
   // tags 数组转 JSON 存储
   if (Array.isArray(data.tags)) {
     updateData.tags = data.tags.length > 0 ? JSON.stringify(data.tags) : null;
@@ -510,7 +511,7 @@ export async function mergeCustomers(sourceId: number, input: MergeCustomersInpu
   }
 
   // 去重并确保都是整数
-  const uniqueIds = Array.from(new Set(saleRecordIds.map((id) => parseInt(id)))).filter(
+  const uniqueIds = Array.from(new Set(saleRecordIds.map((id) => id))).filter(
     (id) => !isNaN(id),
   );
   if (uniqueIds.length === 0) {

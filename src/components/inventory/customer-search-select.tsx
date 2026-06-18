@@ -10,8 +10,8 @@ import { cn } from '@/lib/utils';
 interface CustomerOption {
   id: number;
   name: string;
-  phone: string;
-  wechat: string;
+  phone: string | null;
+  wechat: string | null;
   customerCode: string;
 }
 
@@ -26,7 +26,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
   const [search, setSearch] = useState('');
   const [options, setOptions] = useState<CustomerOption[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced search
   useEffect(() => {
@@ -36,7 +36,7 @@ export function CustomerSearchSelect({ value, onChange, placeholder = '搜索客
       try {
         const keyword = search.trim();
         const data = await customersApi.getCustomers(keyword ? { keyword, size: 20 } : { size: 50 });
-        const items = data?.items || data || [];
+        const items = (data?.items || data || []) as CustomerOption[];
         setOptions(items);
       } catch (e) { console.error('[SearchSelect]', e);
         setOptions([]);

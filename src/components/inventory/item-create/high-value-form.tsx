@@ -13,7 +13,7 @@ import { Calculator, Plus } from 'lucide-react';
 import SpecFieldsRenderer from './spec-fields-renderer';
 import type { DictMaterial, DictType, DictTag, Supplier } from '@/lib/api.types';
 
-interface PricingSuggestion {
+export interface PricingSuggestion {
   suggestedPrice: number;
   floorPrice?: number;
   grossMargin?: number;

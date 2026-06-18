@@ -13,16 +13,18 @@ import {
   DollarSign as DollarSignIcon, ShoppingCart as ShoppingCartIcon, ArrowDownAZ, Clock,
 } from 'lucide-react';
 
-interface CustomerStats {
+export interface CustomerStats {
   totalCustomers: number;
   repeatRate: number;
   totalRevenue: number;
   avgOrderValue?: number;
+  totalSpending?: number;
+  newThisMonth?: number;
 }
 
 // ========== Customers Filter Bar Props ==========
 interface CustomersFilterBarProps {
-  stats: CustomerStats;
+  stats: CustomerStats | null;
   keyword: string;
   onKeywordChange: (value: string) => void;
   loading: boolean;

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { CustomerMergeDialog } from './customer-merge-dialog';
-import { CustomersFilterBar } from './customers/customers-filter-bar';
+import { CustomersFilterBar, type CustomerStats } from './customers/customers-filter-bar';
 import { CustomersTable } from './customers/customers-table';
 
 // Tag color palette
@@ -89,7 +89,7 @@ interface CustomerTableRow extends Customer {
 }
 
 // 客户画像详情类型
-interface CustomerProfileDetail extends CustomerDetail {
+interface CustomerProfileDetail extends Omit<CustomerDetail, 'tags' | 'notes'> {
   purchaseStats?: {
     totalSpending: number;
     orderCount: number;
@@ -128,9 +128,9 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
   useEffect(() => {
     if (open && customer?.id) {
       setLoading(true);
-      customersApi.getCustomerDetail(customer.id).then((data: CustomerProfileDetail) => {
-        setDetail(data);
-        setNotes(data.notes || '');
+      customersApi.getCustomerDetail(customer.id).then((data: CustomerDetail) => {
+        setDetail(data as unknown as CustomerProfileDetail);
+        setNotes((data as unknown as CustomerProfileDetail).notes || '');
       }).catch(() => {
         toast.error('加载客户详情失败');
       }).finally(() => setLoading(false));
@@ -155,20 +155,20 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
 
   async function handleAddTag() {
     if (!tagInput.trim() || !customer) return;
-    const currentTags = detail?.tags || customer.tags || [];
+    const currentTags = detail?.tags || (typeof customer.tags === 'string' ? JSON.parse(customer.tags || '[]') : customer.tags || []);
     if (currentTags.includes(tagInput.trim())) {
       toast.warning('标签已存在');
       return;
     }
     try {
       const newTags = [...currentTags, tagInput.trim()];
-      await customersApi.updateCustomer(customer.id, { tags: newTags });
+      await customersApi.updateCustomer(customer.id, { tags: newTags as any });
       toast.success('标签已添加');
       setTagInput('');
       setShowTagInput(false);
       // Refresh detail
       const data = await customersApi.getCustomerDetail(customer.id);
-      setDetail(data);
+      setDetail(data as unknown as CustomerProfileDetail);
       onTagsUpdated();
     } catch (e: any) {
       toast.error(e.message || '添加标签失败');
@@ -177,20 +177,20 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
 
   async function handleRemoveTag(tag: string) {
     if (!customer) return;
-    const currentTags = detail?.tags || customer.tags || [];
+    const currentTags: string[] = detail?.tags || (typeof customer.tags === 'string' ? JSON.parse(customer.tags || '[]') : customer.tags || []);
     const newTags = currentTags.filter((t: string) => t !== tag);
-    try {
-      await customersApi.updateCustomer(customer.id, { tags: newTags });
-      toast.success('标签已移除');
-      const data = await customersApi.getCustomerDetail(customer.id);
-      setDetail(data);
-      onTagsUpdated();
+      try {
+        await customersApi.updateCustomer(customer.id, { tags: newTags as any });
+        toast.success('标签已移除');
+        const data = await customersApi.getCustomerDetail(customer.id);
+        setDetail(data as unknown as CustomerProfileDetail);
+        onTagsUpdated();
     } catch (e: any) {
       toast.error(e.message || '移除标签失败');
     }
   }
 
-  const tags = detail?.tags || customer?.tags || [];
+  const tags: string[] = detail?.tags || (typeof customer?.tags === 'string' ? JSON.parse(customer.tags || '[]') : customer?.tags || []);
   const purchaseStats = detail?.purchaseStats;
   const monthlySpending = detail?.monthlySpending || [];
   const topMaterials = detail?.topMaterials || [];
@@ -198,6 +198,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
   const vip = getVipLevel(purchaseStats?.totalSpending || 0);
   const VipIcon = vip.icon;
 
+  if (!customer) return null;
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -444,7 +445,7 @@ function CustomerProfileDialog({ customer, open, onClose, onEdit, onMerge, onTag
 function CustomersTab() {
   const [customers, setCustomers] = useState<CustomerTableRow[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, size: 20, pages: 0 });
-  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
+  const [stats, setStats] = useState<CustomerStats | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
@@ -492,12 +493,12 @@ function CustomersTab() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const data = await customersApi.getCustomers({ page: pagination.page, size: pagination.size, keyword: debouncedKeyword, tag: tagFilter || undefined });
+        const data = await customersApi.getCustomers({ page: pagination.page, size: pagination.size, keyword: debouncedKeyword, tag: tagFilter || undefined }) as unknown as Record<string, unknown>;
         if (!cancelled) {
-          setCustomers(data.items || []);
-          setPagination(data.pagination || { total: 0, page: 1, size: 20, pages: 0 });
-          setStats(data.stats || null);
-          setAllTags(data.allTags || []);
+          setCustomers((data.items || []) as CustomerTableRow[]);
+          setPagination((data.pagination || { total: 0, page: 1, size: 20, pages: 0 }) as { total: number; page: number; size: number; pages: number });
+          setStats((data.stats || null) as CustomerStats | null);
+          setAllTags((data.allTags || []) as string[]);
         }
       } catch (e) { console.error('[CustomersTab]', e); if (!cancelled) toast.error('加载客户失败'); } finally { if (!cancelled) setLoading(false); }
     };
@@ -511,8 +512,8 @@ function CustomersTab() {
   useEffect(() => {
     if (expandedCustomerId) {
       setDetailLoading(true);
-      customersApi.getCustomerDetail(expandedCustomerId).then((data: CustomerProfileDetail) => {
-        setCustomerDetail(data);
+      customersApi.getCustomerDetail(expandedCustomerId).then((data: CustomerDetail) => {
+        setCustomerDetail(data as unknown as CustomerProfileDetail);
       }).catch(() => {
         toast.error('加载客户详情失败');
       }).finally(() => setDetailLoading(false));
@@ -524,7 +525,7 @@ function CustomersTab() {
   async function handleCreate() {
     try {
       const tagsArr = createForm.tags ? createForm.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
-      await customersApi.createCustomer({ ...createForm, tags: tagsArr });
+      await customersApi.createCustomer({ ...createForm, tags: tagsArr as any });
       toast.success('客户创建成功');
       setShowCreate(false);
       setCreateForm({ name: '', phone: '', wechat: '', address: '', notes: '', tags: '' });
@@ -536,7 +537,7 @@ function CustomersTab() {
     if (!editCustomer) return;
     try {
       const tagsArr = editForm.tags ? editForm.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
-      await customersApi.updateCustomer(editCustomer.id, { name: editForm.name, phone: editForm.phone, wechat: editForm.wechat, address: editForm.address, notes: editForm.notes, tags: tagsArr });
+      await customersApi.updateCustomer(editCustomer.id, { name: editForm.name, phone: editForm.phone, wechat: editForm.wechat, address: editForm.address, notes: editForm.notes, tags: tagsArr as any });
       toast.success('客户更新成功');
       setEditCustomer(null);
       refresh();
@@ -722,7 +723,7 @@ function CustomersTab() {
       <CustomerMergeDialog
         open={mergeTarget !== null}
         onOpenChange={(open) => { if (!open) setMergeTarget(null); }}
-        targetCustomer={mergeTarget}
+        targetCustomer={mergeTarget as any}
         onMerged={() => {
           setMergeTarget(null);
           refresh();
