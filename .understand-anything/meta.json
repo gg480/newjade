@@ -3,7 +3,7 @@
   "gitCommitHash": "0f6684eef849dbdbb834ba07118d8fe314727cee",
   "version": "1.0.0",
   "analyzedFiles": 80,
-  "needsRefresh": false,
+  "needsRefresh": true,
   "autoRefresh": true,
-  "lastCommitHash": "0f6684eef849dbdbb834ba07118d8fe314727cee"
+  "lastCommitHash": "83d71092956c4060ef6f171ae60a929e0a6b6167"
 }

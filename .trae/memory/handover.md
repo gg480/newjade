@@ -1,12 +1,69 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-18 | 更新人：SOLO
+> 最后更新：2026-06-19 | 更新人：SOLO
 
 ---
 
 ## ⚠️ 活跃红线（工作流规则）
 
 - **提交代码前必须先启动开发服务器让用户验证**：`git commit` 前先启动 `pnpm run dev`（端口 5000），让用户在浏览器中确认系统功能正常，用户明确确认后才可执行提交。未经用户验证直接提交代码视为违规。
+
+---
+
+## 2026-06-19 扫码模块修复（扫描枪 HID + 摄像头 Code-128 识别）
+
+**状态：✅ 已完成（待用户验证）**
+
+### 问题诊断
+
+原扫码模块仅调用摄像头，未配置 Code-128 格式，几乎无法识别一维码。同时缺少扫描枪（HID 键盘模拟器）支持。
+
+### 完成内容
+
+1. **新增扫描枪 HID 模式**（`src/hooks/use-barcode-scanner.ts`）
+   - 全局 keydown 监听（capture 阶段，先于 React 合成事件）
+   - 时间间隔识别（50ms 阈值区分扫描枪 vs 人类输入）
+   - Enter 终止符触发 + 软件兜底超时（100ms 无 Enter 自动提交）
+   - 兼容 USB/蓝牙扫描枪，所有浏览器
+
+2. **集成扫描枪到库存 Tab**（`inventory-tab.tsx`）
+   - `useBarcodeScanner({ onComplete: handleBarcodeScan })`
+   - `handleBarcodeScan` 中 `setScanSku('')` 清空 input（扫描枪字符可能注入）
+   - UI 添加"扫描枪已启用"提示
+
+3. **重写摄像头扫码**（`barcode-scanner.tsx`）
+   - 替换 `html5-qrcode` → 原生 `BarcodeDetector` + `barcode-detector` polyfill 降级
+   - 显式指定 `code_128` 格式（缩小搜索空间，提升识别率）
+   - 摄像头分辨率 1280×720（原默认 640×480 识别率低）
+   - 横向矩形扫描框（80%×40%，匹配 1D 条码形状）
+   - 微信内置浏览器检测 → 引导跳转外部浏览器
+   - iOS Safari 兼容（playsInline、polyfill 按需加载）
+
+4. **新增依赖**：`barcode-detector@3.2.0`（zxing-wasm polyfill，~300KB gzip，按需加载）
+
+### 三种扫码模式
+
+| 模式 | 触发方式 | 适用场景 |
+|------|---------|---------|
+| 扫描枪 | 直接扫码（全局监听，无需聚焦） | 电脑+USB扫描枪、平板+蓝牙扫描枪 |
+| 摄像头 | 点击"扫码"按钮 | 手机/平板摄像头 |
+| 手动输入 | input 输入+Enter | 兜底 |
+
+### 涉及文件
+
+- `src/hooks/use-barcode-scanner.ts`（新增）
+- `src/components/inventory/barcode-scanner.tsx`（重写）
+- `src/components/inventory/inventory-tab.tsx`（集成 Hook）
+- `src/components/inventory/inventory/inventory-scan-sell-section.tsx`（UI 提示）
+- `package.json`（新增 barcode-detector 依赖）
+
+### 注意事项
+
+- 扫描枪需配置 Enter 后缀（默认即此模式，说明书有配置码）
+- 摄像头扫码需 HTTPS 环境（localhost 除外）
+- iOS Safari 通过 polyfill 降级支持（首次加载 ~300KB WASM）
+- 微信内置浏览器不支持摄像头，引导跳转
+- `item-detail-dialog.tsx:399` 有预先存在的 lint 错误（`ItemPromotionHistory` 未定义），非本次改动引起
 
 ---
 

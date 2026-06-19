@@ -6,20 +6,23 @@ const prisma = new PrismaClient();
 const ADMIN_PERMISSIONS = [
   'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
   'tab:customers', 'tab:settings', 'tab:logs', 'tab:promotions',
-  'tab:restock', 'tab:stocktaking',
+  'tab:restock', 'tab:stocktaking', 'tab:content-promotion',
   'action:user_manage', 'action:role_manage', 'action:export',
   'action:delete_item', 'action:price_adjust',
+  'action:content_view', 'action:content_manage',
 ];
 
 const MANAGER_PERMISSIONS = [
   'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:batches',
   'tab:customers', 'tab:logs', 'tab:promotions', 'tab:restock',
-  'tab:stocktaking',
+  'tab:stocktaking', 'tab:content-promotion',
   'action:export', 'action:delete_item', 'action:price_adjust',
+  'action:content_view', 'action:content_manage',
 ];
 
 const STAFF_PERMISSIONS = [
   'tab:dashboard', 'tab:inventory', 'tab:sales', 'tab:customers',
+  'tab:content-promotion', 'action:content_view',
 ];
 
 async function seedRoles() {
@@ -34,11 +37,13 @@ async function seedRoles() {
   const roleIds: Record<string, number> = {};
 
   for (const r of presetRoles) {
+    // 系统角色权限由 seed 管理，update 时同步权限定义
     const role = await prisma.role.upsert({
       where: { name: r.name },
       update: {
         description: r.description,
         isSystem: r.isSystem,
+        permissions: JSON.stringify(r.permissions),
       },
       create: {
         name: r.name,
@@ -98,6 +103,10 @@ async function main() {
     { key: 'currency_symbol', value: '¥', description: '默认货币符号', valueType: 'string', groupName: 'system' },
     { key: 'profit_warning_threshold', value: '30', description: '利润预警阈值(%)', valueType: 'number', groupName: 'system', minValue: 0, maxValue: 100, unit: '%' },
     { key: 'default_profit_rate', value: '40', description: '默认利润率(%)', valueType: 'number', groupName: 'pricing', minValue: 0, maxValue: 100, unit: '%' },
+    // 内容推广模块 — OpenClaw 对接配置
+    { key: 'openclaw_api_key', value: '', description: 'OpenClaw API Key（oc_ 前缀，留空表示未启用）', valueType: 'string', groupName: 'content' },
+    { key: 'openclaw_base_url', value: 'http://localhost:3000', description: 'OpenClaw 服务地址', valueType: 'string', groupName: 'content' },
+    { key: 'baidu_api_key', value: '', description: '百度 API Key（违禁词检测等）', valueType: 'string', groupName: 'content' },
   ];
   for (const c of configs) {
     await prisma.sysConfig.upsert({
@@ -106,7 +115,7 @@ async function main() {
       create: { key: c.key, value: c.value, description: c.description, valueType: c.valueType, groupName: c.groupName, minValue: c.minValue ?? null, maxValue: c.maxValue ?? null, unit: c.unit ?? null },
     });
   }
-  console.log('✅ 系统配置已插入/更新 (11条)');
+  console.log('✅ 系统配置已插入/更新 (14条)');
 
   // 2. 材质 (36种) — 含 category 大类
   const materials = [
