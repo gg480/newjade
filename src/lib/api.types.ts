@@ -609,6 +609,9 @@ export interface MarketPriceItem {
   finalPrice: number | null;       // 最终克价 = refPrice + 工费单价
 }
 
+/** 行情价含材质折算参考价（GET /api/metal-prices/market） */
+export type MarketPriceWithRef = MarketPriceItem;
+
 /** 竞品金价（GET /api/metal-prices/competitors） */
 export interface CompetitorPrice {
   name: string;             // 品牌名，如 周大福
@@ -650,11 +653,16 @@ export interface MetalPrice {
   material?: DictMaterial;
 }
 
-export interface RepricePreview {
-  affectedItems: number;
+export interface RepricePreviewItem {
+  itemId: number;
+  skuCode: string;
+  name: string | null;
   oldPrice: number;
   newPrice: number;
-  changePercent: number;
+}
+
+export interface RepricePreview {
+  affectedItems: RepricePreviewItem[];
 }
 
 // ========== 定价 ==========
@@ -885,8 +893,20 @@ export interface DashboardQueryParams {
 
 export interface MetalPriceHistoryParams extends PaginationQueryParams {
   material_id?: string;
+  material_ids?: string;
   start_date?: string;
   end_date?: string;
+  pageSize?: number;
+}
+
+export interface PaginatedMetalPrice {
+  items: MetalPrice[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface SupplierStatsParams {

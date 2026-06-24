@@ -411,7 +411,7 @@ export default function TopicsTab({ onSwitchTab }: { onSwitchTab?: (tab: string)
         title: `「${topic.title}」小红书文案`,
         body: topic.description || '',
         tags: topic.keywords || [],
-        contentMode: 'product',
+        contentMode: '种草',
         itemIds: topic.itemIds || [],
       });
       toast({ title: '草稿已生成', description: '请在文案工坊继续编辑' });

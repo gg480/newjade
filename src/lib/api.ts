@@ -11,7 +11,7 @@ import type {
   DistributionByType, DistributionByMaterial, TurnoverDataPoint, HeatmapData,
   CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem,
   DashboardAggregate, RecentSaleItem,
-  MetalPrice, MarketPriceItem, CompetitorPrice, LocalReferenceResponse, RepricePreview, PricingResult, OperationLog, Notification,
+  MetalPrice, MarketPriceItem, MarketPriceWithRef, CompetitorPrice, LocalReferenceResponse, RepricePreview, PricingResult, OperationLog, Notification,
   ImportResult, BatchPriceAdjustResult, BatchCompleteResult, AuthToken, AuthSession, BackupResult,
   ItemsQueryParams, SalesQueryParams, BatchesQueryParams, CustomersQueryParams,
   SuppliersQueryParams, LogsQueryParams, NotificationsQueryParams,
@@ -20,7 +20,7 @@ import type {
   CreateCustomerBody, UpdateCustomerBody, CreateSupplierBody, UpdateSupplierBody,
   CreateBatchBody, UpdateBatchBody, CreateItemBody, UpdateItemBody,
   CreateSaleBody, UpdateSaleBody, CreateBundleSaleBody, ReturnSaleBody,
-  MergeCustomerBody, UpdateMetalPriceBody, RepriceBody, PricingBody,
+  MergeCustomerBody, UpdateMetalPriceBody, RepriceBody, PricingBody, PaginatedMetalPrice,
   BatchPriceBody, UpdateConfigBody, ChangePasswordBody, ImportOptions,
   CurrentUser, UserInfo, RoleInfo, UpdateLaborCostBody,
 } from './api.types';
@@ -354,10 +354,10 @@ export const metalApi = {
     request<MetalPrice>('/metal-prices', { method: 'POST', body: JSON.stringify(data) }),
   getPriceHistory: (params?: MetalPriceHistoryParams) => {
     const qs = params ? buildQueryString(params as Record<string, string | number | boolean | undefined | null>) : '';
-    return request<MetalPrice[]>(`/metal-prices/history${qs}`);
+    return request<PaginatedMetalPrice>(`/metal-prices/history${qs}`);
   },
   getMarketPrices: (source?: 'gzjn168' | 'tanshu' | 'auto') =>
-    request<MarketPriceItem[]>(`/metal-prices/market${source ? `?source=${source}` : ''}`),
+    request<MarketPriceWithRef[]>(`/metal-prices/market${source ? `?source=${source}` : ''}`),
   /** 获取竞品金价列表 */
   getCompetitors: () => request<CompetitorPrice[]>('/metal-prices/competitors'),
   /** 获取本地参考行情（融通金 gzjn168.com） */
@@ -369,7 +369,13 @@ export const metalApi = {
   previewReprice: (data: RepriceBody) =>
     request<RepricePreview>('/metal-prices/reprice', { method: 'POST', body: JSON.stringify(data) }),
   confirmReprice: (data: RepriceBody) =>
-    request<{ affectedItems: number; message: string }>('/metal-prices/reprice/confirm', { method: 'POST', body: JSON.stringify(data) }),
+    request<{ updatedCount: number; message: string }>('/metal-prices/reprice/confirm', { method: 'POST', body: JSON.stringify(data) }),
+  /** 删除价格记录 */
+  deletePriceRecord: (id: number) =>
+    request<null>(`/metal-prices?id=${id}`, { method: 'DELETE' }),
+  /** 强制刷新行情价缓存 */
+  refreshMarketPrices: (source?: 'gzjn168' | 'tanshu' | 'auto') =>
+    request<MarketPriceWithRef[]>(`/metal-prices/refresh${source ? `?source=${source}` : ''}`, { method: 'POST' }),
 };
 
 // ========== Pricing ==========

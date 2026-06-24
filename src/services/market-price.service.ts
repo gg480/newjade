@@ -12,7 +12,7 @@ const inflightRequests = new Map<string, Promise<any>>();
 // 类型定义
 // ============================================================
 
-export interface MarketPriceItem {
+export interface RawMarketPrice {
   code: string;      // 行情码: Au9999, Ag(T+D), Pt9995
   price: number;     // 元/克
   unit: string;      // 元/克
@@ -24,7 +24,7 @@ export interface MarketPriceItem {
 // ============================================================
 
 interface CacheEntry {
-  data: MarketPriceItem[];
+  data: RawMarketPrice[];
   expiresAt: number;
 }
 
@@ -32,14 +32,14 @@ let priceCache: CacheEntry | null = null;
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟
 
-function getFromCache(): MarketPriceItem[] | null {
+function getFromCache(): RawMarketPrice[] | null {
   if (priceCache && Date.now() < priceCache.expiresAt) {
     return priceCache.data;
   }
   return null;
 }
 
-function setCache(data: MarketPriceItem[]): void {
+function setCache(data: RawMarketPrice[]): void {
   priceCache = {
     data,
     expiresAt: Date.now() + CACHE_TTL_MS,
@@ -106,7 +106,7 @@ async function fetchFromEndpoint(
   apiKey: string,
   apiName: string,
   codes: string[],
-): Promise<MarketPriceItem[]> {
+): Promise<RawMarketPrice[]> {
   const url = `${API_URLS[apiName]}?key=${encodeURIComponent(apiKey)}`;
 
   let response: Response;
@@ -143,7 +143,7 @@ async function fetchFromEndpoint(
   }
 
   const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
-  const results: MarketPriceItem[] = [];
+  const results: RawMarketPrice[] = [];
 
   for (const code of codes) {
     const matched = list[code];
@@ -174,7 +174,7 @@ async function fetchFromEndpoint(
  * 含 inflight 去重：同一时刻的重复请求合并为一次
  * @throws {AppError} API不可用时抛出
  */
-async function fetchFromTanshu(): Promise<MarketPriceItem[]> {
+async function fetchFromTanshu(): Promise<RawMarketPrice[]> {
   // Inflight 去重
   const cacheKey = 'tanshu:market-prices';
   const inflight = inflightRequests.get(cacheKey);
@@ -193,7 +193,7 @@ async function fetchFromTanshu(): Promise<MarketPriceItem[]> {
 /**
  * 内部实际请求函数（不含 inflight 逻辑）
  */
-async function doFetchFromTanshu(): Promise<MarketPriceItem[]> {
+async function doFetchFromTanshu(): Promise<RawMarketPrice[]> {
   // 1. 从 SysConfig 读取 API Key
   const config = await db.sysConfig.findUnique({ where: { key: 'tanshu_api_key' } });
   const apiKey = config?.value?.trim();
@@ -205,7 +205,7 @@ async function doFetchFromTanshu(): Promise<MarketPriceItem[]> {
   const allCodes = Object.keys(CODE_API_MAP);
   const endpoints = [...new Set(Object.values(CODE_API_MAP))];
 
-  const prices: MarketPriceItem[] = [];
+  const prices: RawMarketPrice[] = [];
 
   for (const endpoint of endpoints) {
     const codesForThisEndpoint = allCodes.filter((c) => CODE_API_MAP[c] === endpoint);
@@ -221,18 +221,18 @@ async function doFetchFromTanshu(): Promise<MarketPriceItem[]> {
 }
 
 /**
- * 从 gzjn168.com 获取行情价并映射为 MarketPriceItem
+ * 从 gzjn168.com 获取行情价并映射为 RawMarketPrice
  * 使用销售价（sellPrice）作为行情价 price
  * 内部通过 fetchLocalReferencePrices 已有 5 分钟缓存
  */
-async function fetchFromGzjn168(): Promise<MarketPriceItem[]> {
+async function fetchFromGzjn168(): Promise<RawMarketPrice[]> {
   const ref = await fetchLocalReferencePrices();
   if (!ref.available || ref.items.length === 0) {
     throw new AppError('无法从融通金获取行情数据', 502, 502);
   }
 
   const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
-  const results: MarketPriceItem[] = [];
+  const results: RawMarketPrice[] = [];
 
   for (const item of ref.items) {
     const code = GZJN_TO_CODE_MAP[item.name];
@@ -269,7 +269,7 @@ async function fetchFromGzjn168(): Promise<MarketPriceItem[]> {
  */
 export async function fetchMarketPrices(
   source: 'auto' | 'gzjn168' | 'tanshu' = 'auto'
-): Promise<MarketPriceItem[]> {
+): Promise<RawMarketPrice[]> {
   // gzjn168 源：走融通金（不走 tanshu 缓存）
   if (source === 'gzjn168') {
     return fetchFromGzjn168();
@@ -315,7 +315,7 @@ export async function fetchMarketPrices(
  * refPrice = 行情价 * marketRatio（行情参考价）
  * finalPrice = 行情价 * marketRatio + laborCostPerGram（最终克价，含工费）
  */
-export interface MarketPriceWithRef extends MarketPriceItem {
+export interface MarketPriceWithRef extends RawMarketPrice {
   materialId: number | null;
   materialName: string | null;
   marketRatio: number | null;
@@ -437,7 +437,7 @@ interface CompetitorCacheEntry {
 }
 
 let competitorCache: CompetitorCacheEntry | null = null;
-const COMPETITOR_CACHE_TTL_MS = 60 * 60 * 1000; // 1小时
+const COMPETITOR_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4小时（金价一天变动有限，延长避免频繁请求探数API）
 
 /** 港台货币单位（需过滤，单位不一致） */
 const HKTWD_UNITS = new Set(['港币/克', '台币/克', '港幣/克', '臺幣/克', '港币/两', '台币/两', '港幣/兩', '臺幣/兩']);
@@ -508,11 +508,20 @@ async function doFetchCompetitorGoldPrices(): Promise<CompetitorGoldPrice[]> {
   }
 
   if (json.code !== 1) {
+    // 探数API限频时（如"请求过于频繁"），降级使用过期缓存
+    if (competitorCache && competitorCache.data.length > 0) {
+      console.warn(`[competitor-prices] API error (code=${json.code}, msg=${json.msg}), using stale cache`);
+      return competitorCache.data;
+    }
     throw new AppError(`竞品金价API返回错误: ${json.msg || `code=${json.code}`}`, 502, 502);
   }
 
   const rawData = json.data?.list;
   if (!rawData || rawData.length === 0) {
+    // 空数据时也尝试返回旧缓存
+    if (competitorCache && competitorCache.data.length > 0) {
+      return competitorCache.data;
+    }
     return [];
   }
 

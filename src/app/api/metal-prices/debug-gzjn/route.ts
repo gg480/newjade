@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
+import { withApiLogging } from '@/lib/api/with-api-logging';
 
 /**
  * GET /api/metal-prices/debug-gzjn
  * 调试端点：直接返回 gzjn168.com 的原始 HTML 前 5000 字符
+ * 仅开发环境可用
  */
 async function debugGzjnGET() {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json(
+      { code: 403, data: null, message: '仅开发环境可用' },
+      { status: 403 }
+    );
+  }
+
   const url = 'http://gzjn168.com/phone.html';
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -37,4 +46,4 @@ async function debugGzjnGET() {
   });
 }
 
-export const GET = debugGzjnGET;
+export const GET = withApiLogging('metal-prices:debug-gzjn:GET', debugGzjnGET);

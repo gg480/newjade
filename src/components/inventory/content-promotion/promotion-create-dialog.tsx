@@ -67,7 +67,7 @@ export default function PromotionCreateDialog({ open, onOpenChange, onCreated }:
     searchTimerRef.current = setTimeout(async () => {
       setSearchingItems(true);
       try {
-        const data = await itemsApi.getItems({ keyword: keyword.trim(), status: 'in_stock', limit: 20, page: 1 });
+        const data = await itemsApi.getItems({ keyword: keyword.trim(), status: 'in_stock', size: 20, page: 1 });
         setItemResults(data.items || []);
         setShowItemResults(true);
       } catch (error) {

@@ -37,18 +37,21 @@ export async function middleware(request: NextRequest) {
 
   // ============================================================
   // 1. 全局限流（必须在公开路径判断之前，保护所有端点包括登录接口）
+  //    本地 IP（127.0.0.1 / ::1）跳过限流，方便 E2E 测试
   // ============================================================
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
     '127.0.0.1';
 
-  const limitResult = globalLimiter.check(ip);
-  if (!limitResult.allowed) {
-    return addSecurityHeaders(NextResponse.json(
-      { code: 429, data: null, message: '请求过于频繁' },
-      { status: 429 }
-    ));
+  if (ip !== '127.0.0.1' && ip !== '::1' && !ip.startsWith('::ffff:127.')) {
+    const limitResult = globalLimiter.check(ip);
+    if (!limitResult.allowed) {
+      return addSecurityHeaders(NextResponse.json(
+        { code: 429, data: null, message: '请求过于频繁' },
+        { status: 429 }
+      ));
+    }
   }
 
   // ============================================================

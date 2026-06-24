@@ -18,7 +18,11 @@ export interface CurrentPriceItem {
 
 export interface PriceHistoryParams {
   materialId?: string | null;
-  limit?: number;
+  materialIds?: number[];
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface PriceHistoryItem {
@@ -28,6 +32,16 @@ export interface PriceHistoryItem {
   effectiveDate: string;
   materialName: string | null;
   createdAt: Date;
+}
+
+export interface PaginatedPriceHistory {
+  items: PriceHistoryItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface RepricePreviewItem {
@@ -77,20 +91,36 @@ export async function getCurrentPrices(): Promise<CurrentPriceItem[]> {
 }
 
 /**
- * 获取价格历史（按日期降序，可筛选材质）
+ * 获取价格历史（按日期降序，可筛选材质，支持分页）
  */
-export async function getPriceHistory(params: PriceHistoryParams): Promise<PriceHistoryItem[]> {
+export async function getPriceHistory(params: PriceHistoryParams): Promise<PaginatedPriceHistory> {
   const where: Prisma.MetalPriceWhereInput = {};
   if (params.materialId) where.materialId = parseInt(params.materialId);
+  if (params.materialIds && params.materialIds.length > 0) {
+    where.materialId = { in: params.materialIds };
+  }
+  if (params.startDate || params.endDate) {
+    where.effectiveDate = {};
+    if (params.startDate) where.effectiveDate.gte = params.startDate;
+    if (params.endDate) where.effectiveDate.lte = params.endDate;
+  }
 
-  const records = await db.metalPrice.findMany({
-    where,
-    include: { material: true },
-    orderBy: { effectiveDate: 'desc' },
-    take: params.limit || 20,
-  });
+  const page = params.page || 1;
+  const pageSize = params.pageSize || 20;
+  const skip = (page - 1) * pageSize;
 
-  return records.map(r => ({
+  const [records, total] = await Promise.all([
+    db.metalPrice.findMany({
+      where,
+      include: { material: true },
+      orderBy: { effectiveDate: 'desc' },
+      skip,
+      take: pageSize,
+    }),
+    db.metalPrice.count({ where }),
+  ]);
+
+  const items = records.map(r => ({
     id: r.id,
     materialId: r.materialId,
     pricePerGram: r.pricePerGram,
@@ -98,6 +128,16 @@ export async function getPriceHistory(params: PriceHistoryParams): Promise<Price
     materialName: r.material?.name || null,
     createdAt: r.createdAt,
   }));
+
+  return {
+    items,
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    },
+  };
 }
 
 /**
@@ -224,4 +264,18 @@ export async function updateLaborCostPerGram(materialId: number, laborCostPerGra
     where: { id: materialId },
     data: { laborCostPerGram },
   });
+}
+
+/**
+ * 删除价格记录
+ * @param id 价格记录ID
+ * @throws {NotFoundError} 记录不存在时抛出
+ */
+export async function deletePriceRecord(id: number): Promise<void> {
+  const record = await db.metalPrice.findUnique({ where: { id } });
+  if (!record) {
+    throw new NotFoundError('价格记录不存在');
+  }
+
+  await db.metalPrice.delete({ where: { id } });
 }

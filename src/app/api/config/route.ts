@@ -1,27 +1,15 @@
 import { NextResponse } from 'next/server';
 import * as configService from '@/services/config.service';
 import { withApiLogging } from '@/lib/api/with-api-logging';
-import { db } from '@/lib/db';
-import { logAction } from '@/lib/log';
+import { logAction, resolveOperator } from '@/lib/log';
 import { guardPermission } from '@/lib/api/permission-guard';
+import { db } from '@/lib/db';
 
 // 敏感配置键：审计日志中值脱敏为 ****
 const SENSITIVE_KEYS = ['tanshu_api_key'];
 
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEYS.includes(key);
-}
-
-/** 根据 x-user-id 反查用户名，未认证时返回 'anonymous' */
-async function resolveOperator(req: Request): Promise<string> {
-  const userId = parseInt(req.headers.get('x-user-id') || '0');
-  if (!userId) return 'anonymous';
-  try {
-    const user = await db.user.findUnique({ where: { id: userId }, select: { username: true } });
-    return user?.username ?? 'anonymous';
-  } catch {
-    return 'anonymous';
-  }
 }
 
 async function configGET(req: Request) {
