@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { metalApi } from '@/lib/api';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import type { LocalReferencePriceItem } from '@/lib/api.types';
 
 // ============================================================
@@ -22,6 +23,7 @@ const METAL_COLORS: Record<string, string> = {
 };
 
 export default function LocalReferencePanel() {
+  const { handleError } = useErrorHandler();
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(false);
   const [items, setItems] = useState<LocalReferencePriceItem[]>([]);
@@ -39,13 +41,14 @@ export default function LocalReferencePanel() {
         ? new Date(res.fetchedAt).toLocaleTimeString('zh-CN', { hour12: false })
         : '');
     } catch (err) {
+      handleError(err, { title: '获取融通金行情失败', silent: true });
       setAvailable(false);
       setItems([]);
       setMessage('行情源暂时不可用');
     } finally {
       setLoading(false);
     }
-  }, []); // 仅组件挂载时获取一次，handleError 不在依赖中避免无限循环
+  }, [handleError]);
 
   useEffect(() => {
     fetchData();

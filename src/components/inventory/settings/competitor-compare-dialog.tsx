@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, AlertCircle, Share2, Camera, ChevronDown } from 'lucide-react';
+import { Download, Loader2, AlertCircle, Share2, Camera, ChevronDown, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { metalApi } from '@/lib/api';
@@ -135,7 +135,7 @@ export default function CompetitorCompareDialog({
     ].sort((a, b) => a.price - b.price);
   }, [ourPrice, ourName, competitors]);
 
-  // ── 计算本店比均价省多少 ──
+  // ── 计算本店与主流金店售价对比 ──
   const savingsInfo = useCallback(() => {
     const bars = allBars();
     const our = bars.find((b) => b.isOurs);
@@ -290,6 +290,27 @@ export default function CompetitorCompareDialog({
     }
   }, [handleError]);
 
+  // ── 复制对比图到剪贴板 ──
+  const handleCopyChart = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) { toast.error('图表未就绪'); return; }
+    try {
+      canvas.toBlob(async (blob) => {
+        if (!blob) { toast.error('生成图片失败'); return; }
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob }),
+          ]);
+          toast.success('对比图已复制到剪贴板，可直接粘贴到微信/朋友圈');
+        } catch {
+          toast.error('复制失败，请尝试导出图片');
+        }
+      }, 'image/png');
+    } catch (err) {
+      handleError(err, { title: '复制失败', silent: true });
+    }
+  }, [handleError]);
+
   // ═══════════════════════════════════════════
   //  朋友圈分享海报（营销视角设计）
   // ═══════════════════════════════════════════
@@ -381,12 +402,14 @@ export default function CompetitorCompareDialog({
     // 4. 省钱标签（营销核心信息）
     // ─────────────────────────────────────────
     if (info && info.isCheaper) {
+      const competitorsBars = bars.filter(b => !b.isOurs);
+      const avgPrice = competitorsBars.reduce((s, b) => s + b.price, 0) / competitorsBars.length;
+      const pctSave = avgPrice > 0 ? ((info.diff / avgPrice) * 100) : 0;
       const badgeY = 220;
-      const badgePadding = 16;
-      const badgeText = `每克省 ¥${info.diff.toFixed(0)}`;
-      ctx.font = 'bold 22px "PingFang SC", sans-serif';
+      const badgeText = `每克省 ¥${info.diff.toFixed(0)}（低 ${pctSave.toFixed(1)}%）`;
+      ctx.font = 'bold 20px "PingFang SC", sans-serif';
       const tw = ctx.measureText(badgeText).width;
-      const badgeW = tw + badgePadding * 2 + 28; // +28 for the fire emoji space
+      const badgeW = Math.max(tw + 32, 280);
       const badgeX = (W - badgeW) / 2;
       const badgeH = 46;
 
@@ -408,7 +431,7 @@ export default function CompetitorCompareDialog({
 
       // 标签文字
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px "PingFang SC", sans-serif';
+      ctx.font = 'bold 20px "PingFang SC", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`🔥 ${badgeText}`, W / 2, badgeY + badgeH / 2);
@@ -416,11 +439,17 @@ export default function CompetitorCompareDialog({
       // 标签下方小字
       ctx.fillStyle = 'rgba(254, 248, 240, 0.65)';
       ctx.font = '13px "PingFang SC", sans-serif';
-      ctx.fillText('比各大品牌饰金零售均价更划算', W / 2, badgeY + badgeH + 22);
+      const ourBar = bars.find(b => b.isOurs)!;
+      const rank = [...bars].sort((a, b) => a.price - b.price).findIndex(b => b.isOurs) + 1;
+      ctx.fillText(
+        `共对比 ${bars.length} 家品牌 · 本店饰金价排名第 ${rank} 位`,
+        W / 2,
+        badgeY + badgeH + 22,
+      );
     }
 
     // ─────────────────────────────────────────
-    // 5. 价格对比条（简化为只显示本店 vs 竞品均价）
+    // 5. 饰金零售价对比（个体竞品展示，营销分享核心）
     // ─────────────────────────────────────────
     const comparisonY = info && info.isCheaper ? 330 : 260;
     const barLeft = 90;
@@ -432,45 +461,51 @@ export default function CompetitorCompareDialog({
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#6b3a1a';
     ctx.font = '15px "PingFang SC", sans-serif';
-    ctx.fillText('价格对比', W / 2, comparisonY);
+    ctx.fillText('饰金零售价对比（元/克）', W / 2, comparisonY);
 
     // 分隔线
     ctx.fillStyle = 'rgba(166, 124, 82, 0.2)';
     ctx.fillRect(barLeft, comparisonY + 16, barUsable, 1);
 
     if (bars.length > 1) {
-      // 计算竞品均价
+      // 取 TOP 5 竞品 + 本店展示（总共最多6条）
+      const ourBar = bars.find((b) => b.isOurs)!;
       const competitorsBars = bars.filter((b) => !b.isOurs);
       const avgPrice = competitorsBars.reduce((s, b) => s + b.price, 0) / competitorsBars.length;
-      const ourBar = bars.find((b) => b.isOurs)!;
-      const maxP = Math.max(ourBar.price, avgPrice, 1);
-
-      // 只画两条：本店 + 竞品均价
-      const comparisonBars = [
-        { label: ourName, price: ourBar.price, isOurs: true },
-        { label: '竞品均价', price: Math.round(avgPrice), isOurs: false },
-      ];
+      const topCompetitors = competitorsBars.slice(0, 5);
+      // 构建展示列表：本店插入到正确排名位置
+      const comparisonBars = [...topCompetitors, ourBar].sort((a, b) => a.price - b.price);
+      const maxP = Math.max(...comparisonBars.map(b => b.price), 1);
 
       const startY = comparisonY + 36;
-      const singleBarH = 40;
-      const gap = 16;
+      const singleBarH = 28;
+      const gap = 8;
 
       comparisonBars.forEach((bar, i) => {
         const y = startY + i * (singleBarH + gap);
         const barW = Math.max((bar.price / maxP) * barUsable, 10);
 
-        // 标签
+        // 排名数字
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = bar.isOurs ? '#6b3a1a' : '#6b7280';
-        ctx.font = bar.isOurs ? 'bold 15px "PingFang SC", sans-serif' : '14px "PingFang SC", sans-serif';
-        ctx.fillText(bar.label, barLeft - 10, y + singleBarH / 2);
+        const rank = comparisonBars.filter(b => b.price < bar.price).length + 1;
+        ctx.fillStyle = bar.isOurs ? '#b8860b' : '#9ca3af';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(`${rank}`, barLeft - 28, y + singleBarH / 2);
 
-        // 条
+        // 品牌名标签
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = bar.isOurs ? '#5c2e0a' : '#6b7280';
+        ctx.font = bar.isOurs ? 'bold 13px "PingFang SC", sans-serif' : '12px "PingFang SC", sans-serif';
+        const label = bar.label.length > 5 ? bar.label.slice(0, 4) + '…' : bar.label;
+        ctx.fillText(bar.isOurs ? `★ ${label}` : label, barLeft - 6, y + singleBarH / 2);
+
+        // 条形本体
         ctx.beginPath();
         const bx = barLeft;
         const by = y;
-        const brr = 6;
+        const brr = 4;
         ctx.moveTo(bx + brr, by);
         ctx.lineTo(bx + barW - brr, by);
         ctx.quadraticCurveTo(bx + barW, by, bx + barW, by + brr);
@@ -484,66 +519,40 @@ export default function CompetitorCompareDialog({
 
         if (bar.isOurs) {
           const g = ctx.createLinearGradient(bx, by, bx + barW, by);
-          g.addColorStop(0, '#d4a84b');
-          g.addColorStop(1, '#b8860b');
+          g.addColorStop(0, '#f59e0b');
+          g.addColorStop(1, '#d97706');
           ctx.fillStyle = g;
-          ctx.shadowColor = 'rgba(212, 168, 75, 0.3)';
+          ctx.shadowColor = 'rgba(245, 158, 11, 0.35)';
           ctx.shadowBlur = 6;
           ctx.fill();
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
         } else {
-          ctx.fillStyle = '#d1d5db';
+          ctx.fillStyle = '#e5e7eb';
           ctx.fill();
         }
 
-        // 价格
+        // 价格数值
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = bar.isOurs ? '#5c2e0a' : '#6b7280';
-        ctx.font = bar.isOurs ? 'bold 14px sans-serif' : '14px sans-serif';
-        ctx.fillText(`¥${bar.price.toFixed(0)}`, bx + barW + 8, y + singleBarH / 2);
+        ctx.fillStyle = bar.isOurs ? '#92400e' : '#6b7280';
+        ctx.font = bar.isOurs ? 'bold 12px sans-serif' : '11px sans-serif';
+        ctx.fillText(`¥${bar.price.toFixed(0)}`, bx + barW + 6, y + singleBarH / 2);
       });
 
-      // 差价箭头标注
+      // 底部概要：主流金店售价对比
+      const summaryY = startY + comparisonBars.length * (singleBarH + gap) + 12;
       if (info && info.isCheaper) {
-        const diffY = startY + 2 * (singleBarH + gap) + 8;
-        const arrowStart = barLeft + ((ourBar.price - 10) / maxP) * barUsable;
-        const arrowEnd = barLeft + ((avgPrice + 10) / maxP) * barUsable;
-
-        // 差价连线
-        ctx.strokeStyle = 'rgba(220, 38, 38, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(arrowStart, diffY);
-        ctx.lineTo(arrowEnd, diffY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // 两端箭头
-        ctx.fillStyle = 'rgba(220, 38, 38, 0.5)';
-        // 左箭头
-        ctx.beginPath();
-        ctx.moveTo(arrowStart, diffY);
-        ctx.lineTo(arrowStart + 6, diffY - 4);
-        ctx.lineTo(arrowStart + 6, diffY + 4);
-        ctx.closePath();
-        ctx.fill();
-        // 右箭头
-        ctx.beginPath();
-        ctx.moveTo(arrowEnd, diffY);
-        ctx.lineTo(arrowEnd - 6, diffY - 4);
-        ctx.lineTo(arrowEnd - 6, diffY + 4);
-        ctx.closePath();
-        ctx.fill();
-
-        // 差价数值
-        ctx.fillStyle = '#dc2626';
-        ctx.font = '13px sans-serif';
+        const pctSave = avgPrice > 0 ? ((info.diff / avgPrice) * 100) : 0;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`差价 ¥${info.diff.toFixed(0)}`, (arrowStart + arrowEnd) / 2, diffY - 14);
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 13px "PingFang SC", sans-serif';
+        ctx.fillText(
+          `比主流金店售价低 ¥${info.diff.toFixed(0)}（${pctSave.toFixed(1)}%）· 价格排名第 ${comparisonBars.findIndex(b => b.isOurs) + 1} 位`,
+          W / 2,
+          summaryY,
+        );
       }
     } else {
       // 只有本店，无竞品数据
@@ -658,15 +667,43 @@ export default function CompetitorCompareDialog({
             </div>
           ) : (
             <div className="space-y-3">
-              {/* ── 省多少钱提示条 ── */}
-              {info && info.isCheaper && (
-                <div className="flex items-center justify-center gap-2 py-1.5 px-4 bg-gradient-to-r from-amber-50 via-amber-100 to-amber-50 rounded-lg border border-amber-200">
-                  <span className="text-base">🎉</span>
-                  <span className="text-sm font-medium text-amber-900">
-                    兴盛艺珠宝比竞品均价 <span className="text-red-600 font-bold">每克省 ¥{info.diff.toFixed(2)}</span>
-                  </span>
-                </div>
-              )}
+              {/* ── 省钱提示条（含百分比 + 价格排名）── */}
+              {info && (() => {
+                const bars = allBars();
+                const our = bars.find(b => b.isOurs);
+                const others = bars.filter(b => !b.isOurs);
+                const sortedByPrice = [...bars].sort((a, b) => a.price - b.price);
+                const ourRank = sortedByPrice.findIndex(b => b.isOurs) + 1;
+                const pctSave = info.avgOther > 0 ? ((info.diff / info.avgOther) * 100) : 0;
+                return (
+                  <div className={`flex items-center justify-center gap-2 py-1.5 px-4 rounded-lg border ${
+                    info.isCheaper
+                      ? 'bg-gradient-to-r from-amber-50 via-amber-100 to-amber-50 border-amber-200'
+                      : 'bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 border-blue-200'
+                  }`}>
+                    <span className="text-base">{info.isCheaper ? '🎉' : '📊'}</span>
+                    <span className="text-sm font-medium text-amber-900">
+                      {ourName || '兴盛艺珠宝'} 饰金价{' '}
+                      <span className={`font-bold ${info.isCheaper ? 'text-red-600' : 'text-blue-600'}`}>
+                        ¥{our?.price.toFixed(0) || '--'}/克
+                      </span>
+                      {info.isCheaper ? (
+                        <span className="ml-1">
+                          比主流金店售价低 <span className="text-red-600 font-bold">¥{info.diff.toFixed(2)}</span>
+                          （<span className="text-red-600 font-bold">{pctSave.toFixed(1)}%</span>）
+                        </span>
+                      ) : info.diff < 0 ? (
+                        <span className="ml-1 text-blue-600">
+                          比主流金店售价高 ¥{Math.abs(info.diff).toFixed(2)}
+                        </span>
+                      ) : null}
+                      <span className="ml-2 text-muted-foreground">
+                        | 价格排名: <span className={`font-bold ${ourRank <= 3 ? 'text-green-600' : 'text-muted-foreground'}`}>第{ourRank}位</span> / 共{bars.length}家
+                      </span>
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* ── 条形图 ── */}
               <div
@@ -693,9 +730,13 @@ export default function CompetitorCompareDialog({
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleCopyChart}>
+                    <Copy className="h-3 w-3 mr-1" />
+                    复制
+                  </Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleExportImage}>
                     <Download className="h-3 w-3 mr-1" />
-                    图表
+                    导出
                   </Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs px-2 text-amber-700 border-amber-200 hover:bg-amber-50" onClick={handlePreviewPoster}>
                     <Camera className="h-3 w-3 mr-1" />
