@@ -1,12 +1,126 @@
 # 任务交接 · Handover
 
-> 最后更新：2026-06-19 | 更新人：SOLO
+> 最后更新：2026-06-24 | 更新人：Claude | 主题：贵金属市价模块全面完善
 
 ---
 
 ## ⚠️ 活跃红线（工作流规则）
 
 - **提交代码前必须先启动开发服务器让用户验证**：`git commit` 前先启动 `pnpm run dev`（端口 5000），让用户在浏览器中确认系统功能正常，用户明确确认后才可执行提交。未经用户验证直接提交代码视为违规。
+
+---
+
+## 2026-06-24 贵金属市价模块全面完善（6 轮 · 20 任务 · 16 文件）
+
+**状态：✅ 全部完成（待用户验证）| 诊断：零类型错误 | 改动量：~800 行新增**
+
+### 业务闭环
+
+```
+客户看到报价（图1）→ 看到比主流金店便宜（图2）→ 看到行情趋势（图3）
+     ↓                        ↓                           ↓
+  价格透明信任            刚需客户下单              收藏投资客户关注
+```
+
+### 后端（API + 安全 + 审计）
+
+| 端点 | 方法 | 说明 |
+|------|:----:|------|
+| `/api/metal-prices` | DELETE | 删除价格记录（需 `metal_price_manage` 权限） |
+| `/api/metal-prices/refresh` | POST | 强制刷新缓存（清除三缓存+重新拉取，需权限） |
+| `/api/metal-prices/history` | GET | 新增 `material_ids`/`start_date`/`end_date` 多材质日期范围查询 |
+
+| 安全 | 说明 |
+|------|------|
+| `confirmReprice` | 补全 `guardPermission('action:metal_price_manage')` |
+| `refresh` | 补全 `guardPermission` |
+| `debug-gzjn` | `NODE_ENV !== development` 时返回 403 + `withApiLogging` |
+
+| 审计 | 说明 |
+|------|------|
+| 价格创建 | `logAction('create_price', ...)` |
+| 调价确认 | `logAction('reprice', ...)` |
+| `resolveOperator` | 从 `config/route.ts` 提取到 `@/lib/log.ts` 共享 |
+
+### 前端功能全景
+
+| 功能 | 位置 | 说明 |
+|------|------|------|
+| **自动刷新** | 管理面板 | 5分钟定时 + 9/12/18点窗口检测 |
+| **新鲜度指示** | 管理面板顶部 | 🟢5分钟内 / 🟡30分钟内 / ⚫已过时 |
+| **日变动指示** | 每个材质卡 | ↑↓箭头 + 差额（红涨绿跌） |
+| **上次调价** | 每个材质卡 | `¥XXX/克` + 偏离≥2%预警（行情偏高/偏低） |
+| **一键同步** | 标题栏按钮 | 批量将所有材质 costPerGram 同步为行情价 |
+| **每日分享** | 标题栏红色按钮 | 三张海报（本日报价/价格优势/行情走势），左右切换+一键保存 |
+| **行情走势图** | 独立卡片 | 黄金/白银/铂金三线同图，7天/30天/90天/1年 |
+| **价格历史** | 弹出对话框 | 涨跌列 + 删除按钮 + 上一页/下一页分页 |
+| **预览调价** | 智能禁用 | 无行情价时按钮灰色 disabled + tooltip |
+| **竞品对比** | 弹出对话框 | 个体竞品排名 + 复制图表到剪贴板 |
+| **融通金行情** | 参考面板 | useErrorHandler 错误处理 |
+
+### 涉及文件（16 个）
+
+| 文件 | 类型 |
+|------|:---:|
+| `src/components/inventory/settings/daily-share-dialog.tsx` | **新增**（530行） |
+| `src/app/api/metal-prices/refresh/route.ts` | **新增** |
+| `src/lib/api.types.ts` | 修改（RepricePreview/PaginatedMetalPrice/MarketPriceWithRef/material_ids/pageSize） |
+| `src/lib/api.ts` | 修改（MarketPriceWithRef 返回类型/deletePriceRecord/refreshMarketPrices） |
+| `src/lib/log.ts` | 修改（resolveOperator 提取） |
+| `src/services/metal-prices.service.ts` | 修改（deletePriceRecord + 分页 + 多材质 + 日期范围） |
+| `src/services/market-price.service.ts` | 修改（MarketPriceItem→RawMarketPrice 重命名） |
+| `src/app/api/config/route.ts` | 修改（改用共享 resolveOperator） |
+| `src/app/api/metal-prices/route.ts` | 修改（DELETE + 操作日志） |
+| `src/app/api/metal-prices/reprice/confirm/route.ts` | 修改（权限守卫 + 操作日志） |
+| `src/app/api/metal-prices/history/route.ts` | 修改（多材质 + 日期范围 + 分页） |
+| `src/app/api/metal-prices/debug-gzjn/route.ts` | 修改（环境限制 + logging） |
+| `src/components/inventory/settings/settings-metal-panel.tsx` | 修改（自动刷新+走势图+同步+预警+涨跌+分页+删除+每日分享） |
+| `src/components/inventory/settings/competitor-compare-dialog.tsx` | 修改（个体竞品+排名+复制+文案"售价"化） |
+| `src/components/inventory/settings/local-reference-panel.tsx` | 修改（useErrorHandler） |
+
+### 提交批次
+
+```bash
+# 第1批：后端基础（安全+API+服务层）— 10个文件
+git add src/lib/log.ts src/lib/api.types.ts src/services/metal-prices.service.ts \
+  src/services/market-price.service.ts src/app/api/config/route.ts \
+  src/app/api/metal-prices/route.ts src/app/api/metal-prices/reprice/confirm/route.ts \
+  src/app/api/metal-prices/history/route.ts src/app/api/metal-prices/debug-gzjn/route.ts \
+  src/app/api/metal-prices/refresh/route.ts
+
+# 第2批：前端核心（面板+走势图+竞品）— 4个文件
+git add src/lib/api.ts src/components/inventory/settings/settings-metal-panel.tsx \
+  src/components/inventory/settings/competitor-compare-dialog.tsx \
+  src/components/inventory/settings/local-reference-panel.tsx
+
+# 第3批：每日分享系统 — 2个文件
+git add src/components/inventory/settings/daily-share-dialog.tsx \
+  src/components/inventory/settings/settings-metal-panel.tsx
+```
+
+### 注意事项
+
+- ⚠️ 价格历史 API 响应格式已变：`MetalPrice[]` → `{ items, pagination }`
+- ⚠️ DELETE/refresh 端点需 `action:metal_price_manage` 权限
+- ⚠️ `refresh` 端点可配 NAS cron：`curl -X POST http://host/api/metal-prices/refresh`
+- ⚠️ Bash 环境异常（`EEXIST`），需在外部终端执行 `npx tsc --noEmit` 和 `git` 命令
+- ⚠️ 提交前先 `pnpm run dev` 浏览器验证（见下方验证清单）
+- 🔲 `MetalPrice` 模型 `updatedBy` 字段未添加（需 migration），改用涨跌列替代
+
+### 验证清单
+
+| # | 操作 | 预期 |
+|---|------|------|
+| 1 | 打开设置→贵金属市价管理 | 行情自动加载，顶部绿色圆点 |
+| 2 | 点击「刷新行情」 | 行情更新 |
+| 3 | 点击「一键同步」 | toast "已同步 N 个材质" |
+| 4 | 查看材质卡片 | 有"上次调价"行，偏离≥2%有颜色 |
+| 5 | 行情价空时看「预览调价」 | 按钮灰色 disabled |
+| 6 | 点击「历史记录」 | 涨跌列正常+分页+删除按钮 |
+| 7 | 滚动到走势卡片 | 三条线，切换 7/30/90/1年 |
+| 8 | 点击红色「每日分享」 | 三张海报切换+保存 PNG |
+| 9 | 点击「竞品对比」 | 个体竞品排名+复制按钮 |
+| 10 | 查看融通金面板 | 表格正常加载 |
 
 ---
 
