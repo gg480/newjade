@@ -8,12 +8,14 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   workers: 1,
+  globalSetup: './tests/global-setup.ts',
   use: {
     baseURL: 'http://localhost:5000',
     headless: true,
     viewport: { width: 1920, height: 1080 },
     actionTimeout: 10000,
     screenshot: 'only-on-failure',
+    storageState: 'tests/e2e/.auth.json',
   },
   projects: [
     {
