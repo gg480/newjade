@@ -353,7 +353,7 @@ function RateTopicDialog({ topic, onClose, onSubmit }: {
 }
 
 // 主组件：选题中心 Tab
-export default function TopicsTab() {
+export default function TopicsTab({ onSwitchTab }: { onSwitchTab?: (tab: string) => void }) {
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
   const [topics, setTopics] = useState<ContentTopic[]>([]);
@@ -403,10 +403,23 @@ export default function TopicsTab() {
     }
   }, [toast, handleError, refresh]);
 
-  // 生成文案：P0 阶段仅提示，不实现功能
-  const handleGenerate = useCallback((topic: ContentTopic) => {
-    toast({ title: '功能开发中', description: `为选题「${topic.title}」生成文案的功能将在后续版本实现` });
-  }, [toast]);
+  // 生成文案：基于选题创建草稿，成功后跳转到文案工坊 Tab
+  const handleGenerate = useCallback(async (topic: ContentTopic) => {
+    try {
+      await promotionApi.contents.create({
+        topicId: topic.id,
+        title: `「${topic.title}」小红书文案`,
+        body: topic.description || '',
+        tags: topic.keywords || [],
+        contentMode: 'product',
+        itemIds: topic.itemIds || [],
+      });
+      toast({ title: '草稿已生成', description: '请在文案工坊继续编辑' });
+      onSwitchTab?.('contents');
+    } catch (error) {
+      handleError(error, { title: '生成文案草稿失败' });
+    }
+  }, [toast, handleError, onSwitchTab]);
 
   // 提交评分
   const submitRate = useCallback(async (rating: number, note: string) => {

@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jade://promotion/aiMetadata/v2",
+  "title": "AIMetadataV2",
+  "description": "OpenClaw 选题采集 Agent 输出的 aiMetadata 标准格式。version=2.0",
+  "type": "object",
+  "required": ["version", "generatedBy", "generatedAt", "scoring"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^2\\.",
+      "description": "契约版本，当前强制 v2.x"
+    },
+    "generatedBy": {
+      "type": "string",
+      "enum": ["openclaw-topic-agent"],
+      "description": "生成方标识，固定值"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 生成时间"
+    },
+    "signals": {
+      "type": "object",
+      "description": "各 Skill 采集的原始信号聚合",
+      "properties": {
+        "searchTrends": {
+          "type": "object",
+          "required": ["source", "seedKeyword", "trendDirection"],
+          "properties": {
+            "source":           { "type": "string", "enum": ["baidu-search"] },
+            "seedKeyword":      { "type": "string", "minLength": 1 },
+            "trendDirection":   { "type": "string", "enum": ["up", "down", "stable"] },
+            "trendChange":      { "type": "string", "pattern": "^[+-]?\\d+%$" },
+            "relatedQueries":   { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "hotTrendMatch": {
+          "type": "object",
+          "required": ["source", "matchedHotTopics", "hotTopicRank", "platform"],
+          "properties": {
+            "source":           { "type": "string", "enum": ["hot-trends"] },
+            "matchedHotTopics": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            "hotTopicRank":     { "type": "integer", "minimum": 1 },
+            "platform":         { "type": "string", "enum": ["baidu", "toutiao", "github"] }
+          }
+        },
+        "xhsInsight": {
+          "type": "object",
+          "required": ["source", "relatedNoteCount", "avgInteraction"],
+          "properties": {
+            "source":            { "type": "string", "enum": ["xiaohongshu-data-insight"] },
+            "relatedNoteCount":  { "type": "integer", "minimum": 0 },
+            "topNoteTitles":     { "type": "array", "items": { "type": "string" }, "maxItems": 5 },
+            "avgInteraction":    { "type": "integer", "minimum": 0 }
+          }
+        },
+        "multiEngine": {
+          "type": "object",
+          "required": ["source", "engineCount", "consensusLevel"],
+          "properties": {
+            "source":         { "type": "string", "enum": ["multi-search-engine"] },
+            "engineCount":    { "type": "integer", "minimum": 1 },
+            "consensusLevel": { "type": "string", "enum": ["high", "medium", "low"] }
+          }
+        },
+        "contentSource": {
+          "type": "object",
+          "required": ["source", "sourceUrls"],
+          "properties": {
+            "source":     { "type": "string", "enum": ["web-fetch"] },
+            "sourceUrls": { "type": "array", "items": { "type": "string", "format": "uri" } }
+          }
+        }
+      },
+      "minProperties": 1,
+      "description": "至少有一个信号源"
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["externalDemand", "externalTrend", "autoKeywords", "topicTypeInferred", "reasoning"],
+      "properties": {
+        "externalDemand": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "外部市场需求强度。0-1，参考维度：搜索量级 × 互动量级 × 热点匹配度"
+        },
+        "externalTrend": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "外部趋势成长性。0-1，参考维度：搜索增速 × 热度排名 × 跨平台共识度"
+        },
+        "autoKeywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 8
+        },
+        "topicTypeInferred": {
+          "type": "string",
+          "enum": ["product", "category", "season", "trend"]
+        },
+        "reasoning": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200,
+          "description": "LLM 推理摘要"
+        }
+      }
+    }
+  }
+}

@@ -12,10 +12,67 @@ import type {
   ViolationCheckResult,
 } from '@/types/promotion';
 
-/** 基础违禁词库（P0 简化版，P1 可接入第三方 API） */
-const VIOLATION_WORDS = [
-  { word: '违禁词1', suggestion: '建议词1' },
-  { word: '违禁词2', suggestion: '建议词2' },
+/** 基础违禁词库（P1 增强版 50+词，覆盖广告法/玉石行业敏感词） */
+const VIOLATION_WORDS: Array<{ word: string; suggestion: string }> = [
+  // 广告法极限词
+  { word: '最好', suggestion: '品质卓越' },
+  { word: '第一', suggestion: '领先' },
+  { word: '唯一', suggestion: '独家' },
+  { word: '绝对', suggestion: '非常' },
+  { word: '顶级', suggestion: '高品质' },
+  { word: '极品', suggestion: '精品' },
+  { word: '最便宜', suggestion: '实惠' },
+  { word: '最低价', suggestion: '优惠' },
+  { word: '全网最低', suggestion: '性价比高' },
+  { word: '国家级', suggestion: '优质' },
+  { word: '世界级', suggestion: '出色' },
+  { word: '最高级', suggestion: '高等级' },
+  { word: '最先进', suggestion: '先进' },
+  { word: '最完美', suggestion: '完美' },
+  { word: '100%', suggestion: '高纯度' },
+  { word: '百分百', suggestion: '高比例' },
+  // 玉石行业禁用语
+  { word: '天然A货', suggestion: '天然翡翠' },
+  { word: 'B货翡翠', suggestion: '翡翠' },
+  { word: 'C货翡翠', suggestion: '翡翠' },
+  { word: '假一赔十', suggestion: '品质保证' },
+  { word: '保证升值', suggestion: '值得珍藏' },
+  { word: '稳赚不赔', suggestion: '收藏佳品' },
+  { word: '包赚', suggestion: '值得入手' },
+  { word: '投资首选', suggestion: '收藏推荐' },
+  { word: '一定升值', suggestion: '有升值潜力' },
+  { word: '保证正品', suggestion: '正品货源' },
+  // 医疗/功效词（禁止用于普通商品）
+  { word: '治疗', suggestion: '佩戴舒适' },
+  { word: '治病', suggestion: '美观大方' },
+  { word: '抗癌', suggestion: '优雅气质' },
+  { word: '防癌', suggestion: '经典设计' },
+  { word: '疗效', suggestion: '舒适体验' },
+  { word: '治愈', suggestion: '提升气质' },
+  { word: '养生', suggestion: '雅致品味' },
+  { word: '辟邪', suggestion: '寓意美好' },
+  { word: '驱邪', suggestion: '传统纹饰' },
+  { word: '护身', suggestion: '精致饰品' },
+  { word: '保平安', suggestion: '吉祥如意' },
+  { word: '转运', suggestion: '幸运之选' },
+  { word: '改运', suggestion: '美好祝愿' },
+  { word: '招财', suggestion: '富贵典雅' },
+  { word: '旺财', suggestion: '华贵大方' },
+  // 虚假宣传词
+  { word: '假货', suggestion: '' },
+  { word: '高仿', suggestion: '' },
+  { word: '精仿', suggestion: '' },
+  { word: 'A货', suggestion: '翡翠' },
+  { word: '原单', suggestion: '精品' },
+  { word: '尾单', suggestion: '限量款' },
+  { word: '代购', suggestion: '精选' },
+  // 价格欺诈词
+  { word: '原价', suggestion: '市场参考价' },
+  { word: '跳楼价', suggestion: '特惠价' },
+  { word: '亏本', suggestion: '让利' },
+  { word: '血亏', suggestion: '折扣' },
+  { word: '清仓', suggestion: '限时优惠' },
+  { word: '甩卖', suggestion: '促销' },
 ];
 
 /** 将 Prisma 记录转换为前端类型 */

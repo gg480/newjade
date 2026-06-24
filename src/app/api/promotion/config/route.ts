@@ -33,6 +33,10 @@ async function configGet(req: Request) {
 
   try {
     const config = await readAIConfig();
+    // 读取最近执行时间
+    const executionConfig = await db.sysConfig.findUnique({
+      where: { key: 'openclaw_last_execution' },
+    });
     // API Key 脱敏：只返回是否已配置，不返回完整值
     return NextResponse.json({
       code: 0,
@@ -47,6 +51,8 @@ async function configGet(req: Request) {
           : '',
         openclawApiKeyConfigured: !!config.openclawApiKey,
         baiduApiKeyConfigured: !!config.baiduApiKey,
+        // OpenClaw 最近执行时间（OpenClaw 回写）
+        lastExecutionTime: executionConfig?.value || null,
       },
       message: 'ok',
     });
@@ -97,6 +103,10 @@ async function configPut(req: Request) {
     }
 
     const config = await readAIConfig();
+    // 读取最近执行时间
+    const executionConfig = await db.sysConfig.findUnique({
+      where: { key: 'openclaw_last_execution' },
+    });
     return NextResponse.json({
       code: 0,
       data: {
@@ -109,6 +119,7 @@ async function configPut(req: Request) {
           : '',
         openclawApiKeyConfigured: !!config.openclawApiKey,
         baiduApiKeyConfigured: !!config.baiduApiKey,
+        lastExecutionTime: executionConfig?.value || null,
       },
       message: 'ok',
     });

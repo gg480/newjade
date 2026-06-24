@@ -4,26 +4,30 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  Lightbulb, FileText, Megaphone, BarChart3, Settings,
+  Sparkles, Lightbulb, FileText, Megaphone, BarChart3,
 } from 'lucide-react';
+import SelectionTab from './selection-tab';
 import TopicsTab from './topics-tab';
 import ContentsTab from './contents-tab';
 import PromotionsTab from './promotions-tab';
 import MetricsTab from './metrics-tab';
-import AIConfigTab from './ai-config-tab';
 
-type SubTab = 'topics' | 'contents' | 'promotions' | 'metrics' | 'config';
+/**
+ * 内容推广子 Tab 导航（工作流顺序：选品→选题→文案→推广→反馈）
+ * AI配置已迁移至系统设置 Tab
+ */
+type SubTab = 'selection' | 'topics' | 'contents' | 'promotions' | 'metrics';
 
 const SUB_TABS: Array<{ id: SubTab; label: string; icon: React.ElementType }> = [
+  { id: 'selection', label: '选品', icon: Sparkles },
   { id: 'topics', label: '选题中心', icon: Lightbulb },
   { id: 'contents', label: '文案工坊', icon: FileText },
   { id: 'promotions', label: '推广管理', icon: Megaphone },
   { id: 'metrics', label: '反馈追踪', icon: BarChart3 },
-  { id: 'config', label: 'AI配置', icon: Settings },
 ];
 
 export default function ContentPromotionTab() {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('topics');
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>('selection');
 
   return (
     <div className="space-y-4">
@@ -48,11 +52,11 @@ export default function ContentPromotionTab() {
       </div>
 
       {/* 子 Tab 内容 */}
-      {activeSubTab === 'topics' && <TopicsTab />}
+      {activeSubTab === 'selection' && <SelectionTab />}
+      {activeSubTab === 'topics' && <TopicsTab onSwitchTab={(tab) => setActiveSubTab(tab as SubTab)} />}
       {activeSubTab === 'contents' && <ContentsTab />}
       {activeSubTab === 'promotions' && <PromotionsTab />}
       {activeSubTab === 'metrics' && <MetricsTab />}
-      {activeSubTab === 'config' && <AIConfigTab />}
     </div>
   );
 }

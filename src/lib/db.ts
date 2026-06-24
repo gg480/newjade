@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client'
 import { mkdirSync, existsSync } from 'fs'
 import path from 'path'
 
-// Resolve database path: DATA_DIR/db/custom.db or fallback to ./db/custom.db
+// Resolve database path: DATA_DIR/db/custom.db or fallback to CWD/db/custom.db
 function resolveDatabaseUrl(): string {
   if (process.env.DATABASE_URL) {
     const raw = process.env.DATABASE_URL.trim();
@@ -16,29 +16,38 @@ function resolveDatabaseUrl(): string {
   const dataDir = process.env.DATA_DIR;
   if (dataDir) {
     const dbDir = path.join(dataDir, 'db');
-    // Ensure db directory exists
     if (!existsSync(dbDir)) {
       mkdirSync(dbDir, { recursive: true });
     }
     return `file:${path.join(dbDir, 'custom.db')}`;
   }
 
-  return 'file:./db/custom.db';
+  // 始终返回绝对路径，避免 Prisma 引擎从自己的位置解析相对路径
+  return `file:${path.resolve(process.cwd(), 'db', 'custom.db')}`;
 }
 
-process.env.DATABASE_URL = resolveDatabaseUrl();
+const resolvedUrl = resolveDatabaseUrl();
+process.env.DATABASE_URL = resolvedUrl;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query'] : [],
-  })
+// Dev 模式下每次冷启重建 client（避免 HMR 缓存旧 Schema 导致"表不存在"）
+// Prod 模式复用 global 缓存避免连接泄漏
+const isDev = process.env.NODE_ENV === 'development';
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+export const db = isDev
+  ? new PrismaClient({
+      log: ['query'],
+      datasources: { db: { url: resolvedUrl } },
+    })
+  : (globalForPrisma.prisma ?? new PrismaClient({
+      log: [],
+      datasources: { db: { url: resolvedUrl } },
+    }));
+
+if (!isDev) globalForPrisma.prisma = db;
 
 // Alias export for compatibility with routes that import { prisma }
 export const prisma = db
@@ -77,8 +86,6 @@ const KNOWN_DB_ERROR_PATTERNS: { pattern: RegExp; message: string }[] = [
 
 /**
  * 将 Prisma 原始错误转换为用户友好的中文消息。
- * - ConnectorError / PrismaClientKnownRequestError 等会被识别并替换
- * - 非数据库错误保持原样返回
  */
 export function toUserFriendlyMessage(e: unknown): string {
   if (!e) return '服务器内部错误';
@@ -92,7 +99,6 @@ export function toUserFriendlyMessage(e: unknown): string {
     }
   }
 
-  // Prisma known request errors with standard codes
   if (e instanceof Prisma.PrismaClientKnownRequestError) {
     switch (e.code) {
       case 'P1001': return '无法连接数据库，请检查数据库服务是否已启动';
@@ -108,13 +114,11 @@ export function toUserFriendlyMessage(e: unknown): string {
     return '请求数据格式异常';
   }
 
-  // Fallback to original error for non-database errors
   return rawMessage;
 }
 
 /**
  * 验证数据库是否可正常连接。
- * 返回 true 表示连接正常，false 表示异常。
  */
 export async function checkDatabaseHealth(): Promise<boolean> {
   try {

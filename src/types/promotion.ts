@@ -374,3 +374,89 @@ export interface MetricSummary {
   totalShares: number;
   trend: MetricTrendPoint[];
 }
+
+// ========== 选品评分类型 ==========
+
+/** 选品场景 */
+export type SceneType =
+  | 'new_arrival'   // 新品首发
+  | 'clearance'     // 促销清仓
+  | 'content'       // 内容营销/种草
+  | 'festival'      // 节日节点
+  | 'knowledge';    // 知识分享/科普
+// Phase 2 扩展: outfit/gift/wedding/unboxing/collection/comparison/luxury
+
+/** 场景中文标签 */
+export const SCENE_LABELS: Record<SceneType, string> = {
+  new_arrival: '新品首发',
+  clearance: '促销清仓',
+  content: '内容营销',
+  festival: '节日节点',
+  knowledge: '知识分享',
+};
+
+/** 场景维度分 */
+export interface DimensionScores {
+  visual: number;       // 视觉分 (0-100)
+  profit: number;       // 利润分 (0-100)
+  freshness: number;    // 新鲜分 (0-100)
+  completeness: number; // 完整分 (0-100)
+  story: number;        // 故事分 (0-100)
+  bonus: number;        // 加分项 (0-20)
+}
+
+/** 选品评分结果 */
+export interface ProductScore {
+  itemId: number;
+  sku: string;
+  name: string | null;
+  materialName: string | null;
+  typeName: string | null;
+  tags: string[];
+  images: string[];
+  sellingPrice: number;
+  costPrice: number | null;
+  status: string;
+  score: number;          // 综合分 (0-120)
+  dimensions: DimensionScores;
+  reasons: string[];      // 推荐理由（中文描述）
+}
+
+/** 选品请求参数 */
+export interface SelectionParams {
+  scene: SceneType;
+  page?: number;
+  limit?: number;
+  materialId?: number;
+  typeId?: number;
+  status?: string;        // 默认 in_stock
+}
+
+// ========== 节日日历类型 ==========
+
+/** 节日类型 */
+export type FestivalType = 'traditional' | 'modern' | 'commercial' | 'seasonal';
+
+/** 节日信息 */
+export interface FestivalInfo {
+  id: string;
+  name: string;
+  month: number;
+  day: number;
+  type: FestivalType;
+  description: string;
+  culturalBackground: string;    // 文化背景（用于文案创作）
+  giftSuggestions: string[];
+  recommendedMaterials: string[];
+  recommendedTypes: string[];
+  priceRange: [number, number];  // 建议价格区间
+  marketingKeywords: string[];
+  topicTemplates: string[];      // 选题标题模板
+  leadDays: number;              // 提前准备天数
+  duration: number;              // 持续天数
+}
+
+/** 节日时间线条目（含距今天数） */
+export interface FestivalTimelineEntry extends FestivalInfo {
+  daysUntil: number;
+}

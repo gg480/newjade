@@ -2,13 +2,13 @@
 
 import { withApiLogging } from '@/lib/api/with-api-logging';
 import { NextResponse } from 'next/server';
-import { guardPermission, safeErrorMessage } from '@/lib/api/permission-guard';
+import { guardPermissionOrOpenClaw, safeErrorMessage } from '@/lib/api/permission-guard';
 import { AppError } from '@/lib/errors';
 import * as topicService from '@/services/content-topic.service';
 import type { TopicListParams, CreateTopicRequest } from '@/types/promotion';
 
 async function topicsListGet(req: Request) {
-  const denied = await guardPermission(req, 'action:content_view');
+  const denied = await guardPermissionOrOpenClaw(req, 'action:content_view');
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
@@ -35,7 +35,7 @@ async function topicsListGet(req: Request) {
 }
 
 async function topicsCreatePost(req: Request) {
-  const denied = await guardPermission(req, 'action:content_manage');
+  const denied = await guardPermissionOrOpenClaw(req, 'action:content_manage');
   if (denied) return denied;
 
   try {

@@ -379,9 +379,58 @@ tests/
 
 ---
 
-## 2026-06-16 Bug 修复 — 库存导出按钮认证修复
+## 2026-06-23 内容推广模块 — OpenClaw 选题采集全链路打通
 
-**状态：已完成 ✅ | 文件：inventory-tab.tsx + inventory-filter-bar.tsx**
+**状态：✅ Phase 1-2-3 验证通过 | 已投入生产**
+
+### 背景
+
+为 ERP 内容推广模块搭建选题采集流水线。OpenClaw 端通过 baidu-search + hot-trends 采集外部信号，DeepSeek 聚合排序，回写 ERP 选题库。
+
+### 完成内容
+
+#### ERP 端改动
+
+| 类别 | 文件 | 变更 |
+|:----:|------|------|
+| 权限修复 | `src/app/api/promotion/topics/route.ts` | `guardPermission` → `guardPermissionOrOpenClaw`，允许 OpenClaw 调用 |
+| API Key | `prisma/init-openclaw-key.ts`（一次用后删除） | 生成 `oc_c280b930e6bd6af58de17cf07dd4911a` 并写入 SysConfig |
+| 库存摘要 | `src/app/api/content/items/summary/route.ts` | **新增** — 轻量库存快照端点 |
+| 数据契约 | `docs/aiMetadata-schema.json` | **新增** — aiMetadata v2 JSON Schema |
+
+#### OpenClaw 端流水线
+
+| Phase | 内容 | Skill | 状态 |
+|:-----:|------|:------|:----:|
+| 1-A | 种子词趋势搜索 + site:xhs 代采 | baidu-search | ✅ |
+| 1-B | 热搜交叉匹配（珠宝关键词过滤） | hot-trends | ✅ |
+| 1-C | 小红书内容量级（`种子词+小红书` → 全量结果） | baidu-search-filter-xhs | ✅ |
+| 1.5 | 库存感知约束 | `GET /api/content/items/summary` | ✅ |
+| 2 | 去重→打分→排序→类型推断 | DeepSeek | ✅ |
+| 3 | 批量回写（6项机器验证） | bash + curl | ✅ |
+
+### 端到端验证
+
+- ✅ OpenClaw 认证（`x-auth-type: openclaw` + `Bearer oc_xxx`）通过
+- ✅ 8 条 AI 选题成功写入，状态 `analyzed`，带完整 aiMetadata v2
+- ✅ 库存摘要返回真实数据（翡翠 3882 件/吊坠 2651 件为库存主力）
+
+### 涉及文件
+
+| 文件 | 变更 |
+|------|:----:|
+| `src/app/api/promotion/topics/route.ts` | 修改（权限守卫） |
+| `src/app/api/content/items/summary/route.ts` | **新增** |
+| `docs/aiMetadata-schema.json` | **新增** |
+
+### 注意事项
+
+- ⚠️ OpenClaw API Key `oc_c280b930e6bd6af58de17cf07dd4911a` 已写入 SysConfig，勿泄露
+- ⚠️ 库存显示和田玉仅 1 件、手串 0 件，选题应优先覆盖翡翠/吊坠等主力库存
+- ⚠️ `xiaohongshu-data-insight` 因需付费 Token 未装，代以 baidu-search 过滤方案
+- 🔲 下一步：Phase 4 文案生成，需确认触发策略（全自动/人工筛选后）
+
+---
 
 ### 问题
 

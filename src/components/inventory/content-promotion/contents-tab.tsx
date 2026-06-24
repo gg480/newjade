@@ -15,8 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, X, ChevronLeft, ChevronRight, FileText, ShieldAlert, Image as ImageIcon, Tag } from 'lucide-react';
+import { Check, X, ChevronLeft, ChevronRight, FileText, ShieldAlert, Image as ImageIcon, Tag, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import DraftCreateDialog from './draft-create-dialog';
 
 // 文案状态徽章映射：草稿灰/待审蓝/通过绿/拒绝红/已发布绿
 const DRAFT_STATUS_MAP: Record<DraftStatus, { label: string; className: string }> = {
@@ -221,6 +222,7 @@ export default function ContentsTab() {
   const [violationResult, setViolationResult] = useState<ViolationCheckResult | null>(null);
   const [checking, setChecking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showCreate, setShowCreate] = useState(false);
   const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
   // 加载文案列表
@@ -320,7 +322,10 @@ export default function ContentsTab() {
               <SelectItem value="published">已发布</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground ml-auto">共 {pagination.total} 条</span>
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8 ml-auto" onClick={() => setShowCreate(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />新建文案
+          </Button>
+          <span className="text-sm text-muted-foreground">共 {pagination.total} 条</span>
         </CardContent>
       </Card>
 
@@ -383,6 +388,7 @@ export default function ContentsTab() {
           </div>
         </div>
       )}
+      <DraftCreateDialog open={showCreate} onOpenChange={setShowCreate} onCreated={() => { setShowCreate(false); refresh(); }} />
     </div>
   );
 }

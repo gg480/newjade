@@ -107,6 +107,7 @@ async function main() {
     { key: 'openclaw_api_key', value: '', description: 'OpenClaw API Key（oc_ 前缀，留空表示未启用）', valueType: 'string', groupName: 'content' },
     { key: 'openclaw_base_url', value: 'http://localhost:3000', description: 'OpenClaw 服务地址', valueType: 'string', groupName: 'content' },
     { key: 'baidu_api_key', value: '', description: '百度 API Key（违禁词检测等）', valueType: 'string', groupName: 'content' },
+    { key: 'openclaw_last_execution', value: '', description: 'OpenClaw 最近一次执行时间（ISO格式，由OpenClaw回写）', valueType: 'string', groupName: 'content' },
   ];
   for (const c of configs) {
     await prisma.sysConfig.upsert({
@@ -115,7 +116,7 @@ async function main() {
       create: { key: c.key, value: c.value, description: c.description, valueType: c.valueType, groupName: c.groupName, minValue: c.minValue ?? null, maxValue: c.maxValue ?? null, unit: c.unit ?? null },
     });
   }
-  console.log('✅ 系统配置已插入/更新 (14条)');
+  console.log('✅ 系统配置已插入/更新 (15条)');
 
   // 2. 材质 (36种) — 含 category 大类
   const materials = [

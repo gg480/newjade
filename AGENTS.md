@@ -92,6 +92,7 @@
 | 数据库变更/migration | `db-migration`（项目定制） | BUILD |
 | 数据库迁移/生产部署 | `db-migration` → `shipping-and-launch` | BUILD→SHIP |
 | 方案咨询 | `solution-consultant`（项目定制） | DEFINE |
+| 内容推广/OpenClaw 两端开发 | `erp-openclaw-dev`（项目定制） | DEFINE→PLAN→BUILD→VERIFY |
 | Sprint 处理 | `task-sprint-processor`（项目定制） | PLAN |
 | 刷新知识图谱 | `refresh-knowledge-graph`（项目定制） | VERIFY |
 | 测试质量优化/虚假测试修复 | `test-optimizer`（项目定制） | VERIFY→REVIEW |

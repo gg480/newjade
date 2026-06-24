@@ -2,6 +2,25 @@
 
 **Sprint 周期**：2026-06-16 起 | **状态**：🔴 进行中
 
+---
+
+## 并行轨道：内容推广 — OpenClaw 选题采集
+
+**状态：✅ Phase 1-3 已完成 | 2026-06-23**
+
+| 任务 | 状态 | 说明 |
+|:----|:----:|:------|
+| ERP 权限修复（promotion/topics → `guardPermissionOrOpenClaw`） | ✅ | OpenClaw 可 GET 幂等检查 + POST 提交 |
+| API Key 初始化写入 SysConfig | ✅ | `oc_c280b930e6bd6af58de17cf07dd4911a` |
+| 库存摘要端点 `GET /api/content/items/summary` | ✅ | 轻量库存快照，供 DeepSeek 约束选题范围 |
+| aiMetadata v2 JSON Schema | ✅ | 数据契约标准化 |
+| Phase 1 信号采集（baidu + hot-trends + xhs-filter） | ✅ | OpenClaw 端已完成 |
+| Phase 2 DeepSeek 聚合推理 | ✅ | 去重→打分→排序→类型推断 |
+| Phase 3 批量回写 ERP | ✅ | 8 条选题成功落库 |
+| 🔲 Phase 4 文案生成 | 🔲 待确认触发策略 | 全自动 vs 人工筛选后 |
+
+---
+
 ## 需求来源
 
 | 来源 | 说明 |

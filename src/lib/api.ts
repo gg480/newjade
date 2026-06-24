@@ -34,6 +34,8 @@ import type {
   ContentTopic, ContentDraft, ContentPromotion, ContentMetric,
   SafeContentItem, HealthCheckResponse, ViolationCheckResult,
   ItemPromotionHistory, MetricSummary, AIConfig, UpdateAIConfigRequest,
+  ProductScore, SelectionParams, SceneType,
+  FestivalInfo, FestivalTimelineEntry,
 } from '@/types/promotion';
 const BASE = '/api';
 
@@ -789,5 +791,42 @@ export const promotionApi = {
         '/promotion/config',
         { method: 'PUT', body: JSON.stringify(data) },
       ),
+  },
+
+  // ── 选品评分 ──
+  selection: {
+    /** 按场景获取推广商品推荐列表 */
+    list: (params: SelectionParams) =>
+      request<PaginatedData<ProductScore>>(`/promotion/selection${buildQueryString({
+        scene: params.scene,
+        page: params.page,
+        limit: params.limit,
+        material_id: params.materialId,
+        type_id: params.typeId,
+        status: params.status,
+      })}`),
+  },
+
+  // ── 节日日历 ──
+  festivals: {
+    /** 获取当前/下一个节日 */
+    getCurrentOrNext: () =>
+      request<{ festival: FestivalInfo; daysUntil: number } | null>('/promotion/festivals?upcoming=true'),
+
+    /** 获取近期节日时间线 */
+    getTimeline: (startMonth?: number, count?: number) =>
+      request<FestivalTimelineEntry[]>(`/promotion/festivals${buildQueryString({
+        timeline: 'true',
+        month: startMonth,
+        count,
+      })}`),
+
+    /** 按月获取节日 */
+    getByMonth: (month: number) =>
+      request<FestivalInfo[]>(`/promotion/festivals?month=${month}`),
+
+    /** 获取全部节日 */
+    getAll: () =>
+      request<FestivalInfo[]>('/promotion/festivals'),
   },
 };
