@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { dashboardApi, configApi, batchesApi, itemsApi, salesApi, customersApi, request } from '@/lib/api';
-import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, StockAgingItem, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams } from '@/lib/api.types';
+import type { DashboardSummary, BatchProfitItem, ProfitByCategoryItem, ProfitByChannelItem, TrendDataPoint, StockAging, StockAgingItem, DistributionByType, DistributionByMaterial, ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem, MonthlyComparison, TurnoverDataPoint, HeatmapData, TopSellerItem, CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem, RecentSaleItem, SalesByChannelItem, Batch, PaginatedData, SysConfig, DashboardQueryParams, GoldAlertResult } from '@/lib/api.types';
 import { toast } from 'sonner';
 import { formatPrice, StatusBadge, PaybackBar, EmptyState, LoadingSkeleton, CHART_COLORS } from './shared';
 
@@ -96,6 +96,10 @@ function DashboardTab() {
   const [stockAgingTrend, setStockAgingTrend] = useState<{ week: string; count: number }[]>([]);
   const [salesByChannel, setSalesByChannel] = useState<SalesByChannelItem[]>([]);
   const [recentSales, setRecentSales] = useState<RecentSaleItem[]>([]);
+
+  // Gold alert state
+  const [goldAlert, setGoldAlert] = useState<GoldAlertResult | null>(null);
+  const [goldAlertLoading, setGoldAlertLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [chartsLoaded, setChartsLoaded] = useState(false);
@@ -443,6 +447,24 @@ function DashboardTab() {
       } catch (e) { console.error('[DashboardTab]', e); /* silently fail */ }
     };
     loadRecentSales();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  // Fetch gold alert — only on manual refresh
+  useEffect(() => {
+    if (refreshKey === 0) return;
+    let cancelled = false;
+    const loadGoldAlert = async () => {
+      setGoldAlertLoading(true);
+      try {
+        const data = await dashboardApi.getGoldAlert(true);
+        if (!cancelled) {
+          setGoldAlert(data || null);
+        }
+      } catch (e) { console.error('[DashboardTab] gold alert:', e); /* silently fail */ }
+      finally { if (!cancelled) setGoldAlertLoading(false); }
+    };
+    loadGoldAlert();
     return () => { cancelled = true; };
   }, [refreshKey]);
 
@@ -886,6 +908,114 @@ function DashboardTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* ====== 黄金预警：贵金属销售预警 ====== */}
+      <Card className="border-l-4 border-l-amber-400 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4 text-amber-500" />
+            贵金属销售预警
+            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">融通金</Badge>
+            {goldAlertLoading && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />}
+            {goldAlert?.tagResult != null && (
+              <span className="text-xs text-muted-foreground font-normal ml-1">
+                已标记 {goldAlert.tagResult.tagged} 件
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!goldAlert && !goldAlertLoading ? (
+            <div className="flex flex-col items-center justify-center py-6 gap-2">
+              <Activity className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">点击"刷新数据"加载贵金属行情比对</p>
+            </div>
+          ) : goldAlertLoading ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : (
+            <>
+              {/* 预警摘要 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50">
+                  <p className="text-xs text-muted-foreground">预警货品</p>
+                  <p className="text-xl font-bold text-amber-600 tabular-nums">{goldAlert!.alertCount}</p>
+                  <p className="text-[10px] text-muted-foreground">共比对 {goldAlert!.totalCount} 件</p>
+                </div>
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
+                  <p className="text-xs text-muted-foreground">平均偏离</p>
+                  <p className="text-xl font-bold text-emerald-600 tabular-nums">
+                    +{goldAlert!.summary.avgDeviation.toFixed(0)}
+                    <span className="text-sm font-normal text-muted-foreground"> 元/克</span>
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/50">
+                  <p className="text-xs text-muted-foreground">最大偏离</p>
+                  <p className="text-xl font-bold text-sky-600 tabular-nums">
+                    +{goldAlert!.summary.maxDeviation.toFixed(0)}
+                    <span className="text-sm font-normal text-muted-foreground"> 元/克</span>
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50">
+                  <p className="text-xs text-muted-foreground">数据来源</p>
+                  <p className="text-xl font-bold text-purple-600 tabular-nums">{goldAlert!.marketSource}</p>
+                </div>
+              </div>
+
+              {/* 预警货品列表 */}
+              {goldAlert!.alertCount > 0 ? (
+                <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>商品名称</TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>材质</TableHead>
+                        <TableHead className="text-right">克重(g)</TableHead>
+                        <TableHead className="text-right">成本总价</TableHead>
+                        <TableHead className="text-right">成本克价</TableHead>
+                        <TableHead className="text-right">行情克价</TableHead>
+                        <TableHead className="text-right">偏离值</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {goldAlert!.items.filter(i => i.deviation > 50).map((item, idx) => (
+                        <TableRow key={item.itemId} className="hover:bg-amber-50/50 dark:hover:bg-amber-950/10 transition-colors">
+                          <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                          <TableCell className="font-medium">{item.name || '-'}</TableCell>
+                          <TableCell className="font-mono text-xs">{item.skuCode}</TableCell>
+                          <TableCell><Badge variant="secondary" className="text-[10px]">{item.materialName}</Badge></TableCell>
+                          <TableCell className="text-right tabular-nums text-sm">{item.weight.toFixed(2)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-sm">{formatPrice(item.costPrice)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-sm">{item.costPerGram.toFixed(2)}</TableCell>
+                          <TableCell className="text-right tabular-nums text-sm font-medium">{item.marketPricePerGram.toFixed(2)}</TableCell>
+                          <TableCell className="text-right tabular-nums font-bold text-emerald-600">
+                            +{item.deviation.toFixed(1)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 py-6 text-emerald-600">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">所有贵金属货品成本克价合理，无预警</span>
+                </div>
+              )}
+
+              {goldAlert!.alertCount > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  以上 {goldAlert!.alertCount} 件货品的成本克重单价低于融通金行情价超过 50 元/克，
+                  系统已自动标记为"需预定"标签，建议考虑提价销售或暂不出售。
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ====== Inventory Health Score ====== */}
       {summary && !isEmptyDashboard && (

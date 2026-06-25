@@ -10,7 +10,7 @@ import type {
   ProfitByCounterItem, PriceRangeItem, WeightDistribution, AgeDistributionItem,
   DistributionByType, DistributionByMaterial, TurnoverDataPoint, HeatmapData,
   CustomerFrequency, TopCustomerItem, InventoryValueByCategoryItem,
-  DashboardAggregate, RecentSaleItem,
+  DashboardAggregate, RecentSaleItem, GoldAlertResult,
   MetalPrice, MarketPriceItem, MarketPriceWithRef, CompetitorPrice, LocalReferenceResponse, RepricePreview, PricingResult, OperationLog, Notification,
   ImportResult, BatchPriceAdjustResult, BatchCompleteResult, AuthToken, AuthSession, BackupResult,
   ItemsQueryParams, SalesQueryParams, BatchesQueryParams, CustomersQueryParams,
@@ -348,6 +348,9 @@ export const dashboardApi = {
     const qs = params ? buildQueryString(params as Record<string, string | number | boolean | undefined | null>) : '';
     return request<SalesByChannelItem[]>(`/dashboard/sales-by-channel${qs}`);
   },
+  /** 黄金预警：比对融通金行情价与成本克重单价，偏离超过 50 的标记为"需预定" */
+  getGoldAlert: (autoTag?: boolean) =>
+    request<GoldAlertResult>(`/dashboard/gold-alert${autoTag ? '?auto_tag=1' : ''}`),
 };
 
 // ========== Metal Prices ==========

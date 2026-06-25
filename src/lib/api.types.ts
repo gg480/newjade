@@ -593,6 +593,43 @@ export interface RecentSaleItem {
   saleDate: string;
 }
 
+// ========== 黄金预警（贵金属销售预警） ==========
+
+export interface GoldAlertItem {
+  itemId: number;
+  skuCode: string;
+  name: string | null;
+  materialId: number;
+  materialName: string;
+  typeName: string | null;
+  weight: number;
+  costPrice: number;
+  costPerGram: number;
+  marketPricePerGram: number;
+  deviation: number;          // 行情价 - 成本克价
+  deviationPercent: number;   // 偏离百分比
+  tagged: boolean;             // 是否已标记"需预定"
+}
+
+export interface GoldAlertTagResult {
+  tagged: number;
+  untagged: number;
+}
+
+export interface GoldAlertResult {
+  items: GoldAlertItem[];
+  totalCount: number;
+  alertCount: number;         // 偏离 > 50 的件数
+  marketSource: string;
+  updatedAt: string;
+  summary: {
+    avgDeviation: number;
+    maxDeviation: number;
+    minDeviation: number;
+  };
+  tagResult: GoldAlertTagResult | null;
+}
+
 // ========== 贵金属价格 ==========
 
 /** 行情价条目（GET /api/metal-prices/market，含材质折算参考价 + 最终克价） */
