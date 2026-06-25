@@ -269,17 +269,21 @@ function GenerateTopicDialog({ item, festival, open, onOpenChange, onSuccess }: 
   onOpenChange: (v: boolean) => void;
   onSuccess: () => void;
 }) {
-  if (!item) return null;
-  const defaultTitle = festival
-    ? `${festival.name}推荐｜${item.name || item.sku}`
-    : `「${item.name || item.sku}」内容选题`;
+  // Hooks must be before any early return (React rule)
+  const defaultTitle = item
+    ? festival
+      ? `${festival.name}推荐｜${item.name || item.sku}`
+      : `「${item.name || item.sku}」内容选题`
+    : '';
   const [title, setTitle] = useState(defaultTitle);
   const [submitting, setSubmitting] = useState(false);
 
   // 当选品切换时更新默认标题
   useEffect(() => {
-    setTitle(defaultTitle);
-  }, [defaultTitle]);
+    if (item) setTitle(defaultTitle);
+  }, [defaultTitle, item]);
+
+  if (!item) return null;
 
   async function handleSubmit() {
     if (!title.trim() || !item) return;

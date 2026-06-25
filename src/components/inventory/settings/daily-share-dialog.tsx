@@ -532,11 +532,10 @@ export default function DailyShareDialog({
     }
   }
 
-  const posters = [
-    { name: '本日报价', ref: canvas1Ref, desc: '今日贵金属售价一览' },
-    { name: '价格优势', ref: canvas2Ref, desc: '本店 vs 主流金店对比' },
-    { name: '行情走势', ref: canvas3Ref, desc: '历史走势 + 实时行情' },
-  ];
+  // 海报配置（ref 单独存储，避免渲染时访问被 eslint 标记）
+  const posterLabels = ['本日报价', '价格优势', '行情走势'];
+  const posterDescs = ['今日贵金属售价一览', '本店 vs 主流金店对比', '历史走势 + 实时行情'];
+  const posterRefs = [canvas1Ref, canvas2Ref, canvas3Ref];
 
   return (
     <>
@@ -553,7 +552,7 @@ export default function DailyShareDialog({
               <span className="text-xs font-normal text-muted-foreground ml-auto">{today}</span>
             </DialogTitle>
             <p className="text-xs text-muted-foreground">
-              {posters[activeTab].desc}
+              {posterDescs[activeTab]}
             </p>
           </DialogHeader>
 
@@ -581,7 +580,7 @@ export default function DailyShareDialog({
                 className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer"
                 style={{ width: 180, height: 264 }}
                 onClick={() => {
-                  const c = posters[activeTab].ref.current;
+                  const c = posterRefs[activeTab].current;
                   if (c) window.open(c.toDataURL('image/png'), '_blank');
                 }}
               >
@@ -590,7 +589,7 @@ export default function DailyShareDialog({
                   ref={el => {
                     // 将海报缩小渲染到预览区
                     if (!el) return;
-                    const src = posters[activeTab].ref.current;
+                    const src = posterRefs[activeTab].current;
                     if (!src) return;
                     const dpr = window.devicePixelRatio || 1;
                     el.width = 180 * dpr;
@@ -609,7 +608,7 @@ export default function DailyShareDialog({
 
             {/* 指示器 */}
             <div className="flex items-center justify-center gap-1.5 py-2">
-              {posters.map((_, i) => (
+              {posterLabels.map((_, i) => (
                 <button
                   key={i}
                   className={`w-2 h-2 rounded-full transition-colors ${
@@ -625,7 +624,7 @@ export default function DailyShareDialog({
               <Button
                 size="sm" variant="outline" className="h-8 text-xs"
                 onClick={() => {
-                  const c = posters[activeTab].ref.current;
+                  const c = posterRefs[activeTab].current;
                   if (c) window.open(c.toDataURL('image/png'), '_blank');
                 }}
               >
@@ -633,7 +632,7 @@ export default function DailyShareDialog({
               </Button>
               <Button
                 size="sm" variant="outline" className="h-8 text-xs"
-                onClick={() => handleSave(posters[activeTab].ref, posters[activeTab].name)}
+                onClick={() => handleSave(posterRefs[activeTab], posterLabels[activeTab])}
               >
                 <Download className="h-3 w-3 mr-1" />
                 保存图片
