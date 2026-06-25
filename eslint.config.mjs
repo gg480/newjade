@@ -18,10 +18,13 @@ config.push({
   ],
 });
 
-// React Compiler 优化提示降为 warning（不影响功能）
+// 项目中未启用 React Compiler，preserve-manual-memoization 规则仅造成假阳性 error
 config.push({
+  plugins: {
+    'react-hooks': config[0].plugins['react-hooks'],
+  },
   rules: {
-    'react-compiler/react-compiler': 'warn',
+    'react-hooks/preserve-manual-memoization': 'warn',
   },
 });
 
