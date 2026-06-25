@@ -3,6 +3,7 @@ import { NotFoundError, ConflictError, ValidationError } from '@/lib/errors';
 import { logAction } from '@/lib/log';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
+import { ALLOWED_IMAGE_TYPES, ALLOWED_IMAGE_EXTENSIONS, detectImageMime } from '@/lib/file-utils';
 
 // ─── 图片存储路径 ───────────────────────────────────────────
 
@@ -24,9 +25,8 @@ export async function uploadItemImage(itemId: number, file: File, angleCode?: st
   const item = await db.item.findUnique({ where: { id: itemId } });
   if (!item) throw new NotFoundError('货品不存在');
 
-  // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
+  // Validate file type (client-reported MIME — first line of defense)
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new ValidationError('仅支持 JPG/PNG/GIF/WEBP 格式');
   }
 
@@ -35,9 +35,18 @@ export async function uploadItemImage(itemId: number, file: File, angleCode?: st
     throw new ValidationError('图片大小不能超过10MB');
   }
 
-  // Save file
+  // Read file and validate via magic bytes (server-side enforcement)
   const buffer = Buffer.from(await file.arrayBuffer());
-  const ext = file.name.split('.').pop() || 'jpg';
+  if (buffer.length < 12) {
+    throw new ValidationError('无效的图片文件');
+  }
+  const detectedMime = detectImageMime(new Uint8Array(buffer));
+  if (!detectedMime) {
+    throw new ValidationError('文件内容不是有效的图片格式（仅支持 JPG/PNG/GIF/WEBP）');
+  }
+
+  // Use extension from path.extname (reliable) fallback to jpg
+  const ext = path.extname(file.name).toLowerCase().replace('.', '') || 'jpg';
 
   // 按 SKU+角度命名文件，便于文件系统管理
   const angleSuffix = angleCode ? `_${angleCode}` : '';

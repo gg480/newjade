@@ -1,0 +1,1255 @@
+{
+  "mode": "write",
+  "specFixes": 27,
+  "unknownFixes": 0,
+  "comboItems": 100,
+  "specDetails": [
+    {
+      "sku": "0702-0420-001",
+      "name": "随形老蜜蜡手链",
+      "suggestion": "珠径10 克重17.1",
+      "action": "beadDiameter+weight",
+      "update": {
+        "beadDiameter": "10",
+        "weight": 17.1
+      }
+    },
+    {
+      "sku": "0707-0420-053",
+      "name": "99银女竹节苹果项链18寸",
+      "suggestion": "4g",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 4
+      }
+    },
+    {
+      "sku": "0710-0420-040",
+      "name": "儿童银手镯",
+      "suggestion": "20",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 20
+      }
+    },
+    {
+      "sku": "0710-0420-041",
+      "name": "儿童银手镯",
+      "suggestion": "15",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 15
+      }
+    },
+    {
+      "sku": "0710-0420-042",
+      "name": "儿童银手镯",
+      "suggestion": "25",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 25
+      }
+    },
+    {
+      "sku": "0710-0420-043",
+      "name": "儿童银手镯",
+      "suggestion": "24",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 24
+      }
+    },
+    {
+      "sku": "0710-0420-044",
+      "name": "儿童银手镯",
+      "suggestion": "18.14",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 18.14
+      }
+    },
+    {
+      "sku": "0710-0420-045",
+      "name": "儿童银手镯",
+      "suggestion": "18.5",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 18.5
+      }
+    },
+    {
+      "sku": "0710-0420-046",
+      "name": "儿童银手镯",
+      "suggestion": "25",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 25
+      }
+    },
+    {
+      "sku": "0710-0420-047",
+      "name": "儿童银手镯",
+      "suggestion": "18.9",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 18.9
+      }
+    },
+    {
+      "sku": "0710-0420-048",
+      "name": "儿童银手镯",
+      "suggestion": "20",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 20
+      }
+    },
+    {
+      "sku": "0710-0420-049",
+      "name": "儿童银手镯",
+      "suggestion": "25",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 25
+      }
+    },
+    {
+      "sku": "0710-0420-050",
+      "name": "儿童银手镯",
+      "suggestion": "26",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 26
+      }
+    },
+    {
+      "sku": "0710-0420-051",
+      "name": "儿童银手镯",
+      "suggestion": "20",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 20
+      }
+    },
+    {
+      "sku": "0710-0420-052",
+      "name": "儿童银手镯",
+      "suggestion": "21",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 21
+      }
+    },
+    {
+      "sku": "0710-0420-053",
+      "name": "儿童银手镯",
+      "suggestion": "20",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 20
+      }
+    },
+    {
+      "sku": "0710-0420-054",
+      "name": "儿童银手镯",
+      "suggestion": "23",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 23
+      }
+    },
+    {
+      "sku": "0710-0420-055",
+      "name": "儿童银手镯",
+      "suggestion": "25",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 25
+      }
+    },
+    {
+      "sku": "0710-0420-056",
+      "name": "儿童银手镯",
+      "suggestion": "8.21",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 8.21
+      }
+    },
+    {
+      "sku": "0710-0420-057",
+      "name": "儿童银手镯",
+      "suggestion": "23",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 23
+      }
+    },
+    {
+      "sku": "0710-0420-058",
+      "name": "儿童银手镯",
+      "suggestion": "12.17",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 12.17
+      }
+    },
+    {
+      "sku": "0710-0420-059",
+      "name": "儿童银手镯",
+      "suggestion": "15.48",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 15.48
+      }
+    },
+    {
+      "sku": "0710-0420-060",
+      "name": "儿童银手镯",
+      "suggestion": "20.36",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 20.36
+      }
+    },
+    {
+      "sku": "0710-0420-061",
+      "name": "儿童银手镯",
+      "suggestion": "15.2",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 15.2
+      }
+    },
+    {
+      "sku": "0710-0420-062",
+      "name": "儿童银手镯",
+      "suggestion": "19.6",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 19.6
+      }
+    },
+    {
+      "sku": "0710-0420-063",
+      "name": "儿童银手镯",
+      "suggestion": "15",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 15
+      }
+    },
+    {
+      "sku": "0710-0420-064",
+      "name": "儿童银手镯",
+      "suggestion": "12.1",
+      "action": "metalWeight",
+      "update": {
+        "metalWeight": 12.1
+      }
+    }
+  ],
+  "unknownDetails": [],
+  "comboDetails": [
+    {
+      "sku": "0102-0420-148",
+      "name": "翡翠绿珠，足金珠儿童手链",
+      "materialName": "翡翠",
+      "materialCategory": "玉",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "0102-0420-149",
+      "name": "翡翠绿珠，足金珠儿童手链",
+      "materialName": "翡翠",
+      "materialCategory": "玉",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "0102-0420-150",
+      "name": "翡翠绿玉珠，足金珠儿童手链",
+      "materialName": "翡翠",
+      "materialCategory": "玉",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "0202-0420-018",
+      "name": "福袋红朱砂手链",
+      "materialName": "朱砂",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-002",
+      "name": "蜜蜡福袋吊坠",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-003",
+      "name": "蜜蜡貔貅",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-004",
+      "name": "蜜蜡貔貅吊坠",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-006",
+      "name": "蜜蜡平安扣吊坠",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-007",
+      "name": "蜜蜡妖花平安扣吊坠",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-008",
+      "name": "蜜蜡福锁吊坠",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0701-0420-009",
+      "name": "蜜蜡妖花平安扣吊坠",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "0702-0420-020",
+      "name": "99银珠貔貅女手链",
+      "materialName": "足银990",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "0902-0420-025",
+      "name": "白地青竹节，足金珠儿童手链",
+      "materialName": "翡翠",
+      "materialCategory": "玉",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-004",
+      "name": "K白金褛空平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-005",
+      "name": "K白金琵琶褛空平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-006",
+      "name": "玫瑰金围钻平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-007",
+      "name": "K白金围钻绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-008",
+      "name": "K白金绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-009",
+      "name": "K白金围钻绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-010",
+      "name": "K白金绿色2小平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-014",
+      "name": "K白金如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-015",
+      "name": "K白金绿小平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-016",
+      "name": "K白金扣平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-017",
+      "name": "k黄金头扣平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-018",
+      "name": "K白金飘花平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-021",
+      "name": "K白金绿十冰种心形",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-025",
+      "name": "K白金红翡蝴蝶",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-039",
+      "name": "K白金绿如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-040",
+      "name": "K白金飘绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-041",
+      "name": "K白金白底青平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-045",
+      "name": "K白金绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-047",
+      "name": "K白金扣冰油桃",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-050",
+      "name": "K白金冰种富贵豆",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-053",
+      "name": "K白金绿小貔貅",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-055",
+      "name": "K白金扣花青平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-056",
+      "name": "K白金扣花青平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-063",
+      "name": "玫瑰金石榴石佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-064",
+      "name": "玫瑰金石榴石佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-067",
+      "name": "K白金紫色小佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-071",
+      "name": "K白金绿企小佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-072",
+      "name": "K黄金钛金发晶",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1201-0420-075",
+      "name": "K白金满绿佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-080",
+      "name": "K白金围钻称心如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-081",
+      "name": "K白金扣豆绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-082",
+      "name": "K白金扣豆绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-086",
+      "name": "K白金托底如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-088",
+      "name": "K白金围钻绿平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-095",
+      "name": "K白金围钻冰飘花树叶",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-097",
+      "name": "K黄金绿如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-098",
+      "name": "K白金绿如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-099",
+      "name": "K白金围绿如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-101",
+      "name": "K白金绿怀古扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-103",
+      "name": "K白金冰种飘绿佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-104",
+      "name": "玫瑰金绿怀古平安扣",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-108",
+      "name": "K白金冰种佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-109",
+      "name": "K白金冰飘绿佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-110",
+      "name": "K白金冰晴绿佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-111",
+      "name": "K白金冰底飘绿佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-112",
+      "name": "玫瑰金冰晴佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-113",
+      "name": "玫瑰金围钻冰飘花佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-114",
+      "name": "玫瑰金冰飘花佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-115",
+      "name": "玫瑰金围钻冰飘花佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-116",
+      "name": "K白金围豆青佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-117",
+      "name": "玫瑰金围豆青佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-127",
+      "name": "K白金围钻称心如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-132",
+      "name": "K白金围黄翡佛公",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-133",
+      "name": "K黄金黄翡旦",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-135",
+      "name": "K白金围钻黄翡如意",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-137",
+      "name": "K白金围钻红翡杏",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1201-0420-139",
+      "name": "玫瑰金红翡蝴蝶",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1202-0420-001",
+      "name": "绿平安扣K白金手镯",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1202-0420-002",
+      "name": "K白金镶绿平安扣手链",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-012",
+      "name": "玫瑰金伴钻冰种戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-013",
+      "name": "K白金伴钻冰种戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-014",
+      "name": "玫瑰金伴钻冰种戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-015",
+      "name": "玫瑰金伴钻冰种戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-016",
+      "name": "K白金围钻冰晴飘花戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-030",
+      "name": "K白金围钻平安扣戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-034",
+      "name": "K白金围钻翡翠戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-039",
+      "name": "K白金红翡心形戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-040",
+      "name": "K白金平安扣戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-046",
+      "name": "K白金围钻蓝碧玺戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-047",
+      "name": "玫瑰金伴钻绿碧玺戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-048",
+      "name": "K白金围钻红碧玺戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-049",
+      "name": "K黄金豆青马鞍戒指，男",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1203-0420-051",
+      "name": "K黄金钛晶戒指，男",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-052",
+      "name": "K黄金钛晶戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-057",
+      "name": "K白金围钻绿碧玺方戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-058",
+      "name": "K白金伴钻双色碧玺戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "贵金属",
+        "水晶"
+      ]
+    },
+    {
+      "sku": "1203-0420-059",
+      "name": "镶K白金翡翠蛋面戒指",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1207-0420-003",
+      "name": "K白金围钻平安扣套链，",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1211-0420-003",
+      "name": "K白金红翡耳环",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1212-0420-001",
+      "name": "K白金翡翠绿蛋耳钉",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1212-0420-003",
+      "name": "K白金翡翠绿蛋耳钉",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1212-0420-006",
+      "name": "K白金围钻绿平安扣耳钉",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1212-0420-007",
+      "name": "K白金伴钻绿平安扣耳钉",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1212-0420-010",
+      "name": "K白金围钻冰油耳钉",
+      "materialName": "18K金",
+      "materialCategory": "贵金属",
+      "comboCategories": [
+        "玉",
+        "贵金属"
+      ]
+    },
+    {
+      "sku": "1701-0420-005",
+      "name": "鸡油黄蜜蜡佛公",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "1701-0420-006",
+      "name": "妖花白蜜蜡佛公",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    },
+    {
+      "sku": "1701-0420-007",
+      "name": "妖花白蜜蜡佛公",
+      "materialName": "蜜蜡",
+      "materialCategory": "文玩",
+      "comboCategories": [
+        "玉",
+        "文玩"
+      ]
+    }
+  ]
+}

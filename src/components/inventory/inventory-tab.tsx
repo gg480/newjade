@@ -543,7 +543,8 @@ function InventoryTab() {
   }
 
   // 全局扫描枪监听（HID 键盘模拟器模式）：USB/蓝牙扫描枪扫码后自动触发出库
-  useBarcodeScanner({ onComplete: handleBarcodeScan });
+  // ScanPhotoMode 打开时禁用，避免 HID 扫描枪事件冲突触发错误流程
+  useBarcodeScanner({ onComplete: handleBarcodeScan, enabled: !showScanPhoto });
 
   function toggleSortOrder() {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
@@ -1265,6 +1266,10 @@ function InventoryTab() {
       {showScanPhoto && (
         <ScanPhotoMode
           onClose={() => { setShowScanPhoto(false); refresh(); }}
+          api={{
+            lookupBySku: itemsApi.lookupBySku,
+            scanPhoto: itemsApi.scanPhoto,
+          }}
         />
       )}
 

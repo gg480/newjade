@@ -1,0 +1,330 @@
+﻿scripts/audit-all-materials.ts(152,58): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+scripts/audit-all-materials.ts(160,9): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+scripts/fix-material-id.ts(297,5): error TS1117: An object literal cannot have multiple properties with the same name.
+scripts/migrate-adr020-history.ts(180,46): error TS2538: Type 'null' cannot be used as an index type.
+src/app/api/content/analyze/route.ts(46,9): error TS2322: Type '{ analysis: Record<string, unknown>; analyzedAt: string; }' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+  Type '{ analysis: Record<string, unknown>; analyzedAt: string; }' is not assignable to type 'InputJsonObject'.
+    Property 'analysis' is incompatible with index signature.
+      Type 'Record<string, unknown>' is not assignable to type 'InputJsonValue | null | undefined'.
+        Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 26 more.
+src/app/api/content/items/route.ts(82,33): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(iterable?: Iterable<readonly [unknown, unknown]> | null | undefined): Map<unknown, unknown>', gave the following error.
+    Argument of type 'any[][]' is not assignable to parameter of type 'Iterable<readonly [unknown, unknown]>'.
+      The types returned by '[Symbol.iterator]().next(...)' are incompatible between these types.
+        Type 'IteratorResult<any[], undefined>' is not assignable to type 'IteratorResult<readonly [unknown, unknown], any>'.
+          Type 'IteratorYieldResult<any[]>' is not assignable to type 'IteratorResult<readonly [unknown, unknown], any>'.
+            Type 'IteratorYieldResult<any[]>' is not assignable to type 'IteratorYieldResult<readonly [unknown, unknown]>'.
+              Type 'any[]' is not assignable to type 'readonly [unknown, unknown]'.
+                Target requires 2 element(s) but source may have fewer.
+  Overload 2 of 4, '(entries?: readonly (readonly [unknown, unknown])[] | null | undefined): Map<unknown, unknown>', gave the following error.
+    Argument of type 'any[][]' is not assignable to parameter of type 'readonly (readonly [unknown, unknown])[]'.
+      Type 'any[]' is not assignable to type 'readonly [unknown, unknown]'.
+        Target requires 2 element(s) but source may have fewer.
+src/app/api/content/items/route.ts(83,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(iterable?: Iterable<readonly [unknown, unknown]> | null | undefined): Map<unknown, unknown>', gave the following error.
+    Argument of type 'any[][]' is not assignable to parameter of type 'Iterable<readonly [unknown, unknown]>'.
+      The types returned by '[Symbol.iterator]().next(...)' are incompatible between these types.
+        Type 'IteratorResult<any[], undefined>' is not assignable to type 'IteratorResult<readonly [unknown, unknown], any>'.
+          Type 'IteratorYieldResult<any[]>' is not assignable to type 'IteratorResult<readonly [unknown, unknown], any>'.
+            Type 'IteratorYieldResult<any[]>' is not assignable to type 'IteratorYieldResult<readonly [unknown, unknown]>'.
+              Type 'any[]' is not assignable to type 'readonly [unknown, unknown]'.
+                Target requires 2 element(s) but source may have fewer.
+  Overload 2 of 4, '(entries?: readonly (readonly [unknown, unknown])[] | null | undefined): Map<unknown, unknown>', gave the following error.
+    Argument of type 'any[][]' is not assignable to parameter of type 'readonly (readonly [unknown, unknown])[]'.
+      Type 'any[]' is not assignable to type 'readonly [unknown, unknown]'.
+        Target requires 2 element(s) but source may have fewer.
+src/app/api/content/items/route.ts(86,11): error TS2322: Type '{ id: number; sku: never; name: string | null; materialName: {} | null; typeName: {} | null; tags: string[]; images: never[]; retailPrice: never; status: string; description: never; createdAt: string; }[]' is not assignable to type 'SafeContentItem[]'.
+  Type '{ id: number; sku: never; name: string | null; materialName: {} | null; typeName: {} | null; tags: string[]; images: never[]; retailPrice: never; status: string; description: never; createdAt: string; }' is not assignable to type 'SafeContentItem'.
+    Types of property 'name' are incompatible.
+      Type 'string | null' is not assignable to type 'string'.
+        Type 'null' is not assignable to type 'string'.
+src/app/api/content/topics/route.ts(47,9): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+    Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 26 more.
+src/app/api/import/items/route.ts(29,36): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'unique symbol'.
+src/app/api/import/items/route.ts(35,21): error TS2339: Property 'errors' does not exist on type 'void'.
+src/app/api/import/items/route.ts(35,54): error TS2339: Property 'data' does not exist on type 'void'.
+src/app/api/import/items/route.ts(39,42): error TS2339: Property 'errors' does not exist on type 'void'.
+src/app/api/import/items/route.ts(43,30): error TS2339: Property 'data' does not exist on type 'void'.
+src/app/api/metal-prices/labor-cost/route.ts(34,66): error TS2345: Argument of type '(request: NextRequest) => Promise<NextResponse<{ code: number; data: null; message: string; }>>' is not assignable to parameter of type 'RouteHandler<unknown>'.
+  Types of parameters 'request' and 'req' are incompatible.
+    Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+src/app/api/promotion/items/[itemId]/history/route.ts(14,50): error TS2339: Property 'itemId' does not exist on type 'Promise<{ itemId: string; }>'.
+src/app/page.tsx(693,15): error TS2322: Type 'boolean | ""' is not assignable to type 'boolean | undefined'.
+  Type '""' is not assignable to type 'boolean | undefined'.
+src/components/inventory/batch-create-dialog.tsx(112,29): error TS2365: Operator '<' cannot be applied to types 'string | number' and 'number'.
+src/components/inventory/batch-create-dialog.tsx(117,9): error TS2322: Type 'string | number' is not assignable to type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/components/inventory/batch-create-dialog.tsx(370,65): error TS2352: Conversion of type 'PaginatedData<Supplier>' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'PaginatedData<Supplier>'.
+src/components/inventory/batches-tab.tsx(74,22): error TS2345: Argument of type 'Batch[]' is not assignable to parameter of type 'SetStateAction<BatchTableRow[]>'.
+  Type 'Batch[]' is not assignable to type 'BatchTableRow[]'.
+    Type 'Batch' is not assignable to type 'BatchTableRow'.
+      Types of property 'materialName' are incompatible.
+        Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+          Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/batches-tab.tsx(223,11): error TS2322: Type '(batch: BatchTableRow) => void' is not assignable to type '(batch: Batch) => void'.
+  Types of parameters 'batch' and 'batch' are incompatible.
+    Type 'Batch' is not assignable to type 'BatchTableRow'.
+      Types of property 'materialName' are incompatible.
+        Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+          Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/batches-tab.tsx(224,11): error TS2322: Type 'Dispatch<SetStateAction<BatchTableRow | null>>' is not assignable to type '(batch: Batch) => void'.
+  Types of parameters 'value' and 'batch' are incompatible.
+    Type 'Batch' is not assignable to type 'SetStateAction<BatchTableRow | null>'.
+      Type 'Batch' is not assignable to type 'BatchTableRow'.
+        Types of property 'materialName' are incompatible.
+          Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+            Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/batches-tab.tsx(252,69): error TS2322: Type 'number | null' is not assignable to type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/components/inventory/batches-tab.tsx(252,107): error TS2322: Type 'number | null' is not assignable to type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/components/inventory/batches-tab.tsx(252,137): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/batches/batches-table.tsx(61,24): error TS18048: 'b.soldCount' is possibly 'undefined'.
+src/components/inventory/batches/batches-table.tsx(62,68): error TS18048: 'b.soldCount' is possibly 'undefined'.
+src/components/inventory/batches/batches-table.tsx(112,44): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/inventory/batches/batches-table.tsx(113,45): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/inventory/batches/batches-table.tsx(140,30): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/inventory/batches/batches-table.tsx(175,20): error TS18048: 'b.soldCount' is possibly 'undefined'.
+src/components/inventory/batches/batches-table.tsx(176,64): error TS18048: 'b.soldCount' is possibly 'undefined'.
+src/components/inventory/bundle-sale-dialog.tsx(15,11): error TS2430: Interface 'BundleCustomer' incorrectly extends interface 'Customer'.
+  Types of property 'phone' are incompatible.
+    Type 'string | null | undefined' is not assignable to type 'string | null'.
+      Type 'undefined' is not assignable to type 'string | null'.
+src/components/inventory/bundle-sale-dialog.tsx(67,9): error TS2353: Object literal may only specify known properties, and 'chainItemIds' does not exist in type 'CreateBundleSaleBody'.
+src/components/inventory/create/scan-photo-mode.tsx(237,56): error TS2339: Property 'skuCode' does not exist on type '{ id: number; name: string | null; materialName: string | null; typeName: string | null; }'.
+src/components/inventory/create/scan-photo-mode.tsx(355,83): error TS2339: Property 'skuCode' does not exist on type '{ id: number; name: string | null; materialName: string | null; typeName: string | null; }'.
+src/components/inventory/create/scan-photo-mode.tsx(409,52): error TS2345: Argument of type '"F" | "S" | "D" | "X1" | "X2" | "X3"' is not assignable to parameter of type 'SetStateAction<"F">'.
+  Type '"S"' is not assignable to type 'SetStateAction<"F">'.
+src/components/inventory/create/single-item-form.tsx(315,96): error TS2352: Conversion of type 'PricingResult' to type 'Record<string, number>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'PricingResult'.
+src/components/inventory/create/single-item-form.tsx(377,53): error TS2352: Conversion of type 'Record<string, unknown>' to type 'CreateItemBody' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'sellingPrice' is missing in type 'Record<string, unknown>' but required in type 'CreateItemBody'.
+src/components/inventory/create/single-item-form.tsx(659,15): error TS2322: Type 'Record<string, unknown>' is not assignable to type 'Record<string, string | number | number[]>'.
+  'string' index signatures are incompatible.
+    Type 'unknown' is not assignable to type 'string | number | number[]'.
+src/components/inventory/customer-merge-dialog.tsx(104,18): error TS2345: Argument of type 'SaleRecord[]' is not assignable to parameter of type 'SetStateAction<SaleSearchRow[]>'.
+  Type 'SaleRecord[]' is not assignable to type 'SaleSearchRow[]'.
+    Type 'SaleRecord' is missing the following properties from type 'SaleSearchRow': itemSku, itemName, customerName
+src/components/inventory/customer-merge-dialog.tsx(128,18): error TS2345: Argument of type 'SaleRecord[]' is not assignable to parameter of type 'SetStateAction<SaleSearchRow[]>'.
+  Type 'SaleRecord[]' is not assignable to type 'SaleSearchRow[]'.
+    Type 'SaleRecord' is missing the following properties from type 'SaleSearchRow': itemSku, itemName, customerName
+src/components/inventory/customer-search-select.tsx(29,23): error TS2554: Expected 1 arguments, but got 0.
+src/components/inventory/customer-search-select.tsx(40,20): error TS2345: Argument of type 'Customer[]' is not assignable to parameter of type 'SetStateAction<CustomerOption[]>'.
+  Type 'Customer[]' is not assignable to type 'CustomerOption[]'.
+    Type 'Customer' is not assignable to type 'CustomerOption'.
+      Types of property 'phone' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/inventory/customers-tab.tsx(131,56): error TS2345: Argument of type '(data: CustomerProfileDetail) => void' is not assignable to parameter of type '(value: CustomerDetail) => void | PromiseLike<void>'.
+  Types of parameters 'data' and 'value' are incompatible.
+    Type 'CustomerDetail' is not assignable to type 'CustomerProfileDetail'.
+      Types of property 'tags' are incompatible.
+        Type 'string | null' is not assignable to type 'string[] | undefined'.
+          Type 'null' is not assignable to type 'string[] | undefined'.
+src/components/inventory/customers-tab.tsx(165,56): error TS2322: Type 'any[]' is not assignable to type 'string'.
+src/components/inventory/customers-tab.tsx(171,17): error TS2345: Argument of type 'CustomerDetail' is not assignable to parameter of type 'SetStateAction<CustomerProfileDetail | null>'.
+  Type 'CustomerDetail' is not assignable to type 'CustomerProfileDetail'.
+    Types of property 'tags' are incompatible.
+      Type 'string | null' is not assignable to type 'string[] | undefined'.
+        Type 'null' is not assignable to type 'string[] | undefined'.
+src/components/inventory/customers-tab.tsx(183,56): error TS2322: Type 'string[]' is not assignable to type 'string'.
+src/components/inventory/customers-tab.tsx(186,17): error TS2345: Argument of type 'CustomerDetail' is not assignable to parameter of type 'SetStateAction<CustomerProfileDetail | null>'.
+  Type 'CustomerDetail' is not assignable to type 'CustomerProfileDetail'.
+    Types of property 'tags' are incompatible.
+      Type 'string | null' is not assignable to type 'string[] | undefined'.
+        Type 'null' is not assignable to type 'string[] | undefined'.
+src/components/inventory/customers-tab.tsx(496,47): error TS2352: Conversion of type 'PaginatedData<Customer>' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'PaginatedData<Customer>'.
+src/components/inventory/customers-tab.tsx(515,63): error TS2345: Argument of type '(data: CustomerProfileDetail) => void' is not assignable to parameter of type '(value: CustomerDetail) => void | PromiseLike<void>'.
+  Types of parameters 'data' and 'value' are incompatible.
+    Type 'CustomerDetail' is not assignable to type 'CustomerProfileDetail'.
+      Types of property 'tags' are incompatible.
+        Type 'string | null' is not assignable to type 'string[] | undefined'.
+          Type 'null' is not assignable to type 'string[] | undefined'.
+src/components/inventory/customers-tab.tsx(528,58): error TS2322: Type 'string[]' is not assignable to type 'string'.
+src/components/inventory/customers-tab.tsx(540,179): error TS2322: Type 'string[]' is not assignable to type 'string'.
+src/components/inventory/customers-tab.tsx(726,9): error TS2322: Type 'CustomerTableRow | null' is not assignable to type '{ id: number; name: string; phone?: string | null | undefined; customerCode?: string | undefined; tags?: string[] | undefined; } | null'.
+  Type 'CustomerTableRow' is not assignable to type '{ id: number; name: string; phone?: string | null | undefined; customerCode?: string | undefined; tags?: string[] | undefined; }'.
+    Types of property 'tags' are incompatible.
+      Type 'string | null' is not assignable to type 'string[] | undefined'.
+        Type 'null' is not assignable to type 'string[] | undefined'.
+src/components/inventory/customers/customers-table.tsx(164,184): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/inventory/customers/customers-table.tsx(191,45): error TS2339: Property 'map' does not exist on type 'string | never[]'.
+  Property 'map' does not exist on type 'string'.
+src/components/inventory/customers/customers-table.tsx(309,43): error TS2339: Property 'batchCode' does not exist on type '{ name: string | null; skuCode: string; material?: { name: string | null; } | undefined; type?: { name: string | null; } | undefined; }'.
+src/components/inventory/customers/customers-table.tsx(310,185): error TS2339: Property 'batchCode' does not exist on type '{ name: string | null; skuCode: string; material?: { name: string | null; } | undefined; type?: { name: string | null; } | undefined; }'.
+src/components/inventory/dashboard-tab.tsx(183,31): error TS2345: Argument of type 'Batch[]' is not assignable to parameter of type 'SetStateAction<(Batch & { materialName?: string | undefined; itemsCount?: number | undefined; })[]>'.
+  Type 'Batch[]' is not assignable to type '(Batch & { materialName?: string | undefined; itemsCount?: number | undefined; })[]'.
+    Type 'Batch' is not assignable to type 'Batch & { materialName?: string | undefined; itemsCount?: number | undefined; }'.
+      Type 'Batch' is not assignable to type '{ materialName?: string | undefined; itemsCount?: number | undefined; }'.
+        Types of property 'materialName' are incompatible.
+          Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+            Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/dashboard-tab.tsx(357,40): error TS2339: Property 'daysCount' does not exist on type 'never'.
+src/components/inventory/dashboard-tab.tsx(358,41): error TS2339: Property 'revenue' does not exist on type 'never'.
+src/components/inventory/dashboard-tab.tsx(460,28): error TS2345: Argument of type '(d: { date: string; }) => string' is not assignable to parameter of type '(value: string, index: number, array: string[]) => string'.
+  Types of parameters 'd' and 'value' are incompatible.
+    Type 'string' is not assignable to type '{ date: string; }'.
+src/components/inventory/dashboard-tab.tsx(465,37): error TS2345: Argument of type '(d: { date: string; }) => [string, { date: string; }]' is not assignable to parameter of type '(value: string, index: number, array: string[]) => [string, { date: string; }]'.
+  Types of parameters 'd' and 'value' are incompatible.
+    Type 'string' is not assignable to type '{ date: string; }'.
+src/components/inventory/dashboard-tab.tsx(496,26): error TS2345: Argument of type '{ date: string; dayNum: number; } | { date: string; dayNum: number; intensity: number; count: number; revenue: number; }' is not assignable to parameter of type '{ date: string; dayNum: number; intensity: number; count: number; } | null'.
+  Type '{ date: string; dayNum: number; }' is missing the following properties from type '{ date: string; dayNum: number; intensity: number; count: number; }': intensity, count
+src/components/inventory/dashboard-tab.tsx(956,34): error TS18048: 'latest.turnoverRate' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(956,76): error TS18048: 'latest.turnoverRate' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1127,18): error TS18048: 'distByType.profitDistribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1129,37): error TS18048: 'distByType.profitDistribution' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1129,72): error TS2345: Argument of type '(a: { totalProfit: number; }, b: { totalProfit: number; }) => number' is not assignable to parameter of type '(a: { typeName: string; profit: number; }, b: { typeName: string; profit: number; }) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'totalProfit' is missing in type '{ typeName: string; profit: number; }' but required in type '{ totalProfit: number; }'.
+src/components/inventory/dashboard-tab.tsx(1142,18): error TS18048: 'distByType.countDistribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1144,37): error TS18048: 'distByType.countDistribution' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1144,71): error TS2345: Argument of type '(a: { salesCount: number; }, b: { salesCount: number; }) => number' is not assignable to parameter of type '(a: { typeName: string; count: number; }, b: { typeName: string; count: number; }) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'salesCount' is missing in type '{ typeName: string; count: number; }' but required in type '{ salesCount: number; }'.
+src/components/inventory/dashboard-tab.tsx(1157,18): error TS18048: 'distByType.marginDistribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1159,37): error TS18048: 'distByType.marginDistribution' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1159,72): error TS2345: Argument of type '(a: { avgMargin: number; }, b: { avgMargin: number; }) => number' is not assignable to parameter of type '(a: { typeName: string; margin: number; }, b: { typeName: string; margin: number; }) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'avgMargin' is missing in type '{ typeName: string; margin: number; }' but required in type '{ avgMargin: number; }'.
+src/components/inventory/dashboard-tab.tsx(1196,16): error TS18048: 'distByMaterial.profitDistribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1200,37): error TS18048: 'distByMaterial.profitDistribution' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1200,76): error TS2345: Argument of type '(a: { totalProfit: number; }, b: { totalProfit: number; }) => number' is not assignable to parameter of type '(a: { materialName: string; profit: number; }, b: { materialName: string; profit: number; }) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'totalProfit' is missing in type '{ materialName: string; profit: number; }' but required in type '{ totalProfit: number; }'.
+src/components/inventory/dashboard-tab.tsx(1210,16): error TS18048: 'distByMaterial.countDistribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1214,37): error TS18048: 'distByMaterial.countDistribution' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1214,75): error TS2345: Argument of type '(a: { salesCount: number; }, b: { salesCount: number; }) => number' is not assignable to parameter of type '(a: { materialName: string; count: number; }, b: { materialName: string; count: number; }) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'salesCount' is missing in type '{ materialName: string; count: number; }' but required in type '{ salesCount: number; }'.
+src/components/inventory/dashboard-tab.tsx(1224,16): error TS18048: 'distByMaterial.marginDistribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1228,37): error TS18048: 'distByMaterial.marginDistribution' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1228,76): error TS2345: Argument of type '(a: { avgMargin: number; }, b: { avgMargin: number; }) => number' is not assignable to parameter of type '(a: { materialName: string; margin: number; }, b: { materialName: string; margin: number; }) => number'.
+  Types of parameters 'a' and 'a' are incompatible.
+    Property 'avgMargin' is missing in type '{ materialName: string; margin: number; }' but required in type '{ avgMargin: number; }'.
+src/components/inventory/dashboard-tab.tsx(1556,14): error TS18048: 'heatmapData.maxRevenue' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1557,98): error TS18047: 'heatmapData' is possibly 'null'.
+src/components/inventory/dashboard-tab.tsx(1587,73): error TS2339: Property 'revenue' does not exist on type '{ date: string; dayNum: number; intensity: number; count: number; }'.
+src/components/inventory/dashboard-tab.tsx(1688,14): error TS18048: 'customerFreq.distribution.length' is possibly 'undefined'.
+src/components/inventory/dashboard-tab.tsx(1691,35): error TS18047: 'customerFreq' is possibly 'null'.
+src/components/inventory/dashboard-tab.tsx(1697,24): error TS18047: 'customerFreq' is possibly 'null'.
+src/components/inventory/dashboard-tab.tsx(1705,32): error TS18047: 'customerFreq' is possibly 'null'.
+src/components/inventory/dashboard-tab.tsx(1706,32): error TS18047: 'customerFreq' is possibly 'null'.
+src/components/inventory/dashboard-tab.tsx(1728,96): error TS2322: Type '{ children: Element; width: string; height: number; margin: { left: number; right: number; }; }' is not assignable to type 'IntrinsicAttributes & Props & RefAttributes<HTMLDivElement | { current: HTMLDivElement; }>'.
+  Property 'margin' does not exist on type 'IntrinsicAttributes & Props & RefAttributes<HTMLDivElement | { current: HTMLDivElement; }>'.
+src/components/inventory/dashboard-tab.tsx(1734,86): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: Props): Bar', gave the following error.
+    Type '({ name, value, rank }: { name: string; value: number; rank: number; }) => string' is not assignable to type 'ImplicitLabelType | undefined'.
+      Type '({ name, value, rank }: { name: string; value: number; rank: number; }) => string' is not assignable to type '(props: any) => ReactElement<SVGElement, string | JSXElementConstructor<any>>'.
+        Type 'string' is not assignable to type 'ReactElement<SVGElement, string | JSXElementConstructor<any>>'.
+  Overload 2 of 2, '(props: Props, context: any): Bar', gave the following error.
+    Type '({ name, value, rank }: { name: string; value: number; rank: number; }) => string' is not assignable to type 'ImplicitLabelType | undefined'.
+      Type '({ name, value, rank }: { name: string; value: number; rank: number; }) => string' is not assignable to type '(props: any) => ReactElement<SVGElement, string | JSXElementConstructor<any>>'.
+        Type 'string' is not assignable to type 'ReactElement<SVGElement, string | JSXElementConstructor<any>>'.
+src/components/inventory/dashboard-tab.tsx(1996,65): error TS2552: Cannot find name 'StockAgingItem'. Did you mean 'StockAging'?
+src/components/inventory/inventory-tab.tsx(117,29): error TS2345: Argument of type '() => ({ onScan, onClose, open }: BarcodeScannerProps) => JSX.Element' is not assignable to parameter of type 'SetStateAction<ComponentType<object> | null>'.
+  Type '() => ({ onScan, onClose, open }: BarcodeScannerProps) => JSX.Element' is not assignable to type 'FunctionComponent<object>'.
+    Type '({ onScan, onClose, open }: BarcodeScannerProps) => Element' is not assignable to type 'ReactNode | Promise<ReactNode>'.
+src/components/inventory/inventory-tab.tsx(117,54): error TS2339: Property 'BarcodeScanner' does not exist on type 'typeof import("D:/02\u5DE5\u4F5C/ERP/newjade/src/components/inventory/barcode-scanner")'.
+src/components/inventory/inventory-tab.tsx(341,22): error TS2352: Conversion of type 'PaginatedData<ItemSummary>' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'PaginatedData<ItemSummary>'.
+src/components/inventory/inventory-tab.tsx(393,25): error TS2345: Argument of type '{ id: number; url: string | null | undefined; isCover: boolean; itemId: number; skuCode: string; }[]' is not assignable to parameter of type 'SetStateAction<{ id: number; url: string; isCover?: boolean | undefined; }[]>'.
+  Type '{ id: number; url: string | null | undefined; isCover: boolean; itemId: number; skuCode: string; }[]' is not assignable to type '{ id: number; url: string; isCover?: boolean | undefined; }[]'.
+    Type '{ id: number; url: string | null | undefined; isCover: boolean; itemId: number; skuCode: string; }' is not assignable to type '{ id: number; url: string; isCover?: boolean | undefined; }'.
+      Types of property 'url' are incompatible.
+        Type 'string | null | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/components/inventory/inventory-tab.tsx(444,71): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'SalesQueryParams'.
+src/components/inventory/inventory-tab.tsx(512,37): error TS2740: Type 'SkuLookupResult' is missing the following properties from type 'ItemSummary': batchCode, batchId, materialId, typeId, and 8 more.
+src/components/inventory/inventory-tab.tsx(532,37): error TS2740: Type 'SkuLookupResult' is missing the following properties from type 'ItemSummary': batchCode, batchId, materialId, typeId, and 8 more.
+src/components/inventory/inventory-tab.tsx(692,64): error TS2322: Type 'string' is not assignable to type 'number'.
+src/components/inventory/inventory-tab.tsx(772,9): error TS2322: Type 'Dispatch<SetStateAction<{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; has_tags: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }>>' is not assignable to type '(fn: (prev: { materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }) => { ...; }) => void'.
+  Types of parameters 'value' and 'fn' are incompatible.
+    Type '(prev: { materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }) => { ...; }' is not assignable to type 'SetStateAction<{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; has_tags: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }>'.
+      Type '(prev: { materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }) => { ...; }' is not assignable to type '(prevState: { materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; has_tags: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }) => { ...; }'.
+        Property 'has_tags' is missing in type '{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }' but required in type '{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; has_tags: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }'.
+src/components/inventory/inventory-tab.tsx(786,44): error TS2345: Argument of type '{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }' is not assignable to parameter of type 'SetStateAction<{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; has_tags: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }>'.
+  Property 'has_tags' is missing in type '{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }' but required in type '{ materialCategory: string; materialId: string; typeId: string; tagId: string; status: string; keyword: string; counter: string; batchId: string; has_tags: string; minPrice: string; maxPrice: string; purchaseStartDate: string; purchaseEndDate: string; }'.
+src/components/inventory/inventory-tab.tsx(861,13): error TS2322: Type 'ItemSummary[]' is not assignable to type 'InventoryItem[]'.
+  Type 'ItemSummary' is not assignable to type 'InventoryItem'.
+    Types of property 'coverImage' are incompatible.
+      Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/inventory-tab.tsx(884,11): error TS2322: Type 'ItemSummary[]' is not assignable to type 'InventoryItem[]'.
+  Type 'ItemSummary' is not assignable to type 'InventoryItem'.
+    Types of property 'coverImage' are incompatible.
+      Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/inventory-tab.tsx(1154,9): error TS2322: Type '{ mode: string; target: string; value: string; direction: "increase" | "decrease"; }' is not assignable to type 'BatchPriceForm'.
+  Types of property 'mode' are incompatible.
+    Type 'string' is not assignable to type '"fixed" | "percent"'.
+src/components/inventory/inventory-tab.tsx(1155,9): error TS2322: Type 'Dispatch<SetStateAction<{ mode: string; target: string; value: string; direction: "increase" | "decrease"; }>>' is not assignable to type '(fn: (prev: BatchPriceForm) => BatchPriceForm) => void'.
+  Types of parameters 'value' and 'fn' are incompatible.
+    Type '(prev: BatchPriceForm) => BatchPriceForm' is not assignable to type 'SetStateAction<{ mode: string; target: string; value: string; direction: "increase" | "decrease"; }>'.
+      Type '(prev: BatchPriceForm) => BatchPriceForm' is not assignable to type '(prevState: { mode: string; target: string; value: string; direction: "increase" | "decrease"; }) => { mode: string; target: string; value: string; direction: "increase" | "decrease"; }'.
+        Types of parameters 'prev' and 'prevState' are incompatible.
+          Type '{ mode: string; target: string; value: string; direction: "increase" | "decrease"; }' is not assignable to type 'BatchPriceForm'.
+            Types of property 'mode' are incompatible.
+              Type 'string' is not assignable to type '"fixed" | "percent"'.
+src/components/inventory/inventory-tab.tsx(1320,25): error TS2322: Type 'ItemSummary | null' is not assignable to type 'LabelItem | null'.
+  Type 'ItemSummary' is not assignable to type 'LabelItem'.
+    Types of property 'materialName' are incompatible.
+      Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+src/components/inventory/inventory-tab.tsx(1325,34): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: object, context?: any): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<...> | Component<...> | null | undefined', gave the following error.
+    Type '{ open: true; onClose: () => void; onScan: (code: string) => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & object'.
+      Property 'open' does not exist on type 'IntrinsicAttributes & object'.
+  Overload 2 of 2, '(props: object): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<...> | Component<...> | null | undefined', gave the following error.
+    Type '{ open: true; onClose: () => void; onScan: (code: string) => Promise<void>; }' is not assignable to type 'IntrinsicAttributes & object'.
+      Property 'open' does not exist on type 'IntrinsicAttributes & object'.
+src/components/inventory/inventory-tab.tsx(1334,121): error TS2345: Argument of type '{ actualPrice: number; channel: string; saleDate: string; note: string; }' is not assignable to parameter of type 'SetStateAction<{ actualPrice: number; channel: string; saleDate: string; note: string; customerId: string; }>'.
+  Property 'customerId' is missing in type '{ actualPrice: number; channel: string; saleDate: string; note: string; }' but required in type '{ actualPrice: number; channel: string; saleDate: string; note: string; customerId: string; }'.
+src/components/inventory/inventory/inventory-desktop-table.tsx(177,140): error TS2339: Property 'split' does not exist on type 'never'.
+src/components/inventory/inventory/inventory-desktop-table.tsx(204,41): error TS18048: 'item.ageDays' is possibly 'undefined'.
+src/components/inventory/inventory/inventory-item-slide-panel.tsx(43,139): error TS2339: Property 'split' does not exist on type 'never'.
+src/components/inventory/inventory/inventory-item-slide-panel.tsx(266,94): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/inventory/inventory/inventory-item-slide-panel.tsx(348,116): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/inventory/inventory/inventory-mobile-cards.tsx(131,132): error TS2339: Property 'split' does not exist on type 'never'.
+src/components/inventory/promotion-item-select.tsx(104,20): error TS2345: Argument of type 'ItemSummary[]' is not assignable to parameter of type 'SetStateAction<PromotionItem[]>'.
+  Type 'ItemSummary[]' is not assignable to type 'PromotionItem[]'.
+    Type 'ItemSummary' is not assignable to type 'PromotionItem'.
+      Types of property 'materialName' are incompatible.
+        Type 'string | null | undefined' is not assignable to type 'string | undefined'.
+          Type 'null' is not assignable to type 'string | undefined'.
+src/lib/api.ts(7,3): error TS2300: Duplicate identifier 'PaginatedData'.
+src/lib/api.ts(38,15): error TS2300: Duplicate identifier 'PaginatedData'.
+src/lib/api.ts(66,7): error TS18047: 'json' is possibly 'null'.
+src/lib/api.ts(66,26): error TS18047: 'json' is possibly 'null'.
+src/lib/api.ts(67,21): error TS18047: 'json' is possibly 'null'.
+src/lib/api.ts(69,10): error TS18047: 'json' is possibly 'null'.
+src/services/content-draft.service.ts(236,13): error TS2322: Type 'Record<string, unknown>' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+  Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 26 more.
+src/services/content-topic.service.ts(120,7): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+    Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 26 more.
+src/services/promotions.service.ts(108,5): error TS2322: Type '{ itemCount: number; items: ({ item: { material: { id: number; name: string; category: string | null; subType: string | null; origin: string | null; costPerGram: number | null; marketRatio: number | null; laborCostPerGram: number | null; sortOrder: number; isActive: boolean; }; type: { ...; } | null; } & { ...; }; }...' is not assignable to type 'PromotionWithItemCount[]'.
+  Type '{ itemCount: number; items: ({ item: { material: { id: number; name: string; category: string | null; subType: string | null; origin: string | null; costPerGram: number | null; marketRatio: number | null; laborCostPerGram: number | null; sortOrder: number; isActive: boolean; }; type: { ...; } | null; } & { ...; }; }...' is not assignable to type 'PromotionWithItemCount'.
+    Types of property 'items' are incompatible.
+      Type '({ item: { material: { id: number; name: string; category: string | null; subType: string | null; origin: string | null; costPerGram: number | null; marketRatio: number | null; laborCostPerGram: number | null; sortOrder: number; isActive: boolean; }; type: { ...; } | null; } & { ...; }; } & { ...; })[]' is not assignable to type 'ItemBrief[]'.
+        Type '{ item: { material: { id: number; name: string; category: string | null; subType: string | null; origin: string | null; costPerGram: number | null; marketRatio: number | null; laborCostPerGram: number | null; sortOrder: number; isActive: boolean; }; type: { ...; } | null; } & { ...; }; } & { ...; }' is missing the following properties from type 'ItemBrief': skuCode, name, sellingPrice
+src/services/restock.service.ts(373,11): error TS2322: Type 'Record<string, unknown>' is not assignable to type '(Without<RestockRecommendationCreateInput, RestockRecommendationUncheckedCreateInput> & RestockRecommendationUncheckedCreateInput) | (Without<...> & RestockRecommendationCreateInput)'.
+  Type 'Record<string, unknown>' is not assignable to type 'Without<RestockRecommendationUncheckedCreateInput, RestockRecommendationCreateInput> & RestockRecommendationCreateInput'.
+    Type 'Record<string, unknown>' is missing the following properties from type 'RestockRecommendationCreateInput': currentStock, safetyStock, recentSalesVelocity, salesRank, and 7 more.
+src/services/stocktaking.service.ts(99,12): error TS2322: Type '({ details: ({ item: { material: { id: number; name: string; category: string | null; subType: string | null; origin: string | null; costPerGram: number | null; marketRatio: number | null; laborCostPerGram: number | null; sortOrder: number; isActive: boolean; }; type: { ...; } | null; } & { ...; }; } & { ...; })[]; ...' is not assignable to type 'StocktakingWithDetails[]'.
+  Type '{ details: ({ item: { material: { id: number; name: string; category: string | null; subType: string | null; origin: string | null; costPerGram: number | null; marketRatio: number | null; laborCostPerGram: number | null; sortOrder: number; isActive: boolean; }; type: { ...; } | null; } & { ...; }; } & { ...; })[]; }...' is not assignable to type 'StocktakingWithDetails'.
+    Types of property 'notes' are incompatible.
+      Type 'string | null' is not assignable to type 'string | undefined'.
+        Type 'null' is not assignable to type 'string | undefined'.
+

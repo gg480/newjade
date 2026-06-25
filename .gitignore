@@ -77,3 +77,5 @@ tests/screenshots/
 screenshot-*.png
 screenshots/
 .playwright-cli/
+
+certificates

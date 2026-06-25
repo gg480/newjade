@@ -11,7 +11,7 @@
 import { Page, expect } from '@playwright/test';
 import * as path from 'path';
 
-export const BASE = 'http://localhost:5000';
+export const BASE = 'https://localhost:5001';
 export const SCREENSHOT_DIR = path.resolve(__dirname, '../screenshots');
 
 // ============================================================

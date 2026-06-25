@@ -1,0 +1,16 @@
+{
+  "effortLevel": "high",
+  "env": {
+    "CLAUDE_CONFIG_DIR": "C:\\ClaudeCode",
+    "ANTHROPIC_AUTH_TOKEN": "sk-0bd0c44e4e5a4181947b064d573a4254",
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_REASONING_MODEL": "deepseek-reasoner",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ENABLE_TOOL_SEARCH": "true"
+  },
+  "includeCoAuthoredBy": false
+}

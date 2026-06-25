@@ -2,6 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 
+const DEFAULT_MAX_DELAY = 50;
+const DEFAULT_COMPLETION_DELAY = 100;
+const DEFAULT_MIN_LENGTH = 3;
+
 interface UseBarcodeScannerOptions {
   /** 扫描枪字符间最大间隔（ms），超过则视为人类输入。默认 50ms */
   maxDelay?: number;
@@ -9,6 +13,8 @@ interface UseBarcodeScannerOptions {
   completionDelay?: number;
   /** 最小条码长度，默认 3 */
   minLength?: number;
+  /** 是否启用扫码监听。默认 true。设为 false 可避免与其他扫码组件冲突（如 ScanPhotoMode） */
+  enabled?: boolean;
   /** 扫码完成回调 */
   onComplete: (code: string) => void;
 }
@@ -25,23 +31,57 @@ interface UseBarcodeScannerOptions {
  * onComplete 回调中清空相关输入框，避免重复处理。
  *
  * 兼容：USB 扫描枪、蓝牙扫描枪（HID 模式），所有浏览器。
+ *
+ * enabled 参数：当其他组件（如 ScanPhotoMode 扫码拍摄）使用摄像头扫码时，
+ * 应设为 false 禁用此 hook，防止 HID 扫描枪事件触发错误流程。
  */
 export function useBarcodeScanner(options: UseBarcodeScannerOptions) {
-  const { maxDelay = 50, completionDelay = 100, minLength = 3, onComplete } = options;
+  const {
+    maxDelay = DEFAULT_MAX_DELAY,
+    completionDelay = DEFAULT_COMPLETION_DELAY,
+    minLength = DEFAULT_MIN_LENGTH,
+    enabled = true,
+    onComplete,
+  } = options;
   const bufferRef = useRef('');
   const lastTimeRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 标记当前序列是否为快速输入（扫描枪特征），第二字符起判定
   const isFastRef = useRef(false);
   const callbackRef = useRef(onComplete);
+  const enabledRef = useRef(enabled);
 
   // 保持回调引用最新，避免 effect 频繁重建
   useEffect(() => {
     callbackRef.current = onComplete;
   }, [onComplete]);
 
+  // 保持 enabled 引用最新
   useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => {
+    const resetBuffer = () => {
+      bufferRef.current = '';
+      isFastRef.current = false;
+      lastTimeRef.current = 0;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    const submitIfValid = (code: string) => {
+      if (code.length >= minLength && isFastRef.current) {
+        callbackRef.current(code);
+      }
+    };
+
     const handler = (e: KeyboardEvent) => {
+      // disabled 时跳过处理
+      if (!enabledRef.current) return;
+
       // 忽略修饰键组合（Ctrl/Cmd/Alt），避免与快捷键冲突
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
@@ -51,20 +91,12 @@ export function useBarcodeScanner(options: UseBarcodeScannerOptions) {
       // Enter 终止符
       if (e.key === 'Enter') {
         const code = bufferRef.current;
-        // 只有快速序列的 Enter 才视为扫描枪提交，避免与人类手动回车冲突
         if (code.length >= minLength && isFastRef.current) {
-          // capture 阶段 stop，阻止 React onKeyDown 重复触发
           e.preventDefault();
           e.stopPropagation();
-          callbackRef.current(code);
+          submitIfValid(code);
         }
-        bufferRef.current = '';
-        isFastRef.current = false;
-        lastTimeRef.current = 0;
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
-        }
+        resetBuffer();
         return;
       }
 
@@ -85,14 +117,8 @@ export function useBarcodeScanner(options: UseBarcodeScannerOptions) {
         // 软件兜底超时：无 Enter 时自动提交（仅快速序列）
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
-          const code = bufferRef.current;
-          if (code.length >= minLength && isFastRef.current) {
-            callbackRef.current(code);
-          }
-          bufferRef.current = '';
-          isFastRef.current = false;
-          lastTimeRef.current = 0;
-          timerRef.current = null;
+          submitIfValid(bufferRef.current);
+          resetBuffer();
         }, completionDelay);
       }
     };

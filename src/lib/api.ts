@@ -190,7 +190,10 @@ export const itemsApi = {
     formData.append('skuCode', skuCode);
     formData.append('image', file);
     if (angleCode) formData.append('angleCode', angleCode);
-    const res = await fetch(`${BASE}/items/scan-photo`, { method: 'POST', body: formData });
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${BASE}/items/scan-photo`, { method: 'POST', body: formData, headers });
     const json = await res.json();
     if (json.code !== 0 && json.code !== 200) throw new Error(json.message || '上传失败');
     return json.data as ImageUploadResult;

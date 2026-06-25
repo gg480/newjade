@@ -13,6 +13,9 @@ export async function GET(req: Request) {
   if (!sku) {
     return NextResponse.json({ code: 400, data: null, message: '请提供SKU码' }, { status: 400 });
   }
+  if (!/^[A-Za-z0-9]{2,6}-\d{4}-\d{3}$/.test(sku.trim())) {
+    return NextResponse.json({ code: 400, data: null, message: 'SKU格式无效' }, { status: 400 });
+  }
 
   try {
     const data = await lookupItemBySku(sku);

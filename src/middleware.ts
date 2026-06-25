@@ -24,16 +24,66 @@ function isPublicPath(pathname: string): boolean {
 const AUTH_BODY_LIMIT_PATHS = ['/api/auth/', '/api/users'];
 const MAX_AUTH_BODY_SIZE = 10 * 1024; // 10KB
 
+// 内容安全策略 — 按环境区分
+const CSP_DIRECTIVES_PRODUCTION = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data:",
+  "media-src 'self' blob: mediastream:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "worker-src 'self' blob:",
+  "script-src-attr 'unsafe-inline'",
+].join('; ');
+
+const CSP_DIRECTIVES_DEV = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data:",
+  "media-src 'self' blob: mediastream:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://fastly.jsdelivr.net https://cdn.jsdelivr.net",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "worker-src 'self' blob:",
+  "script-src-attr 'unsafe-inline'",
+].join('; ');
+
 /** 为响应添加安全响应头 */
 function addSecurityHeaders(res: NextResponse): NextResponse {
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Content-Security-Policy — 按环境区分
+  const csp = process.env.NODE_ENV === 'production' ? CSP_DIRECTIVES_PRODUCTION : CSP_DIRECTIVES_DEV;
+  res.headers.set('Content-Security-Policy', csp);
+  // Strict-Transport-Security — 仅在生产环境启用（防止本地开发被缓存）
+  if (process.env.NODE_ENV === 'production') {
+    res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  // Permissions-Policy — 限制敏感 API 权限
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), fullscreen=(self), display-capture=(self)');
   return res;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ============================================================
+  // 非 API 路由（页面/静态资源）：仅添加安全响应头，不执行鉴权
+  // ============================================================
+  if (!pathname.startsWith('/api/')) {
+    const res = NextResponse.next();
+    return addSecurityHeaders(res);
+  }
 
   // ============================================================
   // 1. 全局限流（必须在公开路径判断之前，保护所有端点包括登录接口）
@@ -140,5 +190,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    // Match all routes except Next.js internal assets and favicon
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };

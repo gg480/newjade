@@ -387,6 +387,33 @@ body::after {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* SKU 输入错误抖动 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-5px); }
+  30% { transform: translateX(5px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
+}
+
+/* 扫码扫描线 — 上下往复 */
+@keyframes scanLine {
+  0%, 100% { top: 25%; }
+  50% { top: 70%; }
+}
+
+/* 上传状态图标缩放入场 */
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-in {
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 /* =============================================
    prefers-reduced-motion
    ============================================= */

@@ -13,8 +13,8 @@ async function scanPhotoHandler(req: Request) {
   const file = formData.get('image') as File | null;
   const angleCode = formData.get('angleCode') as string | null;
 
-  if (!skuCode) {
-    return NextResponse.json({ code: 400, data: null, message: '请提供SKU码' }, { status: 400 });
+  if (!skuCode || !/^[A-Za-z0-9]{2,6}-\d{4}-\d{3}$/.test(skuCode.trim())) {
+    return NextResponse.json({ code: 400, data: null, message: 'SKU格式无效' }, { status: 400 });
   }
   if (!file) {
     return NextResponse.json({ code: 400, data: null, message: '请选择图片' }, { status: 400 });

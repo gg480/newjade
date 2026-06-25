@@ -4,6 +4,8 @@ import path from 'path';
 import { db } from '@/lib/db';
 import { ValidationError } from '@/lib/errors';
 import { withApiLogging } from '@/lib/api/with-api-logging';
+import { guardPermission } from '@/lib/api/permission-guard';
+import { ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_TYPES, detectImageMime } from '@/lib/file-utils';
 
 const IMAGES_ROOT = process.env.NODE_ENV === 'production'
   ? path.join(process.env.DATA_DIR || '/app/data', 'images')
@@ -13,6 +15,10 @@ const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function uploadHandler(req: Request) {
+  // RBAC permission check — images upload requires item_batch_ops
+  const denied = await guardPermission(req, 'action:item_batch_ops');
+  if (denied) return denied;
+
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   const itemIdRaw = formData.get('itemId');
@@ -24,16 +30,24 @@ async function uploadHandler(req: Request) {
     );
   }
 
-  // 校验文件类型
-  const ext = path.extname(file.name).toLowerCase();
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
+  // Validate client-reported MIME type (first line of defense)
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return NextResponse.json(
       { code: 400, data: null, message: '仅支持 JPG/JPEG/PNG/WEBP 格式' },
       { status: 400 },
     );
   }
 
-  // 校验文件大小
+  // Validate file extension via path.extname (reliable)
+  const ext = path.extname(file.name).toLowerCase();
+  if (!ALLOWED_IMAGE_EXTENSIONS.has(ext)) {
+    return NextResponse.json(
+      { code: 400, data: null, message: '仅支持 JPG/JPEG/PNG/WEBP 格式' },
+      { status: 400 },
+    );
+  }
+
+  // Validate file size
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
       { code: 400, data: null, message: '图片大小不能超过10MB' },
@@ -61,8 +75,21 @@ async function uploadHandler(req: Request) {
   await mkdir(IMAGES_ROOT, { recursive: true });
   const filepath = path.join(IMAGES_ROOT, filename);
 
-  // 保存文件
+  // 保存文件（先验证魔数）
   const buffer = Buffer.from(await file.arrayBuffer());
+  if (buffer.length < 12) {
+    return NextResponse.json(
+      { code: 400, data: null, message: '无效的图片文件' },
+      { status: 400 },
+    );
+  }
+  const detectedMime = detectImageMime(new Uint8Array(buffer));
+  if (!detectedMime) {
+    return NextResponse.json(
+      { code: 400, data: null, message: '文件内容不是有效的图片格式' },
+      { status: 400 },
+    );
+  }
   await writeFile(filepath, buffer);
 
   // 构建访问 URL

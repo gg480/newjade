@@ -1,0 +1,97 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command *)",
+      "Skill(update-config)",
+      "Bash(cd /d \"D:\\\\02工作\\\\ERP\\\\newjade\")",
+      "Bash(mkdir \".understand-anything\\\\intermediate\")",
+      "Bash(mkdir \".understand-anything\\\\tmp\")",
+      "Bash(mkdir -p .understand-anything/intermediate .understand-anything/tmp)",
+      "Bash(ls .understand-anything/knowledge-graph.json)",
+      "Bash(ls .understand-anything/meta.json)",
+      "Bash(cat .understand-anything/meta.json)",
+      "Bash(pnpm run *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(npx tsx *)",
+      "Bash(npx playwright *)",
+      "Bash(curl -s -X POST -H 'Authorization: Bearer session-SN6dfnP1srwx6Xlk5p46XIkNUgcPzKbrVRxQCJkqFHc' -H 'Content-Type: application/json' http://localhost:5000/api/metal-prices/reprice/preview -d '{\"materialId\":37,\"newPricePerGram\":900}')",
+      "Bash(curl -s -X DELETE -H 'Authorization: Bearer session-SN6dfnP1srwx6Xlk5p46XIkNUgcPzKbrVRxQCJkqFHc' http://localhost:5000/api/metal-prices?id=99999)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(taskkill //F //IM node.exe)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(git clone *)",
+      "Read(//tmp/**)",
+      "Read(//c/Users/1/AppData/Local/Temp/agent-reach//**)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(node -p \"JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\).code\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(npx skills *)",
+      "Bash(claude plugin *)",
+      "Read(//c/ClaudeState/D--02---ERP-newjade/23eebc67-7e7b-4363-a654-9e3c52754632//**)",
+      "Bash(ls -la \"C:\\\\\\\\ClaudeState\\\\\\\\D--02---ERP-newjade\\\\\\\\23eebc67-7e7b-4363-a654-9e3c52754632\\\\\\\\\")",
+      "Bash(cmd //c \"rmdir /s /q C:\\\\ClaudeState\\\\D--02---ERP-newjade\\\\23eebc67-7e7b-4363-a654-9e3c52754632\\\\tasks\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Read(//d/D:/02工作/ERP/**)",
+      "Bash(echo \"Dev server starting in background \\(PID: $!\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000)",
+      "WebFetch(domain:localhost)",
+      "mcp__ide__executeCode"
+    ]
+  },
+  "model": "deepseek-v4-flash",
+  "enabledPlugins": {
+    "understand-anything@understand-anything": true,
+    "agent-skills@agent-skills-local": true
+  },
+  "extraKnownMarketplaces": {
+    "understand-anything": {
+      "source": {
+        "source": "directory",
+        "path": "D:/02工作/understand"
+      }
+    },
+    "agent-skills-local": {
+      "source": {
+        "source": "directory",
+        "path": "D:/02工作/agent-skills"
+      }
+    },
+    "planning-with-files": {
+      "source": {
+        "source": "github",
+        "repo": "OthmanAdi/planning-with-files"
+      }
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      }
+    },
+    "anthropic-skills": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/skills",
+        "path": ".claude-plugin/marketplace.json"
+      }
+    },
+    "cc-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "ananddtyagi/cc-marketplace"
+      }
+    }
+  },
+  "language": "chinese"
+}

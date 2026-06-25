@@ -5,10 +5,11 @@ import { FullConfig, chromium } from '@playwright/test';
 
 async function globalSetup(config: FullConfig) {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, ignoreHTTPSErrors: true });
+  const page = await context.newPage();
 
   // 通过 API 登录
-  const loginRes = await page.request.post('http://localhost:5000/api/auth/login', {
+  const loginRes = await page.request.post('https://localhost:5001/api/auth/login', {
     data: { username: 'admin', password: 'admin123' },
   });
   const loginData = await loginRes.json();
@@ -21,7 +22,7 @@ async function globalSetup(config: FullConfig) {
   }
 
   // 加载首页，注入 token
-  await page.goto('http://localhost:5000', { waitUntil: 'domcontentloaded' });
+  await page.goto('https://localhost:5001', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(500);
   await page.evaluate((t) => {
     localStorage.setItem('auth_token', t);
