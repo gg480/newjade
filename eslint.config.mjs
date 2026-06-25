@@ -18,4 +18,11 @@ config.push({
   ],
 });
 
+// React Compiler 优化提示降为 warning（不影响功能）
+config.push({
+  rules: {
+    'react-compiler/react-compiler': 'warn',
+  },
+});
+
 export default config;

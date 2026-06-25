@@ -154,3 +154,38 @@ prisma/
 - **NAS 部署**：禁止直接用 docker 命令修改运行中容器。使用 `nas-update.sh`
 - **种子数据**：涉及 prisma/seed*.ts 变更必须在 entrypoint.sh 同步
 - **不推测代码**：必须 Read 文件后才能对代码做断言
+
+## 提交策略
+
+### 分支策略
+- `main` — 生产就绪，只接受通过 CI 的提交
+- `feat/<name>` — 新功能开发
+- `fix/<name>` — 缺陷修复
+- `refactor/<name>` — 重构
+- `docs/<name>` — 文档
+
+### 提交信息格式
+```
+<type>: <简短描述>
+
+<详细说明（可选，换行后写）>
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+| type | 用途 |
+|------|------|
+| `feat` | 新功能 |
+| `fix` | Bug 修复 |
+| `refactor` | 重构（不新增功能也不修 bug） |
+| `perf` | 性能优化 |
+| `test` | 测试相关 |
+| `docs` | 文档 |
+| `chore` | 构建/CI/依赖 |
+
+### 提交前检查清单
+1. `pnpm lint` — 无 error（warning 允许）
+2. `npx tsc --noEmit` — 无 TypeScript 错误
+3. CI 的 `quality` stage 必须通过（lint → typecheck）
+4. 如修改了 API/组件接口，确认上游调用方同步更新
+5. 展示 diff → 等待用户确认 → 再 commit
