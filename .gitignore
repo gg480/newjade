@@ -80,3 +80,4 @@ screenshots/
 .playwright-cli/
 
 certificates
+.eslint-cache

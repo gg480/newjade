@@ -78,9 +78,10 @@ export async function validateToken(token: string): Promise<TokenValidationResul
   try {
     const session = await db.session.findUnique({
       where: { token },
+      include: { user: true },
     });
 
-    if (!session) return { valid: false };
+    if (!session || !session.user) return { valid: false };
 
     // Check expiration
     if (new Date() > session.expiresAt) {
@@ -89,19 +90,13 @@ export async function validateToken(token: string): Promise<TokenValidationResul
       return { valid: false };
     }
 
-    // Check if userId is set
-    if (session.userId == null) return { valid: false };
-
-    const uid: number = session.userId;
-
     // Check if user is still active
-    const user = await db.user.findUnique({ where: { id: uid } });
-    if (!user || !user.isActive) {
+    if (!session.user.isActive) {
       await db.session.delete({ where: { token } }).catch(() => {});
       return { valid: false };
     }
 
-    return { valid: true, userId: uid };
+    return { valid: true, userId: session.userId! };
   } catch (e) {
     console.error('[Auth]', e);
     return { valid: false };

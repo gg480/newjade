@@ -31,7 +31,7 @@ const MAX_AUTH_BODY_SIZE = 10 * 1024; // 10KB
 // Next.js 会自动给 RSC 注入的 inline scripts 加 nonce 属性
 const CSP_DIRECTIVES_PRODUCTION = (nonce: string) => [
   "default-src 'self'",
-  `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'wasm-unsafe-eval'`,
+  `script-src 'self' 'nonce-${nonce}'`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "media-src 'self' blob: mediastream:",
@@ -42,7 +42,8 @@ const CSP_DIRECTIVES_PRODUCTION = (nonce: string) => [
   "base-uri 'self'",
   "form-action 'self'",
   "worker-src 'self' blob:",
-  "script-src-attr 'unsafe-inline'",
+  "script-src-attr 'none'",
+  "report-uri /api/csp-report",
 ].join('; ');
 
 // dev 环境保留 'unsafe-inline'（HMR/Fast Refresh 需要）+ nonce（与生产一致，便于本地测试 CSP 行为）
@@ -59,7 +60,7 @@ const CSP_DIRECTIVES_DEV = (nonce: string) => [
   "base-uri 'self'",
   "form-action 'self'",
   "worker-src 'self' blob:",
-  "script-src-attr 'unsafe-inline'",
+  "script-src-attr 'none'",
 ].join('; ');
 
 /** 为响应添加安全响应头（含每请求 nonce） */
@@ -76,6 +77,8 @@ function addSecurityHeaders(res: NextResponse, nonce: string): NextResponse {
   }
   // Permissions-Policy — 限制敏感 API 权限
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), fullscreen=(self), display-capture=(self)');
+  // 注入 nonce 到响应头，供客户端（Next.js RSC inline scripts）使用
+  res.headers.set('x-nonce', nonce);
   return res;
 }
 
@@ -90,7 +93,6 @@ export async function middleware(request: NextRequest) {
   // ============================================================
   if (!pathname.startsWith('/api/')) {
     const res = NextResponse.next();
-    res.headers.set('x-nonce', nonce);
     return addSecurityHeaders(res, nonce);
   }
 
@@ -98,10 +100,8 @@ export async function middleware(request: NextRequest) {
   // 1. 全局限流（必须在公开路径判断之前，保护所有端点包括登录接口）
   //    本地 IP（127.0.0.1 / ::1）跳过限流，方便 E2E 测试
   // ============================================================
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '127.0.0.1';
+  // 使用 request.ip（Next.js 提供的实际 TCP 连接 IP），运行时存在但类型定义缺失
+  const ip = (request as NextRequest & { ip?: string }).ip || '127.0.0.1';
 
   if (ip !== '127.0.0.1' && ip !== '::1' && !ip.startsWith('::ffff:127.')) {
     const limitResult = globalLimiter.check(ip);
@@ -195,7 +195,6 @@ export async function middleware(request: NextRequest) {
     request: { headers: requestHeaders },
   });
   res.headers.set('X-Request-Id', id);
-  res.headers.set('x-nonce', nonce);
   return addSecurityHeaders(res, nonce);
 }
 

@@ -11,7 +11,8 @@ const INBOX_FILE = path.join(QUEUE_DIR, 'inbox.json');
 const OUTBOX_FILE = path.join(QUEUE_DIR, 'outbox.json');
 
 // 简单令牌验证（防止未授权访问）
-const REMOTE_TOKEN = process.env.REMOTE_TOKEN || 'jade-remote-2026';
+// 必须通过环境变量 REMOTE_TOKEN 配置，无回退默认值
+const REMOTE_TOKEN = process.env.REMOTE_TOKEN;
 
 interface CommandEntry {
   id: string;
@@ -39,6 +40,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { command, token } = body;
+
+    // 检查服务是否已配置
+    if (!REMOTE_TOKEN) {
+      return NextResponse.json(
+        { code: 503, data: null, message: '远程指令服务未配置' },
+        { status: 503 },
+      );
+    }
 
     // 令牌验证
     if (!token || token !== REMOTE_TOKEN) {

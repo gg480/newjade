@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import * as logsService from '@/services/logs.service';
+import { guardPermission } from '@/lib/api/permission-guard';
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const denied = await guardPermission(req, 'action:log_cleanup');
+  if (denied) return denied;
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

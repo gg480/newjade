@@ -21,7 +21,6 @@ import { createSession, validateToken, deleteSession } from '@/lib/auth';
 import { validatePassword, EXTERNAL_ERROR_MESSAGE } from '@/lib/password-validator';
 import { SlidingWindowLimiter } from '@/lib/rate-limiter';
 
-const DEFAULT_PASSWORD = 'admin123';
 
 // In-memory rate limiting
 const loginAttempts = new Map<string, { count: number; firstAttemptTime: number }>();
@@ -126,58 +125,11 @@ export async function POST(req: Request) {
       });
     }
 
-    // 旧格式：只有 password（向后兼容）
-    if (!password) {
-      return NextResponse.json({ code: 400, data: null, message: '请输入密码' }, { status: 400 });
-    }
-
-    // 查找 admin 用户
-    let user = await db.user.findUnique({
-      where: { username: 'admin' },
-      include: { role: true },
-    });
-
-    // 如果数据库无密码hash，回退默认密码
-    let isValid = false;
-    if (user) {
-      isValid = await bcrypt.compare(password, user.passwordHash);
-    } else {
-      isValid = password === DEFAULT_PASSWORD;
-      if (isValid) {
-        const hash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-        user = await db.user.create({
-          data: { username: 'admin', passwordHash: hash, mustChangePwd: false, displayName: '系统管理员' },
-          include: { role: true },
-        });
-      }
-    }
-
-    if (!isValid || !user) {
-      recordFailedAttempt(clientIp);
-      return NextResponse.json({ code: 401, data: null, message: '密码错误' }, { status: 401 });
-    }
-
-    resetAttempts(clientIp);
-    const token = await createSession(user.id);
-
-    const permissions: string[] = user.role ? JSON.parse(user.role.permissions) : [];
-
-    return NextResponse.json({
-      code: 0,
-      data: {
-        token,
-        expiresIn: 604800,
-        user: {
-          id: user.id,
-          username: user.username,
-          displayName: user.displayName ?? '',
-          roleName: user.role?.name ?? '',
-          permissions,
-          mustChangePwd: user.mustChangePwd,
-        },
-      },
-      message: 'ok',
-    });
+    // 旧格式：只有 password — 已不再支持
+    return NextResponse.json(
+      { code: 400, data: null, message: '请使用新版登录接口 POST /api/auth/login' },
+      { status: 400 },
+    );
   } catch (e: unknown) {
     const msg = toUserFriendlyMessage(e);
     return NextResponse.json({ code: 500, data: null, message: msg }, { status: 500 });
