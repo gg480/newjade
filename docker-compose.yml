@@ -17,8 +17,8 @@ services:
     ports:
       - "${JADE_PORT:-5000}:5000"
     volumes:
-      # SQLite 数据库持久化：容器内 /app/db 映射到宿主机目录
-      - ${JADE_DB_DIR:-./db}:/app/db
+      # SQLite 数据库持久化：容器内 /app/data/db 映射到宿主机目录（entrypoint.sh 使用 DATA_DIR=/app/data）
+      - ${JADE_DB_DIR:-./db}:/app/data/db
       # Docker Socket：用于容器内执行更新操作
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:

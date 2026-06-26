@@ -39,7 +39,7 @@ export interface StocktakingDetailItem {
   actualQty: number;
   variance: number;
   notes: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   item?: any;
 }
 

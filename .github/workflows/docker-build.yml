@@ -102,8 +102,9 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          # no-cache 在首次构建成功后应移除（后续使用 layer cache）
-          no-cache: true
+          # 利用 Docker layer cache 加速构建
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ${{ steps.meta-dockerhub.outputs.tags }}
             ${{ steps.meta-acr.outputs.tags }}

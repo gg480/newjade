@@ -176,7 +176,7 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 异步API获取，setState在回调中可接受
+     
     loadNotifications();
     const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);

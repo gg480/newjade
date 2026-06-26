@@ -42,7 +42,7 @@ export interface PromotionWithItemCount {
   status: string;
   createdAt: Date;
   itemCount: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   items?: any[];
 }
 

@@ -22,7 +22,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
 # 安装依赖（含 devDeps，Next.js 构建需要 TypeScript）
-RUN pnpm install --no-frozen-lockfile && \
+RUN pnpm install --frozen-lockfile && \
     npx prisma generate
 
 # 设置生产环境变量（影响 Next.js 构建优化路径）
@@ -31,9 +31,8 @@ ENV NODE_ENV=production
 # 复制全部源代码
 COPY . .
 
-# Build prisma client and next production bundle
-RUN npx prisma generate && \
-    npx next build
+# Build next production bundle（prisma client 已在依赖安装阶段生成）
+RUN npx next build
 
 # ---- Stage 2: Runner（最小运行时） ----
 FROM node:22-alpine AS runner

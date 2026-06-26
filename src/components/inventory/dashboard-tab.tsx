@@ -928,7 +928,7 @@ function DashboardTab() {
           {!goldAlert && !goldAlertLoading ? (
             <div className="flex flex-col items-center justify-center py-6 gap-2">
               <Activity className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">点击"刷新数据"加载贵金属行情比对</p>
+              <p className="text-sm text-muted-foreground">点击&ldquo;刷新数据&rdquo;加载贵金属行情比对</p>
             </div>
           ) : goldAlertLoading ? (
             <div className="space-y-2">
@@ -1009,7 +1009,7 @@ function DashboardTab() {
               {goldAlert!.alertCount > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
                   以上 {goldAlert!.alertCount} 件货品的成本克重单价低于融通金行情价超过 50 元/克，
-                  系统已自动标记为"需预定"标签，建议考虑提价销售或暂不出售。
+                  系统已自动标记为&ldquo;需预定&rdquo;标签，建议考虑提价销售或暂不出售。
                 </p>
               )}
             </>
