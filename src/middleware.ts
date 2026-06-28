@@ -1,6 +1,5 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { validateToken, validateOpenClawKey, isOpenClawKey } from '@/lib/auth';
 import { globalLimiter } from '@/lib/rate-limiter';
 
@@ -25,13 +24,13 @@ function isPublicPath(pathname: string): boolean {
 const AUTH_BODY_LIMIT_PATHS = ['/api/auth/', '/api/users'];
 const MAX_AUTH_BODY_SIZE = 10 * 1024; // 10KB
 
-// 内容安全策略 — 按环境区分，注入每请求随机 nonce
-// 为什么用 nonce：生产环境移除 'unsafe-inline' 后，Next.js 16 的 RSC inline scripts
-// 需要 nonce 才能执行（hydration 依赖）；nonce 通过 middleware 注入到 x-nonce request header，
-// Next.js 会自动给 RSC 注入的 inline scripts 加 nonce 属性
-const CSP_DIRECTIVES_PRODUCTION = (nonce: string) => [
+// 内容安全策略 — 按环境区分
+// 注意：Next.js 16 中 middleware 注入 nonce 给 RSC inline scripts 的机制已失效
+// （middleware.ts 已废弃，不自动读取 x-nonce header 注入到 <script> 标签）
+// 因此生产环境直接用 'unsafe-inline'，放弃 nonce 方案
+const CSP_DIRECTIVES_PRODUCTION = [
   "default-src 'self'",
-  `script-src 'self' 'nonce-${nonce}'`,
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "media-src 'self' blob: mediastream:",
@@ -42,14 +41,12 @@ const CSP_DIRECTIVES_PRODUCTION = (nonce: string) => [
   "base-uri 'self'",
   "form-action 'self'",
   "worker-src 'self' blob:",
-  "script-src-attr 'none'",
-  "report-uri /api/csp-report",
+  "script-src-attr 'unsafe-inline'",
 ].join('; ');
 
-// dev 环境保留 'unsafe-inline'（HMR/Fast Refresh 需要）+ nonce（与生产一致，便于本地测试 CSP 行为）
-const CSP_DIRECTIVES_DEV = (nonce: string) => [
+const CSP_DIRECTIVES_DEV = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' 'nonce-${nonce}' 'unsafe-eval' 'wasm-unsafe-eval'`,
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "media-src 'self' blob: mediastream:",
@@ -60,16 +57,16 @@ const CSP_DIRECTIVES_DEV = (nonce: string) => [
   "base-uri 'self'",
   "form-action 'self'",
   "worker-src 'self' blob:",
-  "script-src-attr 'none'",
+  "script-src-attr 'unsafe-inline'",
 ].join('; ');
 
-/** 为响应添加安全响应头（含每请求 nonce） */
-function addSecurityHeaders(res: NextResponse, nonce: string): NextResponse {
+/** 为响应添加安全响应头 */
+function addSecurityHeaders(res: NextResponse): NextResponse {
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // Content-Security-Policy — 按环境区分，注入 nonce
-  const csp = process.env.NODE_ENV === 'production' ? CSP_DIRECTIVES_PRODUCTION(nonce) : CSP_DIRECTIVES_DEV(nonce);
+  // Content-Security-Policy — 按环境区分
+  const csp = process.env.NODE_ENV === 'production' ? CSP_DIRECTIVES_PRODUCTION : CSP_DIRECTIVES_DEV;
   res.headers.set('Content-Security-Policy', csp);
   // Strict-Transport-Security — 仅在生产环境启用（防止本地开发被缓存）
   if (process.env.NODE_ENV === 'production') {
@@ -77,23 +74,18 @@ function addSecurityHeaders(res: NextResponse, nonce: string): NextResponse {
   }
   // Permissions-Policy — 限制敏感 API 权限
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), fullscreen=(self), display-capture=(self)');
-  // 注入 nonce 到响应头，供客户端（Next.js RSC inline scripts）使用
-  res.headers.set('x-nonce', nonce);
   return res;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 生成每请求 nonce，用于 CSP 和 Next.js RSC inline scripts
-  const nonce = randomBytes(16).toString('base64');
-
   // ============================================================
-  // 非 API 路由（页面/静态资源）：注入 nonce + 安全响应头
+  // 非 API 路由（页面/静态资源）：仅添加安全响应头，不执行鉴权
   // ============================================================
   if (!pathname.startsWith('/api/')) {
     const res = NextResponse.next();
-    return addSecurityHeaders(res, nonce);
+    return addSecurityHeaders(res);
   }
 
   // ============================================================
@@ -109,7 +101,7 @@ export async function middleware(request: NextRequest) {
       return addSecurityHeaders(NextResponse.json(
         { code: 429, data: null, message: '请求过于频繁' },
         { status: 429 }
-      ), nonce);
+      ));
     }
   }
 
@@ -124,7 +116,7 @@ export async function middleware(request: NextRequest) {
       return addSecurityHeaders(NextResponse.json(
         { code: 413, data: null, message: '请求体过大' },
         { status: 413 }
-      ), nonce);
+      ));
     }
   }
 
@@ -144,7 +136,7 @@ export async function middleware(request: NextRequest) {
       request: { headers: requestHeaders },
     });
     res.headers.set('X-Request-Id', id);
-    return addSecurityHeaders(res, nonce);
+    return addSecurityHeaders(res);
   }
 
   // 提取 token
@@ -155,7 +147,7 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.json(
       { code: 401, data: null, message: '缺少认证令牌' },
       { status: 401 }
-    ), nonce);
+    ));
   }
 
   // 双 Token 认证：OpenClaw API Key（oc_ 前缀）走独立验证路径
@@ -165,7 +157,7 @@ export async function middleware(request: NextRequest) {
       return addSecurityHeaders(NextResponse.json(
         { code: 401, data: null, message: 'OpenClaw API Key 无效' },
         { status: 401 }
-      ), nonce);
+      ));
     }
     // OpenClaw 调用：注入系统级标识，userId=0 表示非人类用户
     requestHeaders.set('x-user-id', '0');
@@ -175,7 +167,7 @@ export async function middleware(request: NextRequest) {
       request: { headers: requestHeaders },
     });
     res.headers.set('X-Request-Id', id);
-    return addSecurityHeaders(res, nonce);
+    return addSecurityHeaders(res);
   }
 
   // 验证用户会话 token
@@ -184,7 +176,7 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.json(
       { code: 401, data: null, message: '会话已过期或无效' },
       { status: 401 }
-    ), nonce);
+    ));
   }
 
   // 将用户信息注入请求头
@@ -195,7 +187,7 @@ export async function middleware(request: NextRequest) {
     request: { headers: requestHeaders },
   });
   res.headers.set('X-Request-Id', id);
-  return addSecurityHeaders(res, nonce);
+  return addSecurityHeaders(res);
 }
 
 export const config = {
